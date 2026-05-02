@@ -1,0 +1,36 @@
+[gd_resource type="ShaderMaterial" format=3 uid="uid://c0bb1g111tpl8"]
+
+[ext_resource type="Shader" uid="uid://ev30ex1oxbgl" path="res://scenes/water_waves.gdshader" id="1_shader"]
+[ext_resource type="Texture2D" uid="uid://dbpqtbci15yg6" path="res://assets/island_heightmap.tres" id="2_heightmap"]
+
+[resource]
+render_priority = 0
+shader = ExtResource("1_shader")
+shader_parameter/wave_dir_1 = Vector2(1, 0)
+shader_parameter/wave_dir_2 = Vector2(0.7, 0.7)
+shader_parameter/wave_dir_3 = Vector2(0.3, -0.95)
+shader_parameter/wave_wavelength_1 = 12.0
+shader_parameter/wave_wavelength_2 = 7.0
+shader_parameter/wave_wavelength_3 = 4.0
+shader_parameter/wave_amplitude_1 = 0.15
+shader_parameter/wave_amplitude_2 = 0.08
+shader_parameter/wave_amplitude_3 = 0.05
+shader_parameter/wave_speed_1 = 0.4
+shader_parameter/wave_speed_2 = 0.55
+shader_parameter/wave_speed_3 = 0.7
+shader_parameter/shallow_color = Color(0.4, 0.7, 0.7, 1)
+shader_parameter/deep_color = Color(0.15, 0.25, 0.4, 1)
+shader_parameter/sky_color = Color(0.35810438, 0.98485047, 0.89241284, 1)
+shader_parameter/depth_falloff = 4.0
+shader_parameter/foam_color = Color(0.95, 0.97, 1, 1)
+shader_parameter/foam_distance = 1.5
+shader_parameter/foam_softness = 0.5
+shader_parameter/foam_max_strength = 0.7
+shader_parameter/water_max_depth = 30.0
+shader_parameter/island_heightmap = ExtResource("2_heightmap")
+shader_parameter/heightmap_xz_origin = Vector2(-200, -200)
+shader_parameter/heightmap_xz_size = Vector2(400, 400)
+shader_parameter/heightmap_y_min = -100.0
+shader_parameter/heightmap_y_max = 100.0
+shader_parameter/water_surface_y = 0.0
+shader_parameter/land_clear_threshold = 0.5

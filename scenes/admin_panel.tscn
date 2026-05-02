@@ -1,0 +1,77 @@
+[gd_scene load_steps=2 format=3 uid="uid://b3adminpnl001"]
+
+[ext_resource type="Script" path="res://scripts/admin_panel.gd" id="1_admin"]
+
+[node name="AdminPanel" type="Panel"]
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -340.0
+offset_top = 20.0
+offset_right = -20.0
+offset_bottom = 410.0
+script = ExtResource("1_admin")
+
+[node name="VBox" type="VBoxContainer" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 8.0
+offset_right = -12.0
+offset_bottom = -8.0
+
+[node name="Title" type="Label" parent="VBox"]
+text = "Admin (F1)"
+
+[node name="NoStamina" type="CheckButton" parent="VBox"]
+text = "No stamina"
+
+[node name="Noclip" type="CheckButton" parent="VBox"]
+text = "Noclip / fly (Space=up, Shift=down)"
+
+[node name="FastSpeed" type="CheckButton" parent="VBox"]
+text = "Fast mining speed"
+
+[node name="SpeedRow" type="HBoxContainer" parent="VBox"]
+
+[node name="SpeedSlider" type="HSlider" parent="VBox/SpeedRow"]
+size_flags_horizontal = 3
+min_value = 1.0
+max_value = 10.0
+step = 0.5
+value = 4.0
+
+[node name="SpeedLabel" type="Label" parent="VBox/SpeedRow"]
+custom_minimum_size = Vector2(60, 0)
+text = "x4.0"
+
+[node name="FastDamage" type="CheckButton" parent="VBox"]
+text = "Fast mining damage"
+
+[node name="DamageRow" type="HBoxContainer" parent="VBox"]
+
+[node name="DamageSlider" type="HSlider" parent="VBox/DamageRow"]
+size_flags_horizontal = 3
+min_value = 1.0
+max_value = 300.0
+step = 1.0
+value = 100.0
+
+[node name="DamageLabel" type="Label" parent="VBox/DamageRow"]
+custom_minimum_size = Vector2(60, 0)
+text = "x100"
+
+[node name="BigRadius" type="CheckButton" parent="VBox"]
+text = "Big dig radius"
+
+[node name="RadiusRow" type="HBoxContainer" parent="VBox"]
+
+[node name="RadiusSlider" type="HSlider" parent="VBox/RadiusRow"]
+size_flags_horizontal = 3
+min_value = 1.0
+max_value = 20.0
+step = 0.5
+value = 5.0
+
+[node name="RadiusLabel" type="Label" parent="VBox/RadiusRow"]
+custom_minimum_size = Vector2(60, 0)
+text = "x5.0"

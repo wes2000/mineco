@@ -1,0 +1,51 @@
+[gd_scene format=3 uid="uid://cn1up12q8lb4m"]
+
+[ext_resource type="Script" uid="uid://c3alh17grh7h2" path="res://scripts/ore_deposit.gd" id="1_p513r"]
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_2d3r1"]
+radius = 1.0
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_qdt4i"]
+spread = 30.0
+initial_velocity_min = 1.0
+initial_velocity_max = 2.0
+gravity = Vector3(0, -2, 0)
+color = Color(0.6, 0.6, 0.6, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_2amcm"]
+size = Vector3(0.05, 0.05, 0.05)
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_jaqmy"]
+spread = 60.0
+initial_velocity_min = 3.0
+initial_velocity_max = 6.0
+gravity = Vector3(0, -2, 0)
+color = Color(0.6, 0.6, 0.6, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_gbflx"]
+size = Vector3(0.1, 0.1, 0.1)
+
+[node name="OreDeposit" type="StaticBody3D" unique_id=1410323024]
+collision_layer = 2
+collision_mask = 0
+script = ExtResource("1_p513r")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=2083627669]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=1877571877]
+shape = SubResource("SphereShape3D_2d3r1")
+
+[node name="HitParticles" type="GPUParticles3D" parent="." unique_id=344536551]
+emitting = false
+lifetime = 0.4
+one_shot = true
+process_material = SubResource("ParticleProcessMaterial_qdt4i")
+draw_pass_1 = SubResource("BoxMesh_2amcm")
+
+[node name="BreakParticles" type="GPUParticles3D" parent="." unique_id=1754358606]
+emitting = false
+amount = 24
+lifetime = 0.8
+one_shot = true
+process_material = SubResource("ParticleProcessMaterial_jaqmy")
+draw_pass_1 = SubResource("BoxMesh_gbflx")

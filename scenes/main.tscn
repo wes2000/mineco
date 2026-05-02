@@ -1,0 +1,106 @@
+[gd_scene format=3 uid="uid://bqaxg86e73bvu"]
+
+[ext_resource type="Environment" uid="uid://dugjdrp32e76d" path="res://scenes/environment.tres" id="1_o6xl0"]
+[ext_resource type="Material" path="res://scenes/terrain_material.tres" id="2_mat"]
+[ext_resource type="VoxelGeneratorScript" path="res://scenes/island_generator.tres" id="3_gen"]
+[ext_resource type="Material" path="res://scenes/water_material.tres" id="3_jyhfs"]
+[ext_resource type="VoxelInstanceLibrary" uid="uid://cjebi6i1m2ctk" path="res://scenes/nature_library.tres" id="4_85g3d"]
+[ext_resource type="PlaneMesh" path="res://scenes/water_mesh.tres" id="4_tbgi4"]
+[ext_resource type="PackedScene" uid="uid://c84g5elookjdj" path="res://scenes/player.tscn" id="5_player"]
+[ext_resource type="Script" uid="uid://bj5yq6juetkoi" path="res://scripts/spawn_gate.gd" id="6_gate"]
+[ext_resource type="Script" uid="uid://c6ix7x1gbhcuy" path="res://scripts/water_init.gd" id="6_tipki"]
+[ext_resource type="AudioStream" uid="uid://bo61ym5whvefn" path="res://assets/audio/wind_ambient.ogg" id="10_ya4ey"]
+[ext_resource type="Script" uid="uid://dclxpm2i1vm7t" path="res://scripts/inventory_hud.gd" id="11_ya4ey"]
+[ext_resource type="Script" path="res://scripts/stamina_bar.gd" id="12_sbar"]
+[ext_resource type="Script" path="res://scripts/ore_generator.gd" id="13_oregen"]
+[ext_resource type="PackedScene" path="res://scenes/ore_deposits/stone_small.tscn" id="14_p1"]
+[ext_resource type="PackedScene" path="res://scenes/ore_deposits/stone_medium.tscn" id="15_p2"]
+[ext_resource type="PackedScene" path="res://scenes/ore_deposits/stone_large.tscn" id="16_p3"]
+[ext_resource type="PackedScene" path="res://scenes/ore_deposits/iron_small.tscn" id="17_p4"]
+[ext_resource type="PackedScene" path="res://scenes/ore_deposits/iron_large.tscn" id="18_p5"]
+[ext_resource type="PackedScene" path="res://scenes/ore_deposits/gold_small.tscn" id="19_p6"]
+[ext_resource type="PackedScene" path="res://scenes/ore_deposits/gold_large.tscn" id="20_p7"]
+[ext_resource type="PackedScene" path="res://scenes/surface_rock.tscn" id="21_p8"]
+[ext_resource type="PackedScene" uid="uid://b3adminpnl001" path="res://scenes/admin_panel.tscn" id="22_admin"]
+
+[sub_resource type="VoxelMesherTransvoxel" id="Mesher_1"]
+
+[node name="Main" type="Node3D" unique_id=1201607145]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1396015505]
+environment = ExtResource("1_o6xl0")
+
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=963617465]
+transform = Transform3D(0.866025, 0, -0.5, -0.353553, 0.707107, -0.612372, 0.353553, 0.707107, 0.612372, 0, 0, 0)
+light_color = Color(0.95, 0.97, 1, 1)
+light_energy = 1.2
+shadow_enabled = true
+shadow_blur = 2.0
+
+[node name="VoxelTerrain" type="VoxelTerrain" parent="." unique_id=1048499164]
+generator = ExtResource("3_gen")
+mesher = SubResource("Mesher_1")
+bounds = AABB(-208, -112, -208, 416, 224, 416)
+max_view_distance = 256
+material_override = ExtResource("2_mat")
+run_stream_in_editor = false
+
+[node name="VoxelInstancer" type="VoxelInstancer" parent="VoxelTerrain" unique_id=2118178873]
+library = ExtResource("4_85g3d")
+fading_enabled = true
+
+[node name="Water" type="MeshInstance3D" parent="." unique_id=1557137149]
+material_override = ExtResource("3_jyhfs")
+mesh = ExtResource("4_tbgi4")
+script = ExtResource("6_tipki")
+
+[node name="Player" parent="." unique_id=1913351690 instance=ExtResource("5_player")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 30, 0)
+
+[node name="SpawnGate" type="Node" parent="." unique_id=1217507651]
+script = ExtResource("6_gate")
+voxel_terrain = NodePath("../VoxelTerrain")
+player = NodePath("../Player")
+
+[node name="WindAmbience" type="AudioStreamPlayer" parent="." unique_id=969933195]
+stream = ExtResource("10_ya4ey")
+volume_db = -29.8
+autoplay = true
+
+[node name="HUD" type="CanvasLayer" parent="." unique_id=911672643]
+
+[node name="InventoryLabel" type="Label" parent="HUD" unique_id=1467189824]
+offset_left = 20.0
+offset_top = 20.0
+offset_right = 400.0
+offset_bottom = 60.0
+text = "Stone: 0   Iron: 0   Gold: 0"
+script = ExtResource("11_ya4ey")
+
+[node name="StaminaBar" type="ProgressBar" parent="HUD"]
+anchor_left = 0.5
+anchor_right = 0.5
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = -150.0
+offset_top = -50.0
+offset_right = 150.0
+offset_bottom = -34.0
+show_percentage = false
+script = ExtResource("12_sbar")
+
+[node name="AdminPanel" parent="HUD" instance=ExtResource("22_admin")]
+
+[node name="OreGenerator" type="Node3D" parent="."]
+script = ExtResource("13_oregen")
+stone_small_scn = ExtResource("14_p1")
+stone_medium_scn = ExtResource("15_p2")
+stone_large_scn = ExtResource("16_p3")
+iron_small_scn = ExtResource("17_p4")
+iron_large_scn = ExtResource("18_p5")
+gold_small_scn = ExtResource("19_p6")
+gold_large_scn = ExtResource("20_p7")
+surface_rock_scn = ExtResource("21_p8")
+voxel_terrain_path = NodePath("../VoxelTerrain")
+
+[connection signal="world_ready" from="SpawnGate" to="OreGenerator" method="_on_world_ready"]

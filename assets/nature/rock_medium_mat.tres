@@ -1,0 +1,10 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3]
+
+[ext_resource type="Shader" path="res://shaders/nature_tint.gdshader" id="1_shader"]
+
+[resource]
+shader = ExtResource("1_shader")
+shader_parameter/base_color = Color(0.50, 0.50, 0.52, 1.0)
+shader_parameter/saturation = 0.7
+shader_parameter/haze_mix_strength = 0.15
+shader_parameter/haze_color = Color(0.85, 0.87, 0.90, 1.0)

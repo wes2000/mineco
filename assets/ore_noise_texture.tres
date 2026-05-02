@@ -1,0 +1,10 @@
+[gd_resource type="NoiseTexture3D" load_steps=2 format=3]
+
+[ext_resource type="FastNoiseLite" path="res://assets/ore_noise.tres" id="1_noise"]
+
+[resource]
+width = 128
+height = 64
+depth = 128
+seamless = false
+noise = ExtResource("1_noise")

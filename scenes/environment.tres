@@ -1,0 +1,10 @@
+[gd_resource type="Environment" format=3 uid="uid://dugjdrp32e76d"]
+
+[ext_resource type="Sky" uid="uid://b71qf8lxc1h4a" path="res://scenes/sky.tres" id="1_sky"]
+
+[resource]
+background_mode = 2
+sky = ExtResource("1_sky")
+ambient_light_source = 3
+ambient_light_energy = 0.2
+tonemap_mode = 2

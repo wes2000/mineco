@@ -1,0 +1,6 @@
+[gd_resource type="FastNoiseLite" format=3]
+
+[resource]
+noise_type = 0
+seed = 42
+frequency = 0.05

@@ -1,0 +1,28 @@
+[gd_resource type="ShaderMaterial" format=3 uid="uid://bb55y7kn8rbvj"]
+
+[ext_resource type="Shader" uid="uid://b1hei5s4g2qia" path="res://scenes/world_y_biome.gdshader" id="1_shader"]
+[ext_resource type="NoiseTexture3D" path="res://assets/ore_noise_texture.tres" id="2_ore_noise"]
+
+[resource]
+render_priority = 0
+shader = ExtResource("1_shader")
+shader_parameter/water_level = 0.0
+shader_parameter/sand_band = 1.2
+shader_parameter/sand_color = Color(0.45, 0.32, 0.2, 1)
+shader_parameter/grass_color = Color(0.35, 0.55, 0.25, 1)
+shader_parameter/ore_noise = ExtResource("2_ore_noise")
+shader_parameter/stone_color = Color(0.42, 0.42, 0.46, 1)
+shader_parameter/iron_color = Color(0.75, 0.35, 0.18, 1)
+shader_parameter/gold_color = Color(1, 0.85, 0.2, 1)
+shader_parameter/ore_iron_threshold = 0.3
+shader_parameter/ore_gold_threshold = 0.8
+shader_parameter/underground_blend_top_y = -0.5
+shader_parameter/underground_blend_bottom_y = -3.0
+shader_parameter/ore_world_size = Vector3(400, 200, 400)
+shader_parameter/ore_world_origin = Vector3(-200, -100, -200)
+shader_parameter/bump_strength = 1.0000000475
+shader_parameter/bump_freq = 1.4000000632401202
+shader_parameter/underground_darkness = 0.55
+shader_parameter/darkness_depth_meters = 12.0
+shader_parameter/rim_strength = 0.858000040755
+shader_parameter/rim_power = 1.0
