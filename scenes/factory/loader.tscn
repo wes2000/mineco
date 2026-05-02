@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scripts/factory/loader.gd" id="1"]
 [ext_resource type="AudioStream" path="res://assets/audio/mine_thump.ogg" id="AudioClick"]
@@ -23,6 +23,9 @@ albedo_color = Color(0.15, 0.2, 0.3, 1)
 
 [sub_resource type="StandardMaterial3D" id="PortMat"]
 albedo_color = Color(0.6, 0.5, 0.2, 1)
+
+[sub_resource type="BoxShape3D" id="ColliderShape"]
+size = Vector3(2.00, 1.50, 2.00)
 
 [node name="Loader" type="Node3D"]
 script = ExtResource("1")
@@ -51,3 +54,11 @@ max_distance = 20.0
 stream = ExtResource("AudioClick")
 autoplay = false
 max_distance = 20.0
+
+[node name="StaticBody" type="StaticBody3D" parent="."]
+collision_layer = 4
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.00, 0.75, 1.00)
+shape = SubResource("ColliderShape")

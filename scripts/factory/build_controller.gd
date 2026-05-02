@@ -11,6 +11,8 @@ const RAYCAST_LENGTH: float = 50.0
 const WORLD_RADIUS_CELLS: int = 150
 const WORLD_Y_MIN: int = -50
 const WORLD_Y_MAX: int = 100
+const TERRAIN_LAYER_MASK: int = 1   # voxel terrain
+const FACTORY_LAYER_MASK: int = 4   # placed buildings + belts (collision_layer = 4)
 
 var active: bool = false :
 	set(v):
@@ -76,9 +78,11 @@ func _input(event: InputEvent) -> void:
 		else:
 			_try_place()
 
+const NO_CELL: Vector3i = Vector3i(-2147483648, -2147483648, -2147483648)
+
 func _update_ghost_position() -> void:
-	var cell: Vector3i = _raycast_to_cell()
-	if cell == Vector3i(-2147483648, -2147483648, -2147483648):
+	var cell: Vector3i = _raycast_terrain_cell()
+	if cell == NO_CELL:
 		return
 	if _ghost_node == null:
 		_refresh_ghost()
@@ -89,25 +93,43 @@ func _update_ghost_position() -> void:
 		_ghost_node.set_meta("placeable", placeable)
 		_apply_ghost_color(placeable)
 
-func _raycast_to_cell() -> Vector3i:
-	if _player == null or _player_camera == null:
-		return Vector3i(-2147483648, -2147483648, -2147483648)
-	var space_state: PhysicsDirectSpaceState3D = _player.get_world_3d().direct_space_state
-	var from: Vector3 = _player_camera.global_position
-	var to: Vector3 = from + (-_player_camera.global_basis.z) * RAYCAST_LENGTH
-	var query: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(from, to)
-	query.collide_with_areas = false
-	var hit: Dictionary = space_state.intersect_ray(query)
+func _raycast_terrain_cell() -> Vector3i:
+	# Used for ghost preview / placement. Hits TERRAIN ONLY (layer 1).
+	# Returns the air cell directly above the hit surface.
+	var hit: Dictionary = _raycast(TERRAIN_LAYER_MASK)
 	if hit.is_empty():
-		return Vector3i(-2147483648, -2147483648, -2147483648)
+		return NO_CELL
 	var p: Vector3 = hit.position
-	# If the surface is roughly horizontal (looking at ground), place ABOVE the
-	# hit cell. Otherwise (e.g. wall hit) place at the hit cell.
 	var normal: Vector3 = hit.get("normal", Vector3.UP)
 	var base: Vector3i = Vector3i(floori(p.x), floori(p.y), floori(p.z))
 	if normal.y > 0.5:
 		base.y += 1   # one cell above the terrain surface
 	return base
+
+func _raycast_factory_cell() -> Vector3i:
+	# Used for delete. Hits FACTORY pieces ONLY (layer 3, mask 4).
+	# Returns the cell of the hit point (no Y offset — we want the cell containing
+	# the building/belt, not the air above).
+	var hit: Dictionary = _raycast(FACTORY_LAYER_MASK)
+	if hit.is_empty():
+		return NO_CELL
+	var p: Vector3 = hit.position
+	# Pull the hit point slightly toward the ray origin so a top-face hit lands
+	# inside the building cell, not the air above.
+	var to_origin: Vector3 = (_player_camera.global_position - p).normalized() * 0.05
+	var inside: Vector3 = p + to_origin
+	return Vector3i(floori(inside.x), floori(inside.y), floori(inside.z))
+
+func _raycast(layer_mask: int) -> Dictionary:
+	if _player == null or _player_camera == null:
+		return {}
+	var space_state: PhysicsDirectSpaceState3D = _player.get_world_3d().direct_space_state
+	var from: Vector3 = _player_camera.global_position
+	var to: Vector3 = from + (-_player_camera.global_basis.z) * RAYCAST_LENGTH
+	var query: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(from, to)
+	query.collide_with_areas = false
+	query.collision_mask = layer_mask
+	return space_state.intersect_ray(query)
 
 func _is_placeable_at(cell: Vector3i) -> bool:
 	# The raycast that produced `cell` already proved there's terrain underneath
@@ -186,8 +208,8 @@ func _try_place() -> void:
 	FactoryWorld.place(kind_name, origin_cell, ghost_rotation_steps)
 
 func _try_remove() -> void:
-	var cell: Vector3i = _raycast_to_cell()
-	if cell == Vector3i(-2147483648, -2147483648, -2147483648):
+	var cell: Vector3i = _raycast_factory_cell()
+	if cell == NO_CELL:
 		return
 	FactoryWorld.remove(cell)
 
