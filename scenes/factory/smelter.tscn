@@ -1,6 +1,7 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scripts/factory/smelter.gd" id="1"]
+[ext_resource type="AudioStream" path="res://assets/audio/mine_thump.ogg" id="AudioClick"]
 
 [sub_resource type="BoxMesh" id="Body"]
 size = Vector3(1.8, 2.0, 1.8)
@@ -49,3 +50,12 @@ material_override = SubResource("PortMat")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0.6, 1)
 mesh = SubResource("Fire")
 material_override = SubResource("FireMat")
+
+[node name="HumLoop" type="AudioStreamPlayer3D" parent="."]
+autoplay = false
+max_distance = 20.0
+
+[node name="EmitClick" type="AudioStreamPlayer3D" parent="."]
+stream = ExtResource("AudioClick")
+autoplay = false
+max_distance = 20.0
