@@ -72,6 +72,15 @@ func get_tick_index() -> int:
 
 func _on_tick(_idx: int) -> void:
 	_tick_belts()
+	_tick_buildings()
+
+func _tick_buildings() -> void:
+	var seen: Dictionary = {}     # building -> true (avoid double-tick of multi-cell footprints)
+	for c: Vector3i in _cells:
+		var owner: Node3D = _cells[c]
+		if owner is Building and not seen.has(owner):
+			seen[owner] = true
+			(owner as Building).tick(_tick_index)
 
 func _tick_belts() -> void:
 	var belt_cells: Array[Vector3i] = []
