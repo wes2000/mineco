@@ -1,0 +1,43 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/factory/loader.gd" id="1"]
+
+[sub_resource type="BoxMesh" id="Body"]
+size = Vector3(1.8, 1.5, 1.8)
+
+[sub_resource type="BoxMesh" id="Hopper"]
+size = Vector3(1.4, 0.2, 1.4)
+
+[sub_resource type="BoxMesh" id="Port"]
+size = Vector3(0.5, 0.4, 0.3)
+
+[sub_resource type="StandardMaterial3D" id="Mat"]
+albedo_color = Color(0.25, 0.4, 0.6, 1)
+emission_enabled = true
+emission = Color(0.05, 0.15, 0.25, 1)
+emission_energy_multiplier = 0.0
+
+[sub_resource type="StandardMaterial3D" id="Hop"]
+albedo_color = Color(0.15, 0.2, 0.3, 1)
+
+[sub_resource type="StandardMaterial3D" id="PortMat"]
+albedo_color = Color(0.6, 0.5, 0.2, 1)
+
+[node name="Loader" type="Node3D"]
+script = ExtResource("1")
+footprint_size = Vector2i(2, 2)
+
+[node name="Body" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0.75, 1)
+mesh = SubResource("Body")
+material_override = SubResource("Mat")
+
+[node name="Hopper" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1.6, 1)
+mesh = SubResource("Hopper")
+material_override = SubResource("Hop")
+
+[node name="OutputPort" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0.5, 1.95)
+mesh = SubResource("Port")
+material_override = SubResource("PortMat")

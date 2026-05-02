@@ -1,0 +1,51 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/factory/smelter.gd" id="1"]
+
+[sub_resource type="BoxMesh" id="Body"]
+size = Vector3(1.8, 2.0, 1.8)
+
+[sub_resource type="BoxMesh" id="Port"]
+size = Vector3(0.5, 0.4, 0.3)
+
+[sub_resource type="BoxMesh" id="Fire"]
+size = Vector3(1.2, 0.8, 1.2)
+
+[sub_resource type="StandardMaterial3D" id="Mat"]
+albedo_color = Color(0.5, 0.3, 0.2, 1)
+emission_enabled = true
+emission = Color(0.4, 0.15, 0.05, 1)
+emission_energy_multiplier = 0.0
+
+[sub_resource type="StandardMaterial3D" id="PortMat"]
+albedo_color = Color(0.6, 0.5, 0.2, 1)
+
+[sub_resource type="StandardMaterial3D" id="FireMat"]
+albedo_color = Color(1.0, 0.5, 0.1, 1)
+emission_enabled = true
+emission = Color(1.0, 0.5, 0.1, 1)
+emission_energy_multiplier = 0.0
+
+[node name="Smelter" type="Node3D"]
+script = ExtResource("1")
+footprint_size = Vector2i(2, 2)
+
+[node name="Body" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1.0, 1)
+mesh = SubResource("Body")
+material_override = SubResource("Mat")
+
+[node name="InputPort" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0.5, 0.05)
+mesh = SubResource("Port")
+material_override = SubResource("PortMat")
+
+[node name="OutputPort" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0.5, 1.95)
+mesh = SubResource("Port")
+material_override = SubResource("PortMat")
+
+[node name="Fire" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0.6, 1)
+mesh = SubResource("Fire")
+material_override = SubResource("FireMat")
