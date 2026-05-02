@@ -74,9 +74,9 @@ autoplay = true
 [node name="InventoryLabel" type="Label" parent="HUD" unique_id=1467189824]
 offset_left = 20.0
 offset_top = 20.0
-offset_right = 400.0
-offset_bottom = 60.0
-text = "Stone: 0   Iron: 0   Gold: 0"
+offset_right = 500.0
+offset_bottom = 130.0
+text = "T1  Stone: 0   Iron Ore: 0   Gold Ore: 0\nT2  Brick: 0   Iron Ingot: 0   Gold Ingot: 0\nT3  Block: 0   Iron Bar: 0   Gold Bar: 0"
 script = ExtResource("11_ya4ey")
 
 [node name="StaminaBar" type="ProgressBar" parent="HUD"]

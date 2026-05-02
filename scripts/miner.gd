@@ -21,7 +21,16 @@ var stone: int = 0
 var iron: int = 0
 var gold: int = 0
 
+# T2/T3 counters (populated by player picking up factory drops, Task 22)
+var brick: int = 0
+var iron_ingot: int = 0
+var gold_ingot: int = 0
+var block: int = 0
+var iron_bar: int = 0
+var gold_bar: int = 0
+
 signal inventory_changed(s: int, i: int, g: int)
+signal extended_inventory_changed
 
 func _ready() -> void:
 	_player = get_parent() as CharacterBody3D
@@ -69,3 +78,18 @@ func _on_chunk_broken(material: int, amount: int, _stage: int) -> void:
 		OreDeposit.OreType.IRON:  iron  += amount
 		OreDeposit.OreType.GOLD:  gold  += amount
 	inventory_changed.emit(stone, iron, gold)
+
+func add_factory_material(material_id: int, amount: int) -> void:
+	# Used by FactoryDrop pickup. material_id is MaterialDefs.MaterialId enum value.
+	match material_id:
+		MaterialDefs.MaterialId.STONE: stone += amount
+		MaterialDefs.MaterialId.BRICK: brick += amount
+		MaterialDefs.MaterialId.BLOCK: block += amount
+		MaterialDefs.MaterialId.IRON_ORE: iron += amount
+		MaterialDefs.MaterialId.IRON_INGOT: iron_ingot += amount
+		MaterialDefs.MaterialId.IRON_BAR: iron_bar += amount
+		MaterialDefs.MaterialId.GOLD_ORE: gold += amount
+		MaterialDefs.MaterialId.GOLD_INGOT: gold_ingot += amount
+		MaterialDefs.MaterialId.GOLD_BAR: gold_bar += amount
+	inventory_changed.emit(stone, iron, gold)
+	extended_inventory_changed.emit()
