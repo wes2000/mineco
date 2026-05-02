@@ -72,14 +72,17 @@ func place(kind: StringName, origin_cell: Vector3i, rotation_steps: int) -> bool
 		return false
 	var ps: PackedScene = load(scene_path)
 	var node: Node3D = ps.instantiate()
-	get_tree().current_scene.add_child(node)
+	# IMPORTANT: set position/rotation BEFORE add_child. Building._ready captures
+	# _bob_origin_y from position.y on first entry to the tree, so if we add first
+	# and position later, the bob lerp drags the building back to y=0 (sinking it).
 	var cells_to_register: Array[Vector3i] = []
 	if node is Building:
 		var bld: Building = node as Building
 		bld.origin_cell = origin_cell
 		bld.rotation_steps = rotation_steps
-		bld.global_position = Vector3(origin_cell.x, origin_cell.y, origin_cell.z)
+		bld.position = Vector3(origin_cell.x, origin_cell.y, origin_cell.z)
 		bld.rotation = Vector3(0, -PI / 2 * rotation_steps, 0)
+		get_tree().current_scene.add_child(bld)
 		cells_to_register = bld.get_footprint_cells()
 	elif node is BeltCell:
 		var bc: BeltCell = node as BeltCell
@@ -90,8 +93,9 @@ func place(kind: StringName, origin_cell: Vector3i, rotation_steps: int) -> bool
 			facing = _auto_facing_for(origin_cell, bc.kind)
 		else:
 			facing = _rotation_steps_to_facing(rotation_steps)
+		bc.position = Vector3(origin_cell.x, origin_cell.y, origin_cell.z)
 		bc.set_cell_and_facing(origin_cell, facing)
-		bc.global_position = Vector3(origin_cell.x, origin_cell.y, origin_cell.z)
+		get_tree().current_scene.add_child(bc)
 		cells_to_register = [origin_cell]
 	# Register footprint
 	for c: Vector3i in cells_to_register:
