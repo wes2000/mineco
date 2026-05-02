@@ -20,6 +20,7 @@ func bind_to(building: Building) -> void:
 		unbind()
 	_bound_building = building
 	visible = true
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	_populate_recipes()
 	_refresh()
 	building.status_changed.connect(_on_status_changed)
@@ -34,6 +35,7 @@ func unbind() -> void:
 		_bound_building.status_changed.disconnect(_on_status_changed)
 	_bound_building = null
 	visible = false
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 func _populate_recipes() -> void:
 	_recipe_select.clear()
