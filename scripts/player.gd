@@ -13,6 +13,7 @@ var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 
 func _ready() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	BuildController.bind_player(self, _camera)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
@@ -21,6 +22,29 @@ func _unhandled_input(event: InputEvent) -> void:
 		_camera.rotation.x = clamp(_camera.rotation.x, -PITCH_LIMIT, PITCH_LIMIT)
 	elif event.is_action_pressed("ui_cancel"):
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED else Input.MOUSE_MODE_CAPTURED
+	elif event.is_action_pressed("machine_interact"):
+		_try_open_machine_ui()
+
+func _try_open_machine_ui() -> void:
+	# Buildings have no collider, so use proximity instead of raycast.
+	# Find the closest Building within 4m.
+	var origin: Vector3 = global_position
+	var best: Building = null
+	var best_dist_sq: float = 16.0   # 4m squared
+	var seen: Dictionary = {}
+	for cell: Vector3i in FactoryWorld._cells:
+		var owner: Node3D = FactoryWorld._cells[cell]
+		if owner is Building and not seen.has(owner):
+			seen[owner] = true
+			var d_sq: float = owner.global_position.distance_squared_to(origin)
+			if d_sq < best_dist_sq:
+				best_dist_sq = d_sq
+				best = owner as Building
+	if best == null:
+		return
+	var ui: Node = get_tree().get_first_node_in_group("machine_ui")
+	if ui != null and ui.has_method("bind_to"):
+		ui.call("bind_to", best)
 
 func _physics_process(delta: float) -> void:
 	# Sync collision-shape state to admin toggle so re-enabling noclip mid-frame is safe.
