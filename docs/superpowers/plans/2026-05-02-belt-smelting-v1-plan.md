@@ -111,7 +111,7 @@ mkdir -p "C:/Users/whann/Documents/mine-co/scripts/factory"
 class_name MaterialDefs
 extends RefCounted
 
-enum Material {
+enum MaterialId {
     STONE, BRICK, BLOCK,
     IRON_ORE, IRON_INGOT, IRON_BAR,
     GOLD_ORE, GOLD_INGOT, GOLD_BAR,
@@ -119,54 +119,54 @@ enum Material {
 
 # Tier 1 = mined ore, 2 = smelted, 3 = forged
 const TIER: Dictionary = {
-    Material.STONE: 1, Material.BRICK: 2, Material.BLOCK: 3,
-    Material.IRON_ORE: 1, Material.IRON_INGOT: 2, Material.IRON_BAR: 3,
-    Material.GOLD_ORE: 1, Material.GOLD_INGOT: 2, Material.GOLD_BAR: 3,
+    MaterialId.STONE: 1, MaterialId.BRICK: 2, MaterialId.BLOCK: 3,
+    MaterialId.IRON_ORE: 1, MaterialId.IRON_INGOT: 2, MaterialId.IRON_BAR: 3,
+    MaterialId.GOLD_ORE: 1, MaterialId.GOLD_INGOT: 2, MaterialId.GOLD_BAR: 3,
 }
 
 # Loader emit interval (ticks). T1 only.
 const LOADER_EMIT_TICKS: Dictionary = {
-    Material.STONE: 10,
-    Material.IRON_ORE: 20,
-    Material.GOLD_ORE: 40,
+    MaterialId.STONE: 10,
+    MaterialId.IRON_ORE: 20,
+    MaterialId.GOLD_ORE: 40,
 }
 
 # Smelter cycle (ticks). T1 -> T2.
 const SMELTER_TICKS: Dictionary = {
-    Material.STONE: 20,
-    Material.IRON_ORE: 40,
-    Material.GOLD_ORE: 80,
+    MaterialId.STONE: 20,
+    MaterialId.IRON_ORE: 40,
+    MaterialId.GOLD_ORE: 80,
 }
 
 # Forge cycle (ticks). T2 -> T3.
 const FORGE_TICKS: Dictionary = {
-    Material.BRICK: 40,
-    Material.IRON_INGOT: 80,
-    Material.GOLD_INGOT: 160,
+    MaterialId.BRICK: 40,
+    MaterialId.IRON_INGOT: 80,
+    MaterialId.GOLD_INGOT: 160,
 }
 
 # Recipe maps
 const SMELT_RECIPE: Dictionary = {
-    Material.STONE: Material.BRICK,
-    Material.IRON_ORE: Material.IRON_INGOT,
-    Material.GOLD_ORE: Material.GOLD_INGOT,
+    MaterialId.STONE: MaterialId.BRICK,
+    MaterialId.IRON_ORE: MaterialId.IRON_INGOT,
+    MaterialId.GOLD_ORE: MaterialId.GOLD_INGOT,
 }
 const FORGE_RECIPE: Dictionary = {
-    Material.BRICK: Material.BLOCK,
-    Material.IRON_INGOT: Material.IRON_BAR,
-    Material.GOLD_INGOT: Material.GOLD_BAR,
+    MaterialId.BRICK: MaterialId.BLOCK,
+    MaterialId.IRON_INGOT: MaterialId.IRON_BAR,
+    MaterialId.GOLD_INGOT: MaterialId.GOLD_BAR,
 }
 
 # Display names (HUD-facing)
 const DISPLAY_NAME: Dictionary = {
-    Material.STONE: "Stone", Material.BRICK: "Brick", Material.BLOCK: "Block",
-    Material.IRON_ORE: "Iron Ore", Material.IRON_INGOT: "Iron Ingot", Material.IRON_BAR: "Iron Bar",
-    Material.GOLD_ORE: "Gold Ore", Material.GOLD_INGOT: "Gold Ingot", Material.GOLD_BAR: "Gold Bar",
+    MaterialId.STONE: "Stone", MaterialId.BRICK: "Brick", MaterialId.BLOCK: "Block",
+    MaterialId.IRON_ORE: "Iron Ore", MaterialId.IRON_INGOT: "Iron Ingot", MaterialId.IRON_BAR: "Iron Bar",
+    MaterialId.GOLD_ORE: "Gold Ore", MaterialId.GOLD_INGOT: "Gold Ingot", MaterialId.GOLD_BAR: "Gold Bar",
 }
 
-const TIER_1_MATERIALS: Array[Material] = [Material.STONE, Material.IRON_ORE, Material.GOLD_ORE]
-const TIER_2_MATERIALS: Array[Material] = [Material.BRICK, Material.IRON_INGOT, Material.GOLD_INGOT]
-const TIER_3_MATERIALS: Array[Material] = [Material.BLOCK, Material.IRON_BAR, Material.GOLD_BAR]
+const TIER_1_MATERIALS: Array[int] = [MaterialId.STONE, MaterialId.IRON_ORE, MaterialId.GOLD_ORE]
+const TIER_2_MATERIALS: Array[int] = [MaterialId.BRICK, MaterialId.IRON_INGOT, MaterialId.GOLD_INGOT]
+const TIER_3_MATERIALS: Array[int] = [MaterialId.BLOCK, MaterialId.IRON_BAR, MaterialId.GOLD_BAR]
 ```
 
 - [ ] **Step 3**: Verify it parses
@@ -315,7 +315,7 @@ class_name FactoryItem
 extends Node3D
 ## A single material item riding on belts. Pooled — never directly freed.
 
-@export var material_id: int = -1   # MaterialDefs.Material enum
+@export var material_id: int = -1   # MaterialDefs.MaterialId enum
 
 var _current_cell: Vector3i
 var _prev_cell_center: Vector3
@@ -897,7 +897,7 @@ const HOPPER_CAP: int = 999
 signal hopper_changed(material_id: int, new_count: int)
 
 var hopper: Dictionary = {}     # material_id -> int
-var selected_material: int = MaterialDefs.Material.STONE
+var selected_material: int = MaterialDefs.MaterialId.STONE
 var _cycle_remaining_ticks: int = 0
 
 func _ready() -> void:
@@ -980,7 +980,7 @@ git commit -m "feat(factory): add Loader (hopper-fed emitter)"
 class_name Smelter
 extends Building
 
-@export var recipe_input: int = MaterialDefs.Material.STONE   # one of TIER_1_MATERIALS
+@export var recipe_input: int = MaterialDefs.MaterialId.STONE   # one of TIER_1_MATERIALS
 
 var _input_item: FactoryItem = null
 var _cycle_remaining_ticks: int = 0
@@ -1073,7 +1073,7 @@ Effectively the same as Smelter but with T2->T3 recipes, 3×3 footprint, and ove
 class_name Forge
 extends Building
 
-@export var recipe_input: int = MaterialDefs.Material.BRICK   # one of TIER_2_MATERIALS
+@export var recipe_input: int = MaterialDefs.MaterialId.BRICK   # one of TIER_2_MATERIALS
 
 var _input_item: FactoryItem = null
 var _cycle_remaining_ticks: int = 0
@@ -1834,9 +1834,9 @@ func _refresh_deposit_panel() -> void:
         return
     var loader: Loader = _bound_building as Loader
     var rows: Array = [
-        [MaterialDefs.Material.STONE, "stone"],
-        [MaterialDefs.Material.IRON_ORE, "iron"],
-        [MaterialDefs.Material.GOLD_ORE, "gold"],
+        [MaterialDefs.MaterialId.STONE, "stone"],
+        [MaterialDefs.MaterialId.IRON_ORE, "iron"],
+        [MaterialDefs.MaterialId.GOLD_ORE, "gold"],
     ]
     for row: Array in rows:
         var mid: int = row[0]
@@ -2140,12 +2140,12 @@ func remove(cell: Vector3i) -> void:
             var loader: Loader = bld as Loader
             var miner: Node = get_tree().get_first_node_in_group("player_miner")
             if miner != null:
-                if loader.hopper.get(MaterialDefs.Material.STONE, 0) > 0:
-                    miner.set("stone", miner.get("stone") + loader.hopper[MaterialDefs.Material.STONE])
-                if loader.hopper.get(MaterialDefs.Material.IRON_ORE, 0) > 0:
-                    miner.set("iron", miner.get("iron") + loader.hopper[MaterialDefs.Material.IRON_ORE])
-                if loader.hopper.get(MaterialDefs.Material.GOLD_ORE, 0) > 0:
-                    miner.set("gold", miner.get("gold") + loader.hopper[MaterialDefs.Material.GOLD_ORE])
+                if loader.hopper.get(MaterialDefs.MaterialId.STONE, 0) > 0:
+                    miner.set("stone", miner.get("stone") + loader.hopper[MaterialDefs.MaterialId.STONE])
+                if loader.hopper.get(MaterialDefs.MaterialId.IRON_ORE, 0) > 0:
+                    miner.set("iron", miner.get("iron") + loader.hopper[MaterialDefs.MaterialId.IRON_ORE])
+                if loader.hopper.get(MaterialDefs.MaterialId.GOLD_ORE, 0) > 0:
+                    miner.set("gold", miner.get("gold") + loader.hopper[MaterialDefs.MaterialId.GOLD_ORE])
                 if miner.has_signal("inventory_changed"):
                     miner.inventory_changed.emit()
         # Drop items in input/output cells
