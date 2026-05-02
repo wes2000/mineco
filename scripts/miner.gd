@@ -30,8 +30,11 @@ func _ready() -> void:
 		_voxel_tool = _terrain.get_voxel_tool()
 		_voxel_tool.mode = VoxelTool.MODE_REMOVE
 	_shovel.swing_hit_frame.connect(_on_hit_frame)
+	add_to_group("player_miner")
 
 func _process(_delta: float) -> void:
+	if BuildController.active:
+		return   # build mode suppresses mining (LMB belongs to placement)
 	if Input.is_action_pressed("mine"):
 		_shovel.try_swing(_stamina)
 
