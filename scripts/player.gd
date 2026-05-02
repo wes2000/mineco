@@ -8,12 +8,21 @@ const PITCH_LIMIT: float = deg_to_rad(89.0)
 
 @onready var _camera: Camera3D = $Camera3D
 @onready var _collision: CollisionShape3D = $CollisionShape3D
+@onready var _miner: Node = $Miner
+@onready var _pickup_area: Area3D = $PickupArea
 
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 
 func _ready() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	BuildController.bind_player(self, _camera)
+	_pickup_area.body_entered.connect(_on_pickup)
+
+func _on_pickup(body: Node) -> void:
+	if body is FactoryDrop:
+		var fd: FactoryDrop = body as FactoryDrop
+		_miner.add_factory_material(fd.material_id, 1)
+		fd.queue_free()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:

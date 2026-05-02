@@ -12,6 +12,9 @@
 radius = 0.4
 height = 1.8
 
+[sub_resource type="SphereShape3D" id="Pickup_1"]
+radius = 1.5
+
 [node name="Player" type="CharacterBody3D" unique_id=872750119]
 script = ExtResource("1_player")
 
@@ -53,3 +56,11 @@ max_distance = 10.0
 
 [node name="Stamina" type="Node" parent="." unique_id=1401039791]
 script = ExtResource("7_ur7pv")
+
+[node name="PickupArea" type="Area3D" parent="."]
+collision_layer = 0
+collision_mask = 1
+monitoring = true
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="PickupArea"]
+shape = SubResource("Pickup_1")

@@ -217,9 +217,15 @@ func _auto_flatten(cells: Array[Vector3i], target_y: int) -> void:
 
 # --- Drops (used by remove() and Task 22) ---
 
-func spawn_drop(_material_id: int, _world_pos: Vector3, _impulse: Vector3 = Vector3.ZERO) -> void:
-	# Filled in by Task 22 — for now no-op so place/remove compiles.
-	pass
+var _drop_scene: PackedScene = preload("res://scenes/factory/factory_drop.tscn")
+
+func spawn_drop(material_id: int, world_pos: Vector3, impulse: Vector3 = Vector3.ZERO) -> void:
+	var drop: FactoryDrop = _drop_scene.instantiate() as FactoryDrop
+	drop.material_id = material_id
+	get_tree().current_scene.add_child(drop)
+	drop.global_position = world_pos
+	if impulse != Vector3.ZERO:
+		drop.apply_central_impulse(impulse)
 
 # --- Tick introspection (debug) ---
 func get_tick_index() -> int:
@@ -283,3 +289,17 @@ func _tick_belts() -> void:
 			graph.confirm_flow(c)
 		else:
 			bc.blocked_ticks += 1
+	# Phase 3: dead-end drops
+	const DEAD_END_DROP_THRESHOLD: int = 2
+	for c: Vector3i in belt_cells:
+		var bc2: BeltCell = _cells[c] as BeltCell
+		if bc2.occupant != null and bc2.blocked_ticks >= DEAD_END_DROP_THRESHOLD:
+			var n2: Dictionary = graph.neighbours_of(c, _cells)
+			if n2.outputs.is_empty():
+				var item: FactoryItem = bc2.occupant
+				var mid: int = item.material_id
+				var drop_pos: Vector3 = bc2.cell_center_world() + Vector3(bc2.facing.x, 0.2, bc2.facing.z) * 0.6
+				var impulse: Vector3 = Vector3(bc2.facing.x, 0.5, bc2.facing.z) * 0.5
+				bc2.clear_item()
+				item_pool.release(item)
+				spawn_drop(mid, drop_pos, impulse)
