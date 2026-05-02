@@ -20,6 +20,7 @@ config/icon="res://icon.svg"
 _mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"
 Atmosphere="*res://scripts/atmosphere.gd"
 Admin="*res://scripts/admin.gd"
+FactoryWorld="*res://scripts/factory/factory_world.gd"
 
 [editor_plugins]
 
