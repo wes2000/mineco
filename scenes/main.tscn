@@ -24,6 +24,7 @@
 [ext_resource type="PackedScene" uid="uid://b3adminpnl001" path="res://scenes/admin_panel.tscn" id="22_admin"]
 [ext_resource type="PackedScene" path="res://scenes/factory/build_hotbar.tscn" id="23_hotbar"]
 [ext_resource type="PackedScene" path="res://scenes/factory/machine_ui.tscn" id="24_mui"]
+[ext_resource type="PackedScene" path="res://scenes/keybinds_overlay.tscn" id="25_keys"]
 
 [sub_resource type="VoxelMesherTransvoxel" id="Mesher_1"]
 
@@ -96,6 +97,8 @@ script = ExtResource("12_sbar")
 [node name="BuildHotbar" parent="HUD" instance=ExtResource("23_hotbar")]
 
 [node name="MachineUI" parent="HUD" instance=ExtResource("24_mui")]
+
+[node name="KeybindsOverlay" parent="HUD" instance=ExtResource("25_keys")]
 
 [node name="OreGenerator" type="Node3D" parent="."]
 script = ExtResource("13_oregen")

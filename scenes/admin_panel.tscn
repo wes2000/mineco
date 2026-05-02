@@ -8,7 +8,7 @@ anchor_right = 1.0
 offset_left = -340.0
 offset_top = 20.0
 offset_right = -20.0
-offset_bottom = 410.0
+offset_bottom = 540.0
 script = ExtResource("1_admin")
 
 [node name="VBox" type="VBoxContainer" parent="."]
@@ -75,3 +75,20 @@ value = 5.0
 [node name="RadiusLabel" type="Label" parent="VBox/RadiusRow"]
 custom_minimum_size = Vector2(60, 0)
 text = "x5.0"
+
+[node name="GiveResourcesLabel" type="Label" parent="VBox"]
+text = "Give resources (+100):"
+
+[node name="GiveRow" type="HBoxContainer" parent="VBox"]
+
+[node name="GiveStone" type="Button" parent="VBox/GiveRow"]
+size_flags_horizontal = 3
+text = "Stone"
+
+[node name="GiveIron" type="Button" parent="VBox/GiveRow"]
+size_flags_horizontal = 3
+text = "Iron Ore"
+
+[node name="GiveGold" type="Button" parent="VBox/GiveRow"]
+size_flags_horizontal = 3
+text = "Gold Ore"

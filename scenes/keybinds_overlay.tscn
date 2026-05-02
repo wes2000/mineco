@@ -1,0 +1,31 @@
+[gd_scene format=3]
+
+[node name="KeybindsOverlay" type="Label"]
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -240.0
+offset_top = -260.0
+offset_right = -16.0
+offset_bottom = -16.0
+grow_horizontal = 0
+grow_vertical = 0
+mouse_filter = 2
+modulate = Color(1, 1, 1, 0.7)
+text = "Keybinds
+─────────────
+WASD     move
+Space    jump
+LMB      mine / place
+F1       admin
+B        build mode
+1-4      select tool
+4 again  cycle belt kind
+R        rotate ghost
+X+LMB    remove
+E        machine menu
+Esc      close menu / mouse"
+horizontal_alignment = 0
+vertical_alignment = 2

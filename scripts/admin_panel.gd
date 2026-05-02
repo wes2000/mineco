@@ -15,6 +15,10 @@ extends Panel
 @onready var _radius_slider: HSlider = $VBox/RadiusRow/RadiusSlider
 @onready var _radius_label: Label = $VBox/RadiusRow/RadiusLabel
 
+@onready var _give_stone_btn: Button = $VBox/GiveRow/GiveStone
+@onready var _give_iron_btn: Button = $VBox/GiveRow/GiveIron
+@onready var _give_gold_btn: Button = $VBox/GiveRow/GiveGold
+
 func _ready() -> void:
 	visible = false
 
@@ -41,6 +45,17 @@ func _ready() -> void:
 	_radius_slider.value = Admin.radius_multiplier
 	_radius_slider.value_changed.connect(_on_radius_changed)
 	_update_radius_label()
+
+	_give_stone_btn.pressed.connect(_give.bind(MaterialDefs.MaterialId.STONE))
+	_give_iron_btn.pressed.connect(_give.bind(MaterialDefs.MaterialId.IRON_ORE))
+	_give_gold_btn.pressed.connect(_give.bind(MaterialDefs.MaterialId.GOLD_ORE))
+
+func _give(material_id: int) -> void:
+	var miner: Node = get_tree().get_first_node_in_group("player_miner")
+	if miner == null:
+		push_warning("AdminPanel: no player_miner found")
+		return
+	miner.add_factory_material(material_id, 100)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("admin_toggle"):
