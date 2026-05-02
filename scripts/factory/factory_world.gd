@@ -11,8 +11,12 @@ signal cell_unregistered(cell: Vector3i)
 var _cells: Dictionary = {}              # Vector3i -> Node3D (belt cell or building footprint owner)
 var _tick_accumulator: float = 0.0
 var _tick_index: int = 0
+var item_pool: ItemPool
 
 func _ready() -> void:
+	item_pool = ItemPool.new()
+	item_pool.name = "ItemPool"
+	add_child(item_pool)
 	set_process(true)
 
 func _process(delta: float) -> void:
