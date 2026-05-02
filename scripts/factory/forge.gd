@@ -12,6 +12,7 @@ var _input_material: int = -1
 
 func _ready() -> void:
 	footprint_size = Vector2i(3, 3)
+	super._ready()
 
 func get_input_cells() -> Array[Vector3i]:
 	return [cell_for_local_offset(Vector3i(1, 0, -1))]   # center of back row

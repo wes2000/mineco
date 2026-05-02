@@ -9,6 +9,7 @@ var _input_material: int = -1   # the material being processed in the current cy
 
 func _ready() -> void:
 	footprint_size = Vector2i(2, 2)
+	super._ready()
 
 func get_input_cells() -> Array[Vector3i]:
 	return [cell_for_local_offset(Vector3i(0, 0, -1))]   # one cell behind footprint origin row

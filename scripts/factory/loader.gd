@@ -14,6 +14,7 @@ func _ready() -> void:
 	footprint_size = Vector2i(2, 2)
 	for mid: int in MaterialDefs.TIER_1_MATERIALS:
 		hopper[mid] = 0
+	super._ready()
 
 func get_input_cells() -> Array[Vector3i]:
 	return []
