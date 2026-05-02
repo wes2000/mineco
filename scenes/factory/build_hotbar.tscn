@@ -76,16 +76,16 @@ grow_vertical = 2
 alignment = 1
 
 [node name="Sub1" type="Label" parent="Panel/BeltSub/HBox"]
-custom_minimum_size = Vector2(100, 0)
-text = "[R] Straight"
+custom_minimum_size = Vector2(120, 0)
+text = "[4] Straight"
 horizontal_alignment = 1
 
 [node name="Sub2" type="Label" parent="Panel/BeltSub/HBox"]
-custom_minimum_size = Vector2(100, 0)
-text = "Corner"
+custom_minimum_size = Vector2(120, 0)
+text = "[4] Corner"
 horizontal_alignment = 1
 
 [node name="Sub3" type="Label" parent="Panel/BeltSub/HBox"]
-custom_minimum_size = Vector2(100, 0)
-text = "T"
+custom_minimum_size = Vector2(120, 0)
+text = "[4] T"
 horizontal_alignment = 1

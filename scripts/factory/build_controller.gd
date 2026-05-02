@@ -59,15 +59,16 @@ func _input(event: InputEvent) -> void:
 		selection_changed.emit(current_tool, current_belt_sub)
 		_refresh_ghost()
 	elif event.is_action_pressed("build_slot_4"):
-		current_tool = Tool.BELT
+		# If already on Belt, advance through Straight/Corner/T. Otherwise switch to Belt.
+		if current_tool == Tool.BELT:
+			current_belt_sub = (current_belt_sub + 1) % 3
+		else:
+			current_tool = Tool.BELT
 		selection_changed.emit(current_tool, current_belt_sub)
 		_refresh_ghost()
 	elif event.is_action_pressed("build_rotate"):
-		if current_tool == Tool.BELT:
-			current_belt_sub = (current_belt_sub + 1) % 3
-			selection_changed.emit(current_tool, current_belt_sub)
-		else:
-			ghost_rotation_steps = (ghost_rotation_steps + 1) & 3
+		# R always rotates the ghost — belts AND buildings.
+		ghost_rotation_steps = (ghost_rotation_steps + 1) & 3
 		_refresh_ghost()
 	elif event.is_action_pressed("build_place"):
 		if Input.is_action_pressed("build_remove"):
@@ -100,14 +101,21 @@ func _raycast_to_cell() -> Vector3i:
 	if hit.is_empty():
 		return Vector3i(-2147483648, -2147483648, -2147483648)
 	var p: Vector3 = hit.position
-	return Vector3i(floori(p.x), floori(p.y), floori(p.z))
+	# If the surface is roughly horizontal (looking at ground), place ABOVE the
+	# hit cell. Otherwise (e.g. wall hit) place at the hit cell.
+	var normal: Vector3 = hit.get("normal", Vector3.UP)
+	var base: Vector3i = Vector3i(floori(p.x), floori(p.y), floori(p.z))
+	if normal.y > 0.5:
+		base.y += 1   # one cell above the terrain surface
+	return base
 
 func _is_placeable_at(cell: Vector3i) -> bool:
+	# The raycast that produced `cell` already proved there's terrain underneath
+	# (we offset +1 Y when the hit normal pointed up). So we only need to verify:
+	#   (a) world bounds, (b) every footprint cell free in the registry.
+	# We do NOT poke voxel channels here — the project uses Transvoxel/SDF, and
+	# CHANNEL_TYPE returns 0 everywhere. The raycast is the source of truth.
 	var footprint: Array[Vector3i] = _ghost_footprint(cell)
-	var terrain: VoxelTerrain = get_tree().current_scene.find_child("VoxelTerrain", true, false) as VoxelTerrain
-	var tool: VoxelTool = terrain.get_voxel_tool() if terrain != null else null
-	if tool != null:
-		tool.channel = VoxelBuffer.CHANNEL_TYPE
 	for c: Vector3i in footprint:
 		if c.y < WORLD_Y_MIN or c.y > WORLD_Y_MAX:
 			return false
@@ -115,10 +123,6 @@ func _is_placeable_at(cell: Vector3i) -> bool:
 			return false
 		if not FactoryWorld.is_cell_free(c):
 			return false
-		if tool != null:
-			var below: int = tool.get_voxel(Vector3i(c.x, c.y - 1, c.z))
-			if below == 0:
-				return false
 	return true
 
 func _ghost_footprint(origin: Vector3i) -> Array[Vector3i]:
@@ -148,6 +152,7 @@ func _refresh_ghost() -> void:
 	var ps: PackedScene = load(scene_path)
 	_ghost_node = ps.instantiate()
 	_ghost_node.set_process(false)
+	_ghost_node.rotation = Vector3(0, -PI / 2 * ghost_rotation_steps, 0)
 	get_tree().current_scene.add_child(_ghost_node)
 
 func _ghost_scene_path() -> String:

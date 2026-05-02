@@ -83,7 +83,13 @@ func place(kind: StringName, origin_cell: Vector3i, rotation_steps: int) -> bool
 		cells_to_register = bld.get_footprint_cells()
 	elif node is BeltCell:
 		var bc: BeltCell = node as BeltCell
-		var facing: Vector3i = _auto_facing_for(origin_cell, bc.kind)
+		# Use the player's explicit rotation if they pressed R, otherwise auto-orient
+		# from neighbours. rotation_steps == 0 means "no manual rotation".
+		var facing: Vector3i
+		if rotation_steps == 0:
+			facing = _auto_facing_for(origin_cell, bc.kind)
+		else:
+			facing = _rotation_steps_to_facing(rotation_steps)
 		bc.set_cell_and_facing(origin_cell, facing)
 		bc.global_position = Vector3(origin_cell.x, origin_cell.y, origin_cell.z)
 		cells_to_register = [origin_cell]
@@ -151,6 +157,15 @@ func remove(cell: Vector3i) -> void:
 		_reorient_belt_neighbours(c)
 
 # --- Belt auto-orientation ---
+
+func _rotation_steps_to_facing(steps: int) -> Vector3i:
+	# Maps 0..3 (90° CW around +Y) to a unit vector. step 0 = +Z (default forward).
+	match steps & 3:
+		0: return Vector3i(0, 0, 1)
+		1: return Vector3i(1, 0, 0)
+		2: return Vector3i(0, 0, -1)
+		3: return Vector3i(-1, 0, 0)
+	return Vector3i(0, 0, 1)
 
 func _auto_facing_for(cell: Vector3i, kind: int) -> Vector3i:
 	var off: Array[Vector3i] = [
