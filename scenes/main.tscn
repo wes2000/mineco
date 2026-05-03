@@ -54,7 +54,7 @@ shadow_blur = 2.0
 generator = ExtResource("3_gen")
 mesher = SubResource("Mesher_1")
 bounds = AABB(-352, -112, -352, 704, 224, 704)
-max_view_distance = 512
+max_view_distance = 768
 material_override = ExtResource("2_mat")
 run_stream_in_editor = false
 
