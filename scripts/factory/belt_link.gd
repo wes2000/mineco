@@ -62,6 +62,12 @@ func _build_curve() -> void:
 	var src_to_dst: Vector3 = end_pos - start_pos
 	var src_to_dst_norm: Vector3 = src_to_dst.normalized() if src_to_dst.length() > 0.001 else Vector3.FORWARD
 	var wrap_dot: float = dst_facing.dot(src_to_dst_norm)
+	# Curve3D handle convention: 'in' points BACKWARD along the curve (toward the
+	# previous segment) and 'out' points FORWARD. So at the source endpoint, out
+	# points toward dest (= +src_facing). At the dest endpoint, in points back
+	# toward source. Since the curve arrives moving in direction -dst_facing
+	# (i.e. INTO the port, opposite of where the port faces outward), backward
+	# along the curve at the endpoint is +dst_facing. Hence dst_in = +dst_facing.
 	if wrap_dot > 0.3:
 		# Compute lateral perpendicular in the XZ plane
 		var perp: Vector3 = Vector3(-src_to_dst_norm.z, 0, src_to_dst_norm.x).normalized()
@@ -74,7 +80,7 @@ func _build_curve() -> void:
 		# Offset distance proportional to dest building footprint + clearance
 		var bld_radius: float = 1.5
 		if dst_bld != null and dst_bld is Building:
-			bld_radius = max((dst_bld as Building).footprint_size.x, (dst_bld as Building).footprint_size.y) * 0.8 + 1.0
+			bld_radius = max((dst_bld as Building).footprint_size.x, (dst_bld as Building).footprint_size.y) * 0.8 + 1.5
 		var wp: Vector3 = (start_pos + end_pos) * 0.5 + perp * bld_radius
 		# Tangents at the waypoint follow the perpendicular direction so the
 		# curve smoothly arcs through the side
@@ -82,13 +88,13 @@ func _build_curve() -> void:
 		var wp_in: Vector3 = -src_to_dst_norm * wp_handle
 		var wp_out: Vector3 = src_to_dst_norm * wp_handle
 		var src_tangent: Vector3 = src_facing * handle_len
-		var dst_in: Vector3 = -dst_facing * handle_len
+		var dst_in: Vector3 = dst_facing * handle_len
 		curve.add_point(start_pos, Vector3.ZERO, src_tangent)
 		curve.add_point(wp, wp_in, wp_out)
 		curve.add_point(end_pos, dst_in, Vector3.ZERO)
 	else:
 		var start_tangent: Vector3 = src_facing * handle_len
-		var end_in_tangent: Vector3 = -dst_facing * handle_len
+		var end_in_tangent: Vector3 = dst_facing * handle_len
 		curve.add_point(start_pos, Vector3.ZERO, start_tangent)
 		curve.add_point(end_pos, end_in_tangent, Vector3.ZERO)
 	_curve_length = curve.get_baked_length()

@@ -388,6 +388,7 @@ func _do_deposit(material_id: int, miner_field: String, requested: int) -> void:
 func _input(event: InputEvent) -> void:
 	if not visible:
 		return
-	if event.is_action_pressed("ui_cancel"):
+	if event.is_action_pressed("ui_cancel") or event.is_action_pressed("machine_interact"):
+		# Esc OR a second press of E closes the panel.
 		unbind()
 		accept_event()
