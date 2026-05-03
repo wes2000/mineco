@@ -7,6 +7,7 @@
 [ext_resource type="AudioStream" uid="uid://cc0dt2jgnu637" path="res://assets/audio/mine_thump.ogg" id="4_dqkch"]
 [ext_resource type="AudioStream" uid="uid://cbxb2nd16yhs5" path="res://assets/audio/ore_hit.ogg" id="6_smehm"]
 [ext_resource type="Script" uid="uid://b6pfyshsk3srr" path="res://scripts/stamina.gd" id="7_ur7pv"]
+[ext_resource type="PackedScene" path="res://scenes/scanner.tscn" id="8_scanner"]
 
 [sub_resource type="CapsuleShape3D" id="Capsule_1"]
 radius = 0.4
@@ -28,6 +29,9 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, 0)
 
 [node name="Shovel" parent="Camera3D" unique_id=1552995531 instance=ExtResource("2_fjrip")]
 transform = Transform3D(-0.64944786, -0.58695614, -0.13009603, -0.42972317, 0.5871423, -0.5038124, 0.4204527, -0.30654758, -0.7158723, 0.41, -0.2, -1.695)
+
+[node name="Scanner" parent="Camera3D" instance=ExtResource("8_scanner")]
+visible = false
 
 [node name="Footsteps" type="Node3D" parent="." unique_id=1200121627]
 script = ExtResource("2_g2els")

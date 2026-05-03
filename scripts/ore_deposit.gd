@@ -27,6 +27,7 @@ func _ready() -> void:
 	if stage_meshes.size() > 0:
 		_mesh.mesh = stage_meshes[0]
 	_mesh.scale = Vector3.ONE * _scale_for_stage(0)
+	add_to_group("ore_deposits")
 
 func take_damage(amount: int) -> void:
 	_stage_hp_left -= amount

@@ -1,0 +1,52 @@
+[gd_scene load_steps=8 format=3]
+
+[sub_resource type="BoxMesh" id="Body"]
+size = Vector3(0.34, 0.46, 0.10)
+
+[sub_resource type="BoxMesh" id="Screen"]
+size = Vector3(0.26, 0.22, 0.012)
+
+[sub_resource type="BoxMesh" id="Antenna"]
+size = Vector3(0.04, 0.10, 0.04)
+
+[sub_resource type="BoxMesh" id="Grip"]
+size = Vector3(0.16, 0.18, 0.06)
+
+[sub_resource type="StandardMaterial3D" id="BodyMat"]
+albedo_color = Color(0.42, 0.43, 0.46, 1)
+metallic = 0.5
+roughness = 0.4
+
+[sub_resource type="StandardMaterial3D" id="ScreenMat"]
+albedo_color = Color(0.05, 0.18, 0.10, 1)
+metallic = 0.0
+roughness = 0.20
+emission_enabled = true
+emission = Color(0.20, 0.85, 0.35, 1)
+emission_energy_multiplier = 0.35
+
+[sub_resource type="StandardMaterial3D" id="GripMat"]
+albedo_color = Color(0.18, 0.20, 0.22, 1)
+roughness = 0.95
+
+[node name="Scanner" type="Node3D"]
+transform = Transform3D(0.94, 0.00, 0.34, -0.10, 0.96, 0.27, -0.32, -0.29, 0.90, 0.42, -0.32, -0.78)
+
+[node name="Body" type="MeshInstance3D" parent="."]
+mesh = SubResource("Body")
+material_override = SubResource("BodyMat")
+
+[node name="Screen" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.06, -0.058)
+mesh = SubResource("Screen")
+material_override = SubResource("ScreenMat")
+
+[node name="Antenna" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.28, 0)
+mesh = SubResource("Antenna")
+material_override = SubResource("BodyMat")
+
+[node name="Grip" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.30, 0.04)
+mesh = SubResource("Grip")
+material_override = SubResource("GripMat")

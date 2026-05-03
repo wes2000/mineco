@@ -22,6 +22,7 @@ const CROUCH_LERP_SPEED: float = 8.0   # 1/seconds — controls how fast crouch 
 @onready var _stamina: Node = $Stamina
 @onready var _pickup_area: Area3D = $PickupArea
 @onready var _shovel: Node3D = $Camera3D/Shovel
+@onready var _scanner_mesh: Node3D = $Camera3D/Scanner
 @onready var _capsule_shape: CapsuleShape3D = ($CollisionShape3D.shape as CapsuleShape3D).duplicate() as CapsuleShape3D
 
 var _crouch_lerp: float = 0.0   # 0=standing, 1=fully crouched
@@ -65,6 +66,19 @@ func _select_tool(t: int) -> void:
 func _apply_tool_visuals() -> void:
 	if _shovel != null:
 		_shovel.visible = (current_tool == TOOL_PICKAXE)
+	if _scanner_mesh != null:
+		_scanner_mesh.visible = (current_tool == TOOL_SCANNER)
+	# Also show/hide the scanner radar overlay + bind us as its player ref.
+	var overlay: Node = get_tree().get_first_node_in_group("scanner_overlay")
+	if overlay != null:
+		if current_tool == TOOL_SCANNER:
+			if overlay.has_method("bind_player"):
+				overlay.call("bind_player", self)
+			if overlay.has_method("show_scanner"):
+				overlay.call("show_scanner")
+		else:
+			if overlay.has_method("hide_scanner"):
+				overlay.call("hide_scanner")
 
 func _on_material_pickup(material_id: int, amount: int) -> void:
 	var feed: Node = get_tree().get_first_node_in_group("pickup_feed")
@@ -97,6 +111,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			_select_tool(TOOL_SCANNER)
 		elif event.is_action_pressed("build_slot_3"):
 			_select_tool(TOOL_FLASHLIGHT)
+		elif event.is_action_pressed("build_rotate") and current_tool == TOOL_SCANNER:
+			# R cycles scanner target material when the scanner is out.
+			var overlay: Node = get_tree().get_first_node_in_group("scanner_overlay")
+			if overlay != null and overlay.has_method("cycle_material"):
+				overlay.call("cycle_material")
 
 const FACTORY_LAYER_MASK: int = 4
 
