@@ -1,15 +1,29 @@
 extends CharacterBody3D
 
 const SPEED: float = 5.0
+const SPRINT_MULTIPLIER: float = 1.7
+const SPRINT_DRAIN_PER_SEC: float = 28.0   # ~3.5s of full sprint from full stamina
+const CROUCH_SPEED: float = 2.4
 const FLY_SPEED: float = 15.0
 const JUMP_VELOCITY: float = 5.0
 const MOUSE_SENSITIVITY: float = 0.002
 const PITCH_LIMIT: float = deg_to_rad(89.0)
 
+# Crouch transitions
+const STANDING_HEIGHT: float = 1.8
+const CROUCH_HEIGHT: float = 1.0
+const STANDING_CAMERA_Y: float = 0.7
+const CROUCH_CAMERA_Y: float = 0.0
+const CROUCH_LERP_SPEED: float = 8.0   # 1/seconds — controls how fast crouch animates
+
 @onready var _camera: Camera3D = $Camera3D
 @onready var _collision: CollisionShape3D = $CollisionShape3D
 @onready var _miner: Node = $Miner
+@onready var _stamina: Node = $Stamina
 @onready var _pickup_area: Area3D = $PickupArea
+@onready var _capsule_shape: CapsuleShape3D = ($CollisionShape3D.shape as CapsuleShape3D).duplicate() as CapsuleShape3D
+
+var _crouch_lerp: float = 0.0   # 0=standing, 1=fully crouched
 
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 
@@ -31,6 +45,9 @@ func _ready() -> void:
 	BuildController.bind_player(self, _camera)
 	_pickup_area.body_entered.connect(_on_pickup)
 	_miner.material_pickup.connect(_on_material_pickup)
+	# Use a per-instance capsule resource so crouch height changes don't bleed
+	# into other things sharing the same shape resource.
+	_collision.shape = _capsule_shape
 
 func _on_material_pickup(material_id: int, amount: int) -> void:
 	var ft: Label3D = FLOATING_TEXT_SCENE.instantiate() as Label3D
@@ -128,16 +145,42 @@ func _walk(delta: float) -> void:
 	if not is_on_floor():
 		velocity.y -= _gravity * delta
 
-	if Input.is_action_just_pressed("jump") and is_on_floor():
+	# Crouch: smoothly interpolate capsule height + camera height.
+	var crouching: bool = Input.is_key_pressed(KEY_CTRL)
+	var crouch_target: float = 1.0 if crouching else 0.0
+	_crouch_lerp = move_toward(_crouch_lerp, crouch_target, CROUCH_LERP_SPEED * delta)
+	_apply_crouch()
+
+	if Input.is_action_just_pressed("jump") and is_on_floor() and _crouch_lerp < 0.5:
 		velocity.y = JUMP_VELOCITY
 
 	var input_dir: Vector2 = Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 	var direction: Vector3 = (transform.basis * Vector3(input_dir.x, 0.0, input_dir.y)).normalized()
-	if direction != Vector3.ZERO:
-		velocity.x = direction.x * SPEED
-		velocity.z = direction.z * SPEED
+
+	# Movement speed: crouch wins, else sprint if held + has stamina, else walk.
+	var moving: bool = direction.length_squared() > 0.0001
+	var speed: float = SPEED
+	if _crouch_lerp > 0.5:
+		speed = CROUCH_SPEED
+	elif moving and Input.is_key_pressed(KEY_SHIFT):
+		if _stamina != null and _stamina.has_method("try_drain"):
+			if _stamina.try_drain(SPRINT_DRAIN_PER_SEC, delta):
+				speed = SPEED * SPRINT_MULTIPLIER
+
+	if moving:
+		velocity.x = direction.x * speed
+		velocity.z = direction.z * speed
 	else:
-		velocity.x = move_toward(velocity.x, 0.0, SPEED)
-		velocity.z = move_toward(velocity.z, 0.0, SPEED)
+		velocity.x = move_toward(velocity.x, 0.0, speed)
+		velocity.z = move_toward(velocity.z, 0.0, speed)
 
 	move_and_slide()
+
+func _apply_crouch() -> void:
+	var height: float = lerp(STANDING_HEIGHT, CROUCH_HEIGHT, _crouch_lerp)
+	_capsule_shape.height = height
+	# Keep capsule bottom at the same Y in player frame so the player doesn't
+	# float or sink when shrinking.
+	_collision.position.y = (height - STANDING_HEIGHT) * 0.5
+	# Drop the camera with the crouch.
+	_camera.position.y = lerp(STANDING_CAMERA_Y, CROUCH_CAMERA_Y, _crouch_lerp)

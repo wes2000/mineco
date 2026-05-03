@@ -36,3 +36,20 @@ func try_consume(amount: int) -> bool:
 	_regen_locked_until = (Time.get_ticks_msec() / 1000.0) + regen_delay_after_swing
 	stamina_changed.emit(current, max_value)
 	return true
+
+# Continuous drain (e.g. sprinting). Returns true if drained, false if depleted
+# or in the empty-lockout state. Caller should drop back to walk speed if false.
+func try_drain(rate_per_sec: float, delta: float) -> bool:
+	if Admin.no_stamina: return true
+	if _empty_lockout: return false
+	var amount: float = rate_per_sec * delta
+	if current <= amount:
+		current = 0.0
+		_empty_lockout = true
+		_regen_locked_until = (Time.get_ticks_msec() / 1000.0) + regen_delay_after_swing
+		stamina_changed.emit(current, max_value)
+		return false
+	current -= amount
+	_regen_locked_until = (Time.get_ticks_msec() / 1000.0) + regen_delay_after_swing
+	stamina_changed.emit(current, max_value)
+	return true

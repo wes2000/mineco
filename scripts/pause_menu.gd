@@ -10,6 +10,8 @@ const TAB_ADMIN: int = 4
 
 const STANDARD_KEYBINDS: Array = [
 	["WASD", "move"],
+	["Shift", "sprint (drains stamina)"],
+	["Ctrl", "crouch (hold)"],
 	["Space", "jump"],
 	["LMB", "mine"],
 	["E", "interact"],
