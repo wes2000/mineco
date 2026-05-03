@@ -28,7 +28,6 @@ const NPC_SHIRT_COLORS: Array[Color] = [
 ]
 # Index into NPC_OFFSETS / NPC_SHIRT_COLORS for the vendor.
 const VENDOR_INDEX: int = 0
-const COIN_ICON_PATH: String = "res://assets/icons/hotbar/gold_coin.svg"
 
 # Sink the hut bottom slightly into the terrain so that voxel surface
 # irregularities don't leave visible gaps under the box.
@@ -76,16 +75,6 @@ func _spawn() -> void:
 				shirt_mat.albedo_color = NPC_SHIRT_COLORS[i % NPC_SHIRT_COLORS.size()]
 			shirt_mat.roughness = 0.95
 			body_mesh.material_override = shirt_mat
-		if i == VENDOR_INDEX:
-			# Floating coin marker above the vendor so the player spots them.
-			var marker: Sprite3D = Sprite3D.new()
-			marker.texture = load(COIN_ICON_PATH) as Texture2D
-			marker.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-			marker.no_depth_test = true
-			marker.fixed_size = true
-			marker.pixel_size = 0.012
-			marker.position = Vector3(0, 2.5, 0)
-			npc.add_child(marker)
 
 # Tries the VoxelTool raycast first (queries voxel data directly — works even
 # before chunks have visual collision shapes). Falls back to a physics raycast.
