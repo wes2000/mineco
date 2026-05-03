@@ -30,7 +30,15 @@ func _unhandled_input(event: InputEvent) -> void:
 		_camera.rotate_x(-event.relative.y * MOUSE_SENSITIVITY)
 		_camera.rotation.x = clamp(_camera.rotation.x, -PITCH_LIMIT, PITCH_LIMIT)
 	elif event.is_action_pressed("ui_cancel"):
-		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED else Input.MOUSE_MODE_CAPTURED
+		# No other UI consumed Esc — toggle the pause menu.
+		var menu: Node = get_tree().get_first_node_in_group("pause_menu")
+		if menu != null and menu.has_method("toggle"):
+			menu.toggle()
+	elif event.is_action_pressed("admin_toggle"):
+		# F1 opens the menu jumped to the Admin tab.
+		var menu: Node = get_tree().get_first_node_in_group("pause_menu")
+		if menu != null and menu.has_method("open"):
+			menu.open(4)   # PauseMenu.TAB_ADMIN
 	elif event.is_action_pressed("machine_interact"):
 		_try_open_machine_ui()
 

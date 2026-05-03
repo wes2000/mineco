@@ -21,10 +21,9 @@
 [ext_resource type="PackedScene" path="res://scenes/ore_deposits/gold_small.tscn" id="19_p6"]
 [ext_resource type="PackedScene" path="res://scenes/ore_deposits/gold_large.tscn" id="20_p7"]
 [ext_resource type="PackedScene" path="res://scenes/surface_rock.tscn" id="21_p8"]
-[ext_resource type="PackedScene" uid="uid://b3adminpnl001" path="res://scenes/admin_panel.tscn" id="22_admin"]
 [ext_resource type="PackedScene" path="res://scenes/factory/build_hotbar.tscn" id="23_hotbar"]
 [ext_resource type="PackedScene" path="res://scenes/factory/machine_ui.tscn" id="24_mui"]
-[ext_resource type="PackedScene" path="res://scenes/keybinds_overlay.tscn" id="25_keys"]
+[ext_resource type="PackedScene" path="res://scenes/pause_menu.tscn" id="26_menu"]
 
 [sub_resource type="VoxelMesherTransvoxel" id="Mesher_1"]
 
@@ -92,13 +91,11 @@ offset_bottom = -34.0
 show_percentage = false
 script = ExtResource("12_sbar")
 
-[node name="AdminPanel" parent="HUD" instance=ExtResource("22_admin")]
-
 [node name="BuildHotbar" parent="HUD" instance=ExtResource("23_hotbar")]
 
 [node name="MachineUI" parent="HUD" instance=ExtResource("24_mui")]
 
-[node name="KeybindsOverlay" parent="HUD" instance=ExtResource("25_keys")]
+[node name="PauseMenu" parent="HUD" instance=ExtResource("26_menu")]
 
 [node name="OreGenerator" type="Node3D" parent="."]
 script = ExtResource("13_oregen")
