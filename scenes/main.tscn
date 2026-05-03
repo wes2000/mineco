@@ -23,6 +23,7 @@
 [ext_resource type="PackedScene" path="res://scenes/factory/build_hotbar.tscn" id="23_hotbar"]
 [ext_resource type="PackedScene" path="res://scenes/factory/machine_ui.tscn" id="24_mui"]
 [ext_resource type="PackedScene" path="res://scenes/pause_menu.tscn" id="26_menu"]
+[ext_resource type="PackedScene" path="res://scenes/inventory_overlay.tscn" id="27_inv"]
 
 [sub_resource type="VoxelMesherTransvoxel" id="Mesher_1"]
 
@@ -87,6 +88,8 @@ script = ExtResource("12_sbar")
 [node name="MachineUI" parent="HUD" instance=ExtResource("24_mui")]
 
 [node name="PauseMenu" parent="HUD" instance=ExtResource("26_menu")]
+
+[node name="InventoryOverlay" parent="HUD" instance=ExtResource("27_inv")]
 
 [node name="OreGenerator" type="Node3D" parent="."]
 script = ExtResource("13_oregen")
