@@ -56,6 +56,12 @@ func mark_explored(world_pos: Vector3) -> void:
 	var dirty: bool = false
 	var r: int = EXPLORE_RADIUS_CELLS
 	var r_sq: int = r * r
+	# When the explorer is at sea level (e.g. swimming or on a boat) any cell
+	# within explore radius that we can't find terrain for must be open water —
+	# the void below the surface produces no voxels and no collider, so neither
+	# the physics nor the voxel raycast hits anything. Without this, cells out
+	# at sea stay fogged forever.
+	var explorer_at_sea: bool = world_pos.y < 3.0
 	for dz: int in range(-r, r + 1):
 		for dx: int in range(-r, r + 1):
 			if dx * dx + dz * dz > r_sq:
@@ -71,7 +77,7 @@ func mark_explored(world_pos: Vector3) -> void:
 			# sentinel back — skip the cell so it stays as fog and gets
 			# retried on the next mark_explored call.
 			var w: Vector2 = grid_to_world(gx, gz)
-			var y: float = _sample_ground_y(w.x, w.y)
+			var y: float = _sample_ground_y(w.x, w.y, explorer_at_sea)
 			if y <= -0.5:
 				continue
 			_explored[idx] = 1
@@ -97,21 +103,18 @@ func _color_for_height(y: float) -> Color:
 		return COLOR_ROCK
 	return COLOR_SNOW
 
-func _sample_ground_y(x: float, z: float) -> float:
+func _sample_ground_y(x: float, z: float, water_if_no_hit: bool) -> float:
 	var terrain: VoxelTerrain = get_tree().current_scene.find_child("VoxelTerrain", true, false) as VoxelTerrain
 	if terrain == null:
-		return -1.0
+		return 0.0 if water_if_no_hit else -1.0
 	var tool: VoxelTool = terrain.get_voxel_tool()
 	if tool == null:
-		return -1.0
-	# Distinguish "chunk not yet streamed in" from "chunk loaded with no solid
-	# terrain in the column" (= water). Without this, every water cell stays
-	# fogged forever because the raycast result is null in both cases.
-	var probe: AABB = AABB(Vector3(x - 0.5, -8.0, z - 0.5), Vector3(1.0, 110.0, 1.0))
-	if not tool.is_area_editable(probe):
-		return -1.0
+		return 0.0 if water_if_no_hit else -1.0
 	var result: VoxelRaycastResult = tool.raycast(Vector3(x, 100.0, z), Vector3(0, -1, 0), 200.0)
 	if result == null:
-		return 0.0   # loaded, no solid → open water
+		# No terrain in this column. If the explorer is at sea level we can
+		# safely call it water; otherwise the chunk just hasn't streamed in
+		# yet (e.g. mountain edge) and we should retry next call.
+		return 0.0 if water_if_no_hit else -1.0
 	# Solid voxel cell midpoint — close enough for biome tinting.
 	return float(result.position.y) + 0.5
