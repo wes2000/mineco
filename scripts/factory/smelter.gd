@@ -4,7 +4,8 @@ extends Building
 @export var recipe_input: int = MaterialDefs.MaterialId.STONE   # one of TIER_1_MATERIALS
 
 var _cycle_remaining_ticks: int = 0
-var _input_material: int = -1   # currently smelting (mid-cycle)
+var _cycle_total_ticks: int = 0
+var _active_input_material: int = -1   # head of processing_buffer when cycle started
 
 func _ready() -> void:
 	footprint_size = Vector2i(2, 2)
@@ -22,6 +23,12 @@ func _ready() -> void:
 	ports.append(pout)
 	super._ready()
 
+func get_cycle_remaining_ticks() -> int:
+	return _cycle_remaining_ticks
+
+func get_cycle_total_ticks() -> int:
+	return _cycle_total_ticks
+
 func port_accept_item(item: FactoryItem, _port: Port) -> bool:
 	if not input_queue_can_accept():
 		return false
@@ -31,35 +38,46 @@ func port_accept_item(item: FactoryItem, _port: Port) -> bool:
 
 func tick(_tick_index: int) -> void:
 	_drain_output_to_link()
-	# Mid-cycle: keep counting down
+	# Step 1: refill processing buffer from input_queue head while there's room
+	# AND the head matches the current recipe.
+	while processing_buffer_can_accept() and not input_queue.is_empty():
+		var head: int = input_queue[0]
+		if head != recipe_input:
+			# Mismatched material at the head — jam until player switches recipe
+			# or removes the item from input.
+			status = Status.INPUT_JAMMED
+			return
+		input_queue.pop_front()
+		queue_changed.emit(QUEUE_KIND_INPUT, input_queue.size())
+		processing_buffer.append(head)
+		processing_changed.emit(processing_buffer.size())
+	# Step 2: if processing buffer is empty, nothing to do
+	if processing_buffer.is_empty():
+		status = Status.IDLE
+		return
+	# Step 3: gate on output queue space
+	if not output_queue_can_accept():
+		status = Status.OUTPUT_BLOCKED
+		return
+	# Step 4: start a cycle if we don't have one running
+	if _cycle_remaining_ticks <= 0 and _active_input_material == -1:
+		_active_input_material = processing_buffer[0]
+		_cycle_total_ticks = MaterialDefs.SMELTER_TICKS[_active_input_material]
+		_cycle_remaining_ticks = _cycle_total_ticks
+	# Step 5: advance the cycle
 	if _cycle_remaining_ticks > 0:
 		_cycle_remaining_ticks -= 1
 		status = Status.WORKING
 		return
-	# Cycle just finished — push result to output_queue
-	if _input_material != -1:
-		if not output_queue_can_accept():
-			status = Status.OUTPUT_BLOCKED
-			return
-		var out_material: int = MaterialDefs.SMELT_RECIPE[_input_material]
-		output_queue_push(out_material)
-		item_emitted.emit(out_material)
-		_input_material = -1
-	# Try to start a new cycle from input_queue head
-	if input_queue.is_empty():
-		status = Status.IDLE
-		return
-	var head: int = input_queue[0]
-	if head != recipe_input:
-		status = Status.INPUT_JAMMED
-		return
-	if not output_queue_can_accept():
-		status = Status.OUTPUT_BLOCKED
-		return
-	_input_material = input_queue.pop_front()
-	queue_changed.emit(QUEUE_KIND_INPUT, input_queue.size())
-	_cycle_remaining_ticks = MaterialDefs.SMELTER_TICKS[_input_material]
-	status = Status.WORKING
+	# Step 6: cycle complete — pop from buffer, push result to output
+	processing_buffer.pop_front()
+	processing_changed.emit(processing_buffer.size())
+	var out_material: int = MaterialDefs.SMELT_RECIPE[_active_input_material]
+	output_queue_push(out_material)
+	item_emitted.emit(out_material)
+	_active_input_material = -1
+	_cycle_total_ticks = 0
+	status = Status.IDLE   # next tick will start the next cycle if buffer non-empty
 
 func _drain_output_to_link() -> void:
 	if output_queue.is_empty():

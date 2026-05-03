@@ -26,18 +26,25 @@ var ports: Array[Port] = []
 # --- Queues ---
 # Each queue holds material_id values (int). FIFO. Max 100.
 const QUEUE_MAX: int = 100
+const PROCESSING_BUFFER_MAX: int = 3
 
 signal queue_changed(kind: int, new_count: int)   # kind: 0=input, 1=output
+signal processing_changed(new_count: int)
 const QUEUE_KIND_INPUT: int = 0
 const QUEUE_KIND_OUTPUT: int = 1
 
 var input_queue: Array[int] = []
 var output_queue: Array[int] = []
+# Processing buffer = items currently inside the machine, between input_queue
+# and the producer that pushes to output_queue. Front item is the one actively
+# cycling; remaining items are queued for subsequent cycles.
+var processing_buffer: Array[int] = []
 
 var _bob_origin_y: float = 0.0
 var _body_mesh: MeshInstance3D = null
 var _output_port_visual: MeshInstance3D = null
 var _emissive_material: StandardMaterial3D = null
+var _fire_material: StandardMaterial3D = null
 var _hum_loop: AudioStreamPlayer3D = null
 var _emit_click: AudioStreamPlayer3D = null
 var _has_bob_origin: bool = false
@@ -51,6 +58,17 @@ func _ready() -> void:
 		var mat: Material = _body_mesh.material_override
 		if mat is StandardMaterial3D:
 			_emissive_material = mat as StandardMaterial3D
+	var fire_mesh: MeshInstance3D = find_child("Fire", true, false) as MeshInstance3D
+	if fire_mesh != null:
+		var fmat: Material = fire_mesh.material_override
+		if fmat is StandardMaterial3D:
+			# Duplicate so per-building flicker doesn't affect other instances
+			_fire_material = (fmat as StandardMaterial3D).duplicate() as StandardMaterial3D
+			fire_mesh.material_override = _fire_material
+	# Same precaution for the body's emissive material
+	if _emissive_material != null:
+		_emissive_material = _emissive_material.duplicate() as StandardMaterial3D
+		_body_mesh.material_override = _emissive_material
 	_hum_loop = find_child("HumLoop", true, false) as AudioStreamPlayer3D
 	_emit_click = find_child("EmitClick", true, false) as AudioStreamPlayer3D
 	if not item_emitted.is_connected(_on_emit_pulse):
@@ -69,6 +87,12 @@ func _process(delta: float) -> void:
 		var target: float = 1.0 if working else 0.0
 		_emissive_material.emission_energy_multiplier = lerp(
 			_emissive_material.emission_energy_multiplier, target, delta * 5.0)
+	if _fire_material != null:
+		# Flicker the fire emission with a sin wave + small noise while WORKING.
+		var t: float = Time.get_ticks_msec() / 1000.0
+		var fire_target: float = (1.6 + sin(t * 8.0) * 0.4 + sin(t * 13.7) * 0.2) if working else 0.0
+		_fire_material.emission_energy_multiplier = lerp(
+			_fire_material.emission_energy_multiplier, fire_target, delta * 8.0)
 
 func _on_emit_pulse(material_id: int) -> void:
 	if _output_port_visual != null:
@@ -159,6 +183,17 @@ func take_all_from_queue(kind: int) -> Array[int]:
 		output_queue.clear()
 		queue_changed.emit(QUEUE_KIND_OUTPUT, 0)
 	return taken
+
+# --- Processing buffer / cycle introspection (subclasses override) ---
+
+func processing_buffer_can_accept() -> bool:
+	return processing_buffer.size() < PROCESSING_BUFFER_MAX
+
+func get_cycle_remaining_ticks() -> int:
+	return 0
+
+func get_cycle_total_ticks() -> int:
+	return 0
 
 # --- Sim hooks (subclasses override) ---
 

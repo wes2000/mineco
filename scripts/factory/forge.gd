@@ -7,7 +7,8 @@ const OVERFLOW_CAP: int = 50
 @export var recipe_input: int = MaterialDefs.MaterialId.BRICK   # one of TIER_2_MATERIALS
 
 var _cycle_remaining_ticks: int = 0
-var _input_material: int = -1
+var _cycle_total_ticks: int = 0
+var _active_input_material: int = -1
 
 func _ready() -> void:
 	footprint_size = Vector2i(3, 3)
@@ -25,6 +26,12 @@ func _ready() -> void:
 	ports.append(pout)
 	super._ready()
 
+func get_cycle_remaining_ticks() -> int:
+	return _cycle_remaining_ticks
+
+func get_cycle_total_ticks() -> int:
+	return _cycle_total_ticks
+
 func port_accept_item(item: FactoryItem, _port: Port) -> bool:
 	if not input_queue_can_accept():
 		return false
@@ -37,32 +44,37 @@ func tick(_tick_index: int) -> void:
 	if _is_overflowing():
 		status = Status.OVERFLOWING
 		return
-	if _cycle_remaining_ticks > 0:
-		_cycle_remaining_ticks -= 1
-		status = Status.WORKING
-		return
-	if _input_material != -1:
-		if not output_queue_can_accept():
-			status = Status.OUTPUT_BLOCKED
+	while processing_buffer_can_accept() and not input_queue.is_empty():
+		var head: int = input_queue[0]
+		if head != recipe_input:
+			status = Status.INPUT_JAMMED
 			return
-		var out_material: int = MaterialDefs.FORGE_RECIPE[_input_material]
-		output_queue_push(out_material)
-		item_emitted.emit(out_material)
-		_input_material = -1
-	if input_queue.is_empty():
+		input_queue.pop_front()
+		queue_changed.emit(QUEUE_KIND_INPUT, input_queue.size())
+		processing_buffer.append(head)
+		processing_changed.emit(processing_buffer.size())
+	if processing_buffer.is_empty():
 		status = Status.IDLE
-		return
-	var head: int = input_queue[0]
-	if head != recipe_input:
-		status = Status.INPUT_JAMMED
 		return
 	if not output_queue_can_accept():
 		status = Status.OUTPUT_BLOCKED
 		return
-	_input_material = input_queue.pop_front()
-	queue_changed.emit(QUEUE_KIND_INPUT, input_queue.size())
-	_cycle_remaining_ticks = MaterialDefs.FORGE_TICKS[_input_material]
-	status = Status.WORKING
+	if _cycle_remaining_ticks <= 0 and _active_input_material == -1:
+		_active_input_material = processing_buffer[0]
+		_cycle_total_ticks = MaterialDefs.FORGE_TICKS[_active_input_material]
+		_cycle_remaining_ticks = _cycle_total_ticks
+	if _cycle_remaining_ticks > 0:
+		_cycle_remaining_ticks -= 1
+		status = Status.WORKING
+		return
+	processing_buffer.pop_front()
+	processing_changed.emit(processing_buffer.size())
+	var out_material: int = MaterialDefs.FORGE_RECIPE[_active_input_material]
+	output_queue_push(out_material)
+	item_emitted.emit(out_material)
+	_active_input_material = -1
+	_cycle_total_ticks = 0
+	status = Status.IDLE
 
 func _drain_output_to_link() -> void:
 	if output_queue.is_empty():

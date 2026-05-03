@@ -35,6 +35,8 @@ static func _icon_for(material_id: int) -> Texture2D:
 	_icon_texture_cache[material_id] = tex
 	return tex
 
+const FLAME_ICON_PATH: String = "res://assets/icons/factory/flame.svg"
+
 @onready var _name_label: Label = $Panel/Vbox/Name
 @onready var _status_label: Label = $Panel/Vbox/Status
 @onready var _recipe_select: OptionButton = $Panel/Vbox/RecipeRow/RecipeSelect
@@ -43,6 +45,10 @@ static func _icon_for(material_id: int) -> Texture2D:
 @onready var _input_take_btn: Button = $Panel/Vbox/QueuesRow/InputCol/TakeBtn
 @onready var _output_take_btn: Button = $Panel/Vbox/QueuesRow/OutputCol/TakeBtn
 @onready var _input_col: VBoxContainer = $Panel/Vbox/QueuesRow/InputCol
+@onready var _processing_col: VBoxContainer = $Panel/Vbox/QueuesRow/ProcessingCol
+@onready var _processing_slots: HBoxContainer = $Panel/Vbox/QueuesRow/ProcessingCol/Slots
+@onready var _processing_flame: TextureRect = $Panel/Vbox/QueuesRow/ProcessingCol/FlameRow/Flame
+@onready var _processing_countdown: Label = $Panel/Vbox/QueuesRow/ProcessingCol/FlameRow/Countdown
 @onready var _deposit_panel: VBoxContainer = $Panel/Vbox/DepositPanel
 
 var _bound_building: Building = null
@@ -53,6 +59,23 @@ func _ready() -> void:
 	_recipe_select.item_selected.connect(_on_recipe_selected)
 	_input_take_btn.pressed.connect(_on_take_input)
 	_output_take_btn.pressed.connect(_on_take_output)
+	var flame_tex: Texture2D = load(FLAME_ICON_PATH) as Texture2D
+	if flame_tex != null:
+		_processing_flame.texture = flame_tex
+	set_process(true)
+
+func _process(_delta: float) -> void:
+	if not visible or _bound_building == null:
+		return
+	# Live update of flame visibility + countdown text (per-frame so the timer
+	# decrements smoothly between sim ticks).
+	var working: bool = (_bound_building.status == Building.Status.WORKING)
+	_processing_flame.visible = working
+	if working:
+		var rem_ticks: int = _bound_building.get_cycle_remaining_ticks()
+		_processing_countdown.text = "%.1fs" % (float(rem_ticks) * FactoryWorld.TICK_DT)
+	else:
+		_processing_countdown.text = ""
 
 func bind_to(building: Building) -> void:
 	if _bound_building != null:
@@ -62,6 +85,8 @@ func bind_to(building: Building) -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	_populate_recipes()
 	_input_col.visible = true   # All buildings show INPUT (Loader's input = hopper)
+	# PROCESSING column only meaningful for Smelter/Forge (they have a cycle)
+	_processing_col.visible = (building is Smelter) or (building is Forge)
 	if building is Loader:
 		(building as Loader).hopper_changed.connect(_on_hopper_changed)
 		_deposit_panel.visible = true
@@ -70,6 +95,7 @@ func bind_to(building: Building) -> void:
 	_refresh()
 	building.status_changed.connect(_on_status_changed)
 	building.queue_changed.connect(_on_queue_changed)
+	building.processing_changed.connect(_on_processing_changed)
 
 func unbind() -> void:
 	if _bound_building != null:
@@ -77,6 +103,8 @@ func unbind() -> void:
 			_bound_building.status_changed.disconnect(_on_status_changed)
 		if _bound_building.queue_changed.is_connected(_on_queue_changed):
 			_bound_building.queue_changed.disconnect(_on_queue_changed)
+		if _bound_building.processing_changed.is_connected(_on_processing_changed):
+			_bound_building.processing_changed.disconnect(_on_processing_changed)
 		if _bound_building is Loader:
 			var ldr: Loader = _bound_building as Loader
 			if ldr.hopper_changed.is_connected(_on_hopper_changed):
@@ -84,6 +112,9 @@ func unbind() -> void:
 	_bound_building = null
 	visible = false
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+func _on_processing_changed(_n: int) -> void:
+	_refresh()
 
 func _on_hopper_changed(_mid: int, _new_count: int) -> void:
 	_refresh()
@@ -147,11 +178,24 @@ func _refresh() -> void:
 		_render_slots(_input_slots, _bound_building.input_queue)
 		_input_take_btn.text = "Take input"
 		_input_take_btn.disabled = _bound_building.input_queue.is_empty()
+	_render_processing_slots(_processing_slots, _bound_building.processing_buffer)
 	_render_slots(_output_slots, _bound_building.output_queue)
 	_output_take_btn.text = "Take output"
 	_output_take_btn.disabled = _bound_building.output_queue.is_empty()
 	if _bound_building is Loader:
 		_refresh_deposit_panel()
+
+func _render_processing_slots(parent: HBoxContainer, buffer: Array) -> void:
+	# Always render exactly PROCESSING_BUFFER_MAX slots so the column has a
+	# stable width — fill the first N with items, leave the rest as empty
+	# placeholders.
+	for child: Node in parent.get_children():
+		child.queue_free()
+	for i: int in Building.PROCESSING_BUFFER_MAX:
+		if i < buffer.size():
+			parent.add_child(_make_slot(buffer[i], 0))   # count=0 hides the count overlay
+		else:
+			parent.add_child(_make_slot(-1, 0))
 
 func _hopper_total(hopper: Dictionary) -> int:
 	var t: int = 0
