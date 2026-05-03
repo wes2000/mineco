@@ -16,7 +16,7 @@ enum OreType { STONE, IRON, GOLD }
 # reliably keep up with at sailing speed — far enough past visibility_range
 # means terrain at that range has been queued for ages but might still not
 # be meshed yet, leading to floating deposits over un-meshed islands.
-const VISIBILITY_RANGE_END: float = 224.0
+const VISIBILITY_RANGE_END: float = 192.0
 const VISIBILITY_FADE_MARGIN: float = 24.0
 
 @onready var _mesh: MeshInstance3D = $MeshInstance3D

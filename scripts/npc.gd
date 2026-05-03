@@ -26,7 +26,7 @@ enum State { WALK, IDLE }
 # is parked at spawn — keeps the player from seeing distant NPCs falling
 # through unstreamed chunks before they pop into view. Kept well inside
 # the terrain mesher's reliable-near-player radius.
-const VISIBILITY_DIST: float = 160.0
+const VISIBILITY_DIST: float = 144.0
 const PHYSICS_ACTIVE_DIST: float = 80.0
 
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
