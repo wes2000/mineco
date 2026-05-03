@@ -23,6 +23,7 @@ const CROUCH_LERP_SPEED: float = 8.0   # 1/seconds — controls how fast crouch 
 @onready var _pickup_area: Area3D = $PickupArea
 @onready var _shovel: Node3D = $Camera3D/Shovel
 @onready var _scanner_mesh: Node3D = $Camera3D/Scanner
+@onready var _flashlight_mesh: Node3D = $Camera3D/Flashlight
 @onready var _capsule_shape: CapsuleShape3D = ($CollisionShape3D.shape as CapsuleShape3D).duplicate() as CapsuleShape3D
 
 var _crouch_lerp: float = 0.0   # 0=standing, 1=fully crouched
@@ -68,6 +69,8 @@ func _apply_tool_visuals() -> void:
 		_shovel.visible = (current_tool == TOOL_PICKAXE)
 	if _scanner_mesh != null:
 		_scanner_mesh.visible = (current_tool == TOOL_SCANNER)
+	if _flashlight_mesh != null:
+		_flashlight_mesh.visible = (current_tool == TOOL_FLASHLIGHT)
 	# Also show/hide the scanner radar overlay + bind us as its player ref.
 	var overlay: Node = get_tree().get_first_node_in_group("scanner_overlay")
 	if overlay != null:

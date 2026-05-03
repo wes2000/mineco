@@ -1,0 +1,56 @@
+[gd_scene load_steps=7 format=3]
+
+[sub_resource type="BoxMesh" id="Body"]
+size = Vector3(0.10, 0.10, 0.34)
+
+[sub_resource type="BoxMesh" id="Head"]
+size = Vector3(0.16, 0.16, 0.10)
+
+[sub_resource type="BoxMesh" id="Lens"]
+size = Vector3(0.13, 0.13, 0.012)
+
+[sub_resource type="StandardMaterial3D" id="BodyMat"]
+albedo_color = Color(0.32, 0.34, 0.38, 1)
+metallic = 0.6
+roughness = 0.35
+
+[sub_resource type="StandardMaterial3D" id="HeadMat"]
+albedo_color = Color(0.18, 0.20, 0.22, 1)
+metallic = 0.5
+roughness = 0.5
+
+[sub_resource type="StandardMaterial3D" id="LensMat"]
+albedo_color = Color(1, 1, 0.85, 1)
+emission_enabled = true
+emission = Color(1, 0.95, 0.75, 1)
+emission_energy_multiplier = 5.0
+metallic = 0.0
+roughness = 0.1
+
+[node name="Flashlight" type="Node3D"]
+transform = Transform3D(0.95, 0.00, 0.31, -0.06, 0.98, 0.18, -0.30, -0.19, 0.93, 0.42, -0.30, -0.78)
+
+[node name="Body" type="MeshInstance3D" parent="."]
+mesh = SubResource("Body")
+material_override = SubResource("BodyMat")
+
+[node name="Head" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.20)
+mesh = SubResource("Head")
+material_override = SubResource("HeadMat")
+
+[node name="Lens" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.255)
+mesh = SubResource("Lens")
+material_override = SubResource("LensMat")
+
+[node name="Beam" type="SpotLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.26)
+light_color = Color(1, 0.97, 0.85, 1)
+light_energy = 6.0
+shadow_enabled = true
+shadow_bias = 0.04
+spot_range = 30.0
+spot_attenuation = 0.5
+spot_angle = 36.0
+spot_angle_attenuation = 0.85
