@@ -27,6 +27,8 @@ func _ready() -> void:
 	# Capture the post-physics-settle spawn so wander_radius is anchored to the
 	# actual ground position, not the slightly-elevated drop position.
 	_spawn_pos = global_position
+	# Generic group used by the map widgets for icon overlays.
+	add_to_group("npcs")
 	# Vendor lookups go through the 'vendor_npcs' group. Joining here means the
 	# town spawner only has to flip is_vendor and we'll show up next frame.
 	if is_vendor:

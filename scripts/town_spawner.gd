@@ -125,8 +125,11 @@ func _spawn_dock_and_boat() -> void:
 	var npc: Npc = npc_scene.instantiate() as Npc
 	npc.is_boat_vendor = true
 	npc.wander_radius = 3.0   # keep them on the dock
+	# Position MUST be set before add_child — Npc._ready captures _spawn_pos
+	# from global_position, and a stale (0,0,0) spawn 130m from the real
+	# location makes the NPC immediately try to walk back to origin.
+	npc.position = Vector3(-1.0, max(land_y, 0.20) + 1.0, coast_z + 2.0)
 	get_tree().current_scene.add_child(npc)
-	npc.global_position = Vector3(-1.0, max(land_y, 0.20) + 1.0, coast_z + 2.0)
 	# Color the dockmaster: white sailor outfit with cool teal trim.
 	var body_mesh: MeshInstance3D = npc.find_child("Body", true, false) as MeshInstance3D
 	if body_mesh != null:

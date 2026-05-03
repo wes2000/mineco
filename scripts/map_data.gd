@@ -104,8 +104,14 @@ func _sample_ground_y(x: float, z: float) -> float:
 	var tool: VoxelTool = terrain.get_voxel_tool()
 	if tool == null:
 		return -1.0
+	# Distinguish "chunk not yet streamed in" from "chunk loaded with no solid
+	# terrain in the column" (= water). Without this, every water cell stays
+	# fogged forever because the raycast result is null in both cases.
+	var probe: AABB = AABB(Vector3(x - 0.5, -8.0, z - 0.5), Vector3(1.0, 110.0, 1.0))
+	if not tool.is_area_editable(probe):
+		return -1.0
 	var result: VoxelRaycastResult = tool.raycast(Vector3(x, 100.0, z), Vector3(0, -1, 0), 200.0)
 	if result == null:
-		return -1.0
+		return 0.0   # loaded, no solid → open water
 	# Solid voxel cell midpoint — close enough for biome tinting.
 	return float(result.position.y) + 0.5

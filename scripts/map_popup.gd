@@ -1,23 +1,34 @@
 extends Control
 ## Full-screen popup map. Toggle with M. Doesn't pause the game and doesn't
 ## release the mouse — player can keep walking and looking around. Shows the
-## entire explored map area centered on the world origin, the player as a
-## rotating arrow at their world position, and a compass dial in the header.
+## explored map area, scroll-wheel to zoom in/out, NPC icons overlaid, the
+## player as a rotating arrow at their world position, and a compass dial in
+## the header.
 
 const PLAYER_MARKER_SIZE: float = 10.0
 const PLAYER_MARKER_COLOR: Color = Color(1, 0.85, 0.4, 1)
 const COMPASS_RADIUS: float = 26.0
+const NPC_ICON_RADIUS: float = 3.5
+const NPC_ICON_OUTLINE: Color = Color(0.05, 0.05, 0.08, 1)
+
+const ZOOM_MIN: float = 1.0
+const ZOOM_MAX: float = 6.0
+const ZOOM_STEP: float = 1.25
 
 @onready var _map_area: Control = $Panel/Vbox/MapArea
 @onready var _compass: Control = $Panel/Vbox/HeaderRow/Compass
 
 var _player: Node3D = null
+var _zoom: float = 1.0   # 1 = whole grid; higher = closer-up around the player
 
 func _ready() -> void:
 	add_to_group("map_popup")
 	visible = false
 	_map_area.draw.connect(_draw_map)
 	_map_area.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	# MapArea needs to actually receive scroll-wheel events for zoom.
+	_map_area.mouse_filter = Control.MOUSE_FILTER_STOP
+	_map_area.gui_input.connect(_on_map_input)
 	_compass.draw.connect(_draw_compass)
 	call_deferred("_subscribe")
 	set_process(true)
@@ -41,6 +52,16 @@ func _input(event: InputEvent) -> void:
 		hide_map()
 		accept_event()
 
+func _on_map_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed:
+		var mb: InputEventMouseButton = event
+		if mb.button_index == MOUSE_BUTTON_WHEEL_UP:
+			_zoom = clamp(_zoom * ZOOM_STEP, ZOOM_MIN, ZOOM_MAX)
+			_map_area.accept_event()
+		elif mb.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			_zoom = clamp(_zoom / ZOOM_STEP, ZOOM_MIN, ZOOM_MAX)
+			_map_area.accept_event()
+
 func toggle() -> void:
 	if visible:
 		hide_map()
@@ -63,24 +84,77 @@ func _draw_map() -> void:
 	_map_area.draw_rect(Rect2(Vector2.ZERO, size), MapData.FOG_COLOR)
 	if MapData == null or MapData.texture == null:
 		return
-	# Draw the entire grid scaled to the MapArea (preserving square aspect).
 	var grid: float = float(MapData.GRID_SIZE)
 	var dim: float = min(size.x, size.y)
 	var origin: Vector2 = (size - Vector2(dim, dim)) * 0.5
 	var dst: Rect2 = Rect2(origin, Vector2(dim, dim))
-	var src: Rect2 = Rect2(0, 0, grid, grid)
+	# Compute the source sub-rect: at zoom=1 we draw the entire grid; at higher
+	# zooms we sample a window centered on the player.
+	var view_cells: float = grid / _zoom
+	var cx_cells: float = grid * 0.5
+	var cz_cells: float = grid * 0.5
+	if _player != null and _zoom > 1.0:
+		var ppos: Vector3 = _player.global_position
+		cx_cells = (ppos.x + MapData.WORLD_RADIUS_M) / MapData.CELL_SIZE_M
+		cz_cells = (ppos.z + MapData.WORLD_RADIUS_M) / MapData.CELL_SIZE_M
+	# Clamp the window so it never falls off the grid edge.
+	var sx: float = clamp(cx_cells - view_cells * 0.5, 0.0, grid - view_cells)
+	var sz: float = clamp(cz_cells - view_cells * 0.5, 0.0, grid - view_cells)
+	var src: Rect2 = Rect2(sx, sz, view_cells, view_cells)
 	_map_area.draw_texture_rect_region(MapData.texture, dst, src)
 	# Border around the map area.
 	_map_area.draw_rect(dst, Color(0.2, 0.22, 0.28, 1), false, 2.0)
-	# Player marker at their world position.
+	# NPC dots (under the player marker so the player stays on top).
+	_draw_npc_icons(dst, src, grid)
+	# Player marker.
 	if _player != null:
-		var ppos: Vector3 = _player.global_position
-		var ux: float = (ppos.x + MapData.WORLD_RADIUS_M) / (MapData.WORLD_RADIUS_M * 2.0)
-		var uz: float = (ppos.z + MapData.WORLD_RADIUS_M) / (MapData.WORLD_RADIUS_M * 2.0)
-		var pixel: Vector2 = origin + Vector2(ux * dim, uz * dim)
+		var pixel: Vector2 = _world_to_pixel(_player.global_position, dst, src, grid)
 		var heading: Vector3 = -_player.global_basis.z
 		var ang: float = atan2(heading.x, -heading.z)
 		_draw_player_marker(pixel, ang)
+	# Zoom indicator.
+	if _zoom > 1.0:
+		_map_area.draw_string(
+			ThemeDB.fallback_font, dst.position + Vector2(8, 16),
+			"%dx" % roundi(_zoom),
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 12,
+			Color(0.85, 0.88, 0.92, 0.85),
+		)
+
+func _world_to_pixel(world_pos: Vector3, dst: Rect2, src: Rect2, grid: float) -> Vector2:
+	# Convert world XZ → cell coords → fraction within the source rect → pixel.
+	var cx: float = (world_pos.x + MapData.WORLD_RADIUS_M) / MapData.CELL_SIZE_M
+	var cz: float = (world_pos.z + MapData.WORLD_RADIUS_M) / MapData.CELL_SIZE_M
+	var u: float = (cx - src.position.x) / src.size.x
+	var v: float = (cz - src.position.y) / src.size.y
+	return dst.position + Vector2(u * dst.size.x, v * dst.size.y)
+
+func _draw_npc_icons(dst: Rect2, src: Rect2, grid: float) -> void:
+	for n: Node in get_tree().get_nodes_in_group("npcs"):
+		if not (n is Node3D):
+			continue
+		var n3: Node3D = n
+		var pos: Vector3 = n3.global_position
+		var cx: float = (pos.x + MapData.WORLD_RADIUS_M) / MapData.CELL_SIZE_M
+		var cz: float = (pos.z + MapData.WORLD_RADIUS_M) / MapData.CELL_SIZE_M
+		# Skip NPCs that fall outside the currently-displayed window.
+		if cx < src.position.x or cx > src.position.x + src.size.x:
+			continue
+		if cz < src.position.y or cz > src.position.y + src.size.y:
+			continue
+		var pixel: Vector2 = _world_to_pixel(pos, dst, src, grid)
+		var col: Color = _npc_color(n)
+		_map_area.draw_circle(pixel, NPC_ICON_RADIUS + 1.0, NPC_ICON_OUTLINE)
+		_map_area.draw_circle(pixel, NPC_ICON_RADIUS, col)
+
+static func _npc_color(npc: Node) -> Color:
+	if npc.is_in_group("vendor_npcs"):
+		return Color(0.95, 0.78, 0.25, 1)        # gold
+	if npc.is_in_group("contract_vendor_npcs"):
+		return Color(0.45, 0.65, 0.95, 1)        # navy/cyan
+	if npc.is_in_group("boat_vendor_npcs"):
+		return Color(0.35, 0.85, 0.85, 1)        # teal
+	return Color(0.55, 0.85, 0.45, 1)            # townsfolk green
 
 func _draw_player_marker(center: Vector2, heading_rad: float) -> void:
 	var s: float = PLAYER_MARKER_SIZE
