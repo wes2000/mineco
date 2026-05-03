@@ -86,6 +86,9 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
 	if BuildController.active:
 		return   # build mode suppresses mining (LMB belongs to placement)
+	# Only swing if the player has the pickaxe equipped.
+	if _player == null or _player.get("current_tool") != 0:   # 0 = TOOL_PICKAXE
+		return
 	if Input.is_action_pressed("mine"):
 		_shovel.try_swing(_stamina)
 

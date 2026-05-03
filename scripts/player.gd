@@ -21,9 +21,20 @@ const CROUCH_LERP_SPEED: float = 8.0   # 1/seconds — controls how fast crouch 
 @onready var _miner: Node = $Miner
 @onready var _stamina: Node = $Stamina
 @onready var _pickup_area: Area3D = $PickupArea
+@onready var _shovel: Node3D = $Camera3D/Shovel
 @onready var _capsule_shape: CapsuleShape3D = ($CollisionShape3D.shape as CapsuleShape3D).duplicate() as CapsuleShape3D
 
 var _crouch_lerp: float = 0.0   # 0=standing, 1=fully crouched
+
+# Standard-mode tool selection. -1 = nothing equipped (no LMB action).
+# 0 = Pickaxe, 1 = Ore Scanner (NYI), 2 = Flashlight (NYI).
+const TOOL_NONE: int = -1
+const TOOL_PICKAXE: int = 0
+const TOOL_SCANNER: int = 1
+const TOOL_FLASHLIGHT: int = 2
+
+var current_tool: int = TOOL_PICKAXE
+signal tool_changed(new_tool: int)
 
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 
@@ -35,6 +46,25 @@ func _ready() -> void:
 	# Use a per-instance capsule resource so crouch height changes don't bleed
 	# into other things sharing the same shape resource.
 	_collision.shape = _capsule_shape
+	# Defer the initial tool sync so listeners (BottomHud, miner) hear the value.
+	call_deferred("_emit_initial_tool")
+
+func _emit_initial_tool() -> void:
+	_apply_tool_visuals()
+	tool_changed.emit(current_tool)
+
+func _select_tool(t: int) -> void:
+	# Pressing the same tool key again puts the tool away (toggle off).
+	if current_tool == t:
+		current_tool = TOOL_NONE
+	else:
+		current_tool = t
+	_apply_tool_visuals()
+	tool_changed.emit(current_tool)
+
+func _apply_tool_visuals() -> void:
+	if _shovel != null:
+		_shovel.visible = (current_tool == TOOL_PICKAXE)
 
 func _on_material_pickup(material_id: int, amount: int) -> void:
 	var feed: Node = get_tree().get_first_node_in_group("pickup_feed")
@@ -59,6 +89,14 @@ func _unhandled_input(event: InputEvent) -> void:
 			menu.toggle()
 	elif event.is_action_pressed("machine_interact"):
 		_try_open_machine_ui()
+	elif not BuildController.active:
+		# Tool slots in standard mode (build mode owns these keys when active).
+		if event.is_action_pressed("build_slot_1"):
+			_select_tool(TOOL_PICKAXE)
+		elif event.is_action_pressed("build_slot_2"):
+			_select_tool(TOOL_SCANNER)
+		elif event.is_action_pressed("build_slot_3"):
+			_select_tool(TOOL_FLASHLIGHT)
 
 const FACTORY_LAYER_MASK: int = 4
 

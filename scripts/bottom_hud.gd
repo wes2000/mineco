@@ -43,7 +43,16 @@ func _ready() -> void:
 		_stamina_bar.min_value = 0.0
 		_stamina_bar.max_value = float(_stamina.max_value)
 		_stamina_bar.value = _stamina.current
+	# Hook the player's standard-mode tool selection.
+	var player: Node = get_node_or_null("/root/Main/Player")
+	if player != null and player.has_signal("tool_changed"):
+		player.tool_changed.connect(_on_player_tool_changed)
+		_highlight(player.get("current_tool"))
 	set_process(true)
+
+func _on_player_tool_changed(new_tool: int) -> void:
+	if not BuildController.active:
+		_highlight(new_tool)
 
 func _process(_delta: float) -> void:
 	# Hide while any modal UI is open so the hotbar doesn't overlap their panels.
@@ -65,7 +74,9 @@ func _on_build_mode_changed(is_active: bool) -> void:
 		_highlight(BuildController.current_tool)
 	else:
 		_populate(STANDARD_SLOTS)
-		_highlight(0)
+		var player: Node = get_node_or_null("/root/Main/Player")
+		var idx: int = player.get("current_tool") if player != null else 0
+		_highlight(idx)
 
 func _on_build_selection(selected_tool: int) -> void:
 	if BuildController.active:
