@@ -136,7 +136,7 @@ func _make_row(material_id: int, count: int) -> PanelContainer:
 	btn_10.pressed.connect(_do_sell.bind(material_id, 10))
 	hbox.add_child(btn_10)
 	var btn_all: Button = Button.new()
-	btn_all.text = "Sell all"
+	btn_all.text = "Sell all (%dg)" % (count * price)
 	btn_all.pressed.connect(_do_sell.bind(material_id, count))
 	hbox.add_child(btn_all)
 	return pc
