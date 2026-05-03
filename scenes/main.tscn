@@ -26,7 +26,8 @@
 [ext_resource type="Script" path="res://scripts/bird_spawner.gd" id="29_birds"]
 [ext_resource type="Script" path="res://scripts/town_spawner.gd" id="31_town"]
 [ext_resource type="PackedScene" path="res://scenes/pickup_feed.tscn" id="30_feed"]
-[ext_resource type="PackedScene" path="res://scenes/gold_display.tscn" id="32_gold"]
+[ext_resource type="PackedScene" path="res://scenes/minimap_widget.tscn" id="32_gold"]
+[ext_resource type="PackedScene" path="res://scenes/map_popup.tscn" id="37_map"]
 [ext_resource type="PackedScene" path="res://scenes/vendor_ui.tscn" id="33_vend"]
 [ext_resource type="PackedScene" path="res://scenes/scanner_overlay.tscn" id="34_scan"]
 [ext_resource type="PackedScene" path="res://scenes/contract_ui.tscn" id="35_contract"]
@@ -84,7 +85,9 @@ autoplay = true
 
 [node name="PickupFeed" parent="HUD" instance=ExtResource("30_feed")]
 
-[node name="GoldDisplay" parent="HUD" instance=ExtResource("32_gold")]
+[node name="MinimapWidget" parent="HUD" instance=ExtResource("32_gold")]
+
+[node name="MapPopup" parent="HUD" instance=ExtResource("37_map")]
 
 [node name="VendorUI" parent="HUD" instance=ExtResource("33_vend")]
 

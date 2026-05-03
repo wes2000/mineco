@@ -194,6 +194,10 @@ func _physics_process(delta: float) -> void:
 		_fly(delta)
 	else:
 		_walk(delta)
+	# Reveal the map around our current position. The MapData call is a no-op
+	# for already-explored cells, so it's cheap to call every physics tick.
+	if MapData != null:
+		MapData.mark_explored(global_position)
 
 func _fly(delta: float) -> void:
 	var input_dir: Vector2 = Input.get_vector("move_left", "move_right", "move_forward", "move_back")

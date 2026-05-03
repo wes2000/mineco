@@ -1,6 +1,6 @@
 [gd_scene load_steps=3 format=3]
 
-[ext_resource type="Script" path="res://scripts/gold_display.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/minimap_widget.gd" id="1"]
 [ext_resource type="Texture2D" path="res://assets/icons/hotbar/gold_coin.svg" id="2"]
 
 [sub_resource type="StyleBoxFlat" id="ChipStyle"]
@@ -14,42 +14,52 @@ corner_radius_top_left = 6
 corner_radius_top_right = 6
 corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
-content_margin_left = 10
-content_margin_top = 6
-content_margin_right = 12
-content_margin_bottom = 6
+content_margin_left = 8
+content_margin_top = 8
+content_margin_right = 8
+content_margin_bottom = 8
 
-[node name="GoldDisplay" type="Control"]
+[node name="MinimapWidget" type="Control"]
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -180.0
+offset_left = -190.0
 offset_top = 14.0
 offset_right = -14.0
-offset_bottom = 60.0
+offset_bottom = 250.0
 grow_horizontal = 0
 mouse_filter = 2
 script = ExtResource("1")
 
 [node name="Chip" type="PanelContainer" parent="."]
-anchors_preset = 1
-anchor_left = 1.0
+anchors_preset = 15
 anchor_right = 1.0
-grow_horizontal = 0
-size_flags_horizontal = 8
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 theme_override_styles/panel = SubResource("ChipStyle")
 
-[node name="Hbox" type="HBoxContainer" parent="Chip"]
+[node name="Vbox" type="VBoxContainer" parent="Chip"]
+theme_override_constants/separation = 6
+
+[node name="Minimap" type="Control" parent="Chip/Vbox"]
+custom_minimum_size = Vector2(160, 160)
+mouse_filter = 2
+
+[node name="Divider" type="HSeparator" parent="Chip/Vbox"]
+
+[node name="GoldRow" type="HBoxContainer" parent="Chip/Vbox"]
+alignment = 1
 theme_override_constants/separation = 8
 
-[node name="Icon" type="TextureRect" parent="Chip/Hbox"]
-custom_minimum_size = Vector2(28, 28)
+[node name="Icon" type="TextureRect" parent="Chip/Vbox/GoldRow"]
+custom_minimum_size = Vector2(24, 24)
 texture = ExtResource("2")
 expand_mode = 1
 stretch_mode = 5
 
-[node name="Amount" type="Label" parent="Chip/Hbox"]
+[node name="Amount" type="Label" parent="Chip/Vbox/GoldRow"]
 text = "0"
 vertical_alignment = 1
-theme_override_font_sizes/font_size = 20
+theme_override_font_sizes/font_size = 18
 theme_override_colors/font_color = Color(1, 0.85, 0.45, 1)

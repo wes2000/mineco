@@ -16,6 +16,7 @@ const STANDARD_KEYBINDS: Array = [
 	["LMB", "mine"],
 	["E", "interact"],
 	["Tab", "inventory (hold)"],
+	["M", "map (popup)"],
 	["Esc", "menu / close"],
 	["B", "build mode"],
 ]
