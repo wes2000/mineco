@@ -3,6 +3,8 @@ extends Node
 @export var step_distance: float = 2.0
 @export var sand_threshold_y: float = 1.2  # matches biome shader sand_band
 @export var capsule_half_height: float = 0.9  # subtract from body origin to get feet Y
+@export var walk_volume_db: float = -36.0
+@export var crouch_volume_db: float = -48.0
 
 @onready var _player: CharacterBody3D = get_parent()
 @onready var _emitter: AudioStreamPlayer3D = $StepEmitter
@@ -50,6 +52,8 @@ func _play_step() -> void:
 		bank = _grass
 	if bank.is_empty():
 		return
+	var crouching: bool = Input.is_key_pressed(KEY_CTRL)
+	_emitter.volume_db = crouch_volume_db if crouching else walk_volume_db
 	_emitter.stream = bank.pick_random()
-	_emitter.pitch_scale = randf_range(0.9, 1.1)
+	_emitter.pitch_scale = randf_range(0.85, 1.05) if crouching else randf_range(0.9, 1.1)
 	_emitter.play()
