@@ -12,15 +12,21 @@ var _input_material: int = -1
 
 func _ready() -> void:
 	footprint_size = Vector2i(3, 3)
+	var pin: Port = Port.new()
+	pin.owner_building = self
+	pin.local_position = Vector3(1.5, 0.6, 0.05)
+	pin.local_facing = Vector3(0, 0, -1)
+	pin.kind = Port.KIND_INPUT
+	ports.append(pin)
+	var pout: Port = Port.new()
+	pout.owner_building = self
+	pout.local_position = Vector3(1.5, 0.6, 2.95)
+	pout.local_facing = Vector3(0, 0, 1)
+	pout.kind = Port.KIND_OUTPUT
+	ports.append(pout)
 	super._ready()
 
-func get_input_cells() -> Array[Vector3i]:
-	return [cell_for_local_offset(Vector3i(1, 0, -1))]   # center of back row
-
-func get_output_cells() -> Array[Vector3i]:
-	return [cell_for_local_offset(Vector3i(1, 0, footprint_size.y))]   # center of front row
-
-func try_accept_item(item: FactoryItem, _from_cell: Vector3i) -> bool:
+func port_accept_item(item: FactoryItem, _port: Port) -> bool:
 	if _input_item != null:
 		return false
 	_input_item = item
@@ -53,30 +59,23 @@ func tick(_tick_index: int) -> void:
 
 func _try_emit() -> bool:
 	var out_material: int = MaterialDefs.FORGE_RECIPE[_input_material]
-	var out_cells: Array[Vector3i] = get_output_cells()
-	if out_cells.is_empty():
+	var out_port: Port = ports[1]
+	if out_port.attached_link == null:
 		return false
-	var out_cell: Vector3i = out_cells[0]
-	var owner: Node3D = FactoryWorld.get_cell_owner(out_cell)
-	if owner == null or not (owner is BeltCell):
-		return false
-	var belt: BeltCell = owner as BeltCell
-	if not belt.is_free():
+	var link: BeltLink = out_port.attached_link as BeltLink
+	if not link.can_accept():
 		return false
 	var item: FactoryItem = FactoryWorld.item_pool.acquire(out_material)
-	belt.place_item(item)
+	link.push_item(item)
 	item_emitted.emit(out_material)
 	return true
 
 func _is_overflowing() -> bool:
-	var drops: Node = get_tree().get_first_node_in_group("factory_drops_root")
-	if drops == null:
-		return false
 	var count: int = 0
 	var origin: Vector3 = global_position
-	for child: Node in drops.get_children():
-		if child is RigidBody3D:
-			if (child as RigidBody3D).global_position.distance_to(origin) <= OVERFLOW_RADIUS:
+	for node: Node in get_tree().get_nodes_in_group("factory_drops"):
+		if node is RigidBody3D:
+			if (node as RigidBody3D).global_position.distance_to(origin) <= OVERFLOW_RADIUS:
 				count += 1
 				if count > OVERFLOW_CAP:
 					return true

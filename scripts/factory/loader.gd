@@ -1,6 +1,6 @@
 class_name Loader
 extends Building
-## Player-fed hopper that emits one selected material onto its output belt.
+## Player-fed hopper that emits one selected material onto its attached belt link.
 
 const HOPPER_CAP: int = 999
 
@@ -14,17 +14,16 @@ func _ready() -> void:
 	footprint_size = Vector2i(2, 2)
 	for mid: int in MaterialDefs.TIER_1_MATERIALS:
 		hopper[mid] = 0
+	# Single output port on the front face, centered on the 2x2 footprint
+	var p: Port = Port.new()
+	p.owner_building = self
+	p.local_position = Vector3(1.0, 0.5, 1.95)   # matches OutputPort mesh in scene
+	p.local_facing = Vector3(0, 0, 1)
+	p.kind = Port.KIND_OUTPUT
+	ports.append(p)
 	super._ready()
 
-func get_input_cells() -> Array[Vector3i]:
-	return []
-
-func get_output_cells() -> Array[Vector3i]:
-	# Single output cell on the "front" face (one cell forward of the footprint center, rotated).
-	return [cell_for_local_offset(Vector3i(0, 0, footprint_size.y))]
-
 func deposit(material_id: int, amount: int) -> int:
-	# Returns amount actually accepted (capped at HOPPER_CAP).
 	var current: int = hopper.get(material_id, 0)
 	var new_amount: int = min(current + amount, HOPPER_CAP)
 	var accepted: int = new_amount - current
@@ -40,20 +39,16 @@ func tick(_tick_index: int) -> void:
 		_cycle_remaining_ticks -= 1
 		status = Status.WORKING
 		return
-	# Cycle done — try to emit
-	var out_cells: Array[Vector3i] = get_output_cells()
-	if out_cells.is_empty():
+	var out_port: Port = ports[0]
+	if out_port.attached_link == null:
 		status = Status.OUTPUT_BLOCKED
 		return
-	var out_cell: Vector3i = out_cells[0]
-	var owner: Node3D = FactoryWorld.get_cell_owner(out_cell)
-	if not (owner is BeltCell) or not (owner as BeltCell).is_free():
+	var link: BeltLink = out_port.attached_link as BeltLink
+	if not link.can_accept():
 		status = Status.OUTPUT_BLOCKED
 		return
-	# Emit
 	var item: FactoryItem = FactoryWorld.item_pool.acquire(selected_material)
-	var belt: BeltCell = owner as BeltCell
-	belt.place_item(item)
+	link.push_item(item)
 	hopper[selected_material] -= 1
 	hopper_changed.emit(selected_material, hopper[selected_material])
 	item_emitted.emit(selected_material)

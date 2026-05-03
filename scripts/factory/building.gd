@@ -1,6 +1,6 @@
 class_name Building
 extends Node3D
-## Shared base for Loader, Smelter, Forge.
+## Shared base for Loader, Smelter, Forge, Splitter, Merger.
 
 enum Status { IDLE, WORKING, OUTPUT_BLOCKED, INPUT_JAMMED, OVERFLOWING }
 
@@ -20,24 +20,22 @@ var status: int = Status.IDLE :
 			status_changed.emit(v)
 			_update_audio()
 
+# Ports — populated by subclasses in _ready()
+var ports: Array[Port] = []
+
 var _bob_origin_y: float = 0.0
 var _body_mesh: MeshInstance3D = null
-var _output_port: MeshInstance3D = null
+var _output_port_visual: MeshInstance3D = null
 var _emissive_material: StandardMaterial3D = null
 var _hum_loop: AudioStreamPlayer3D = null
 var _emit_click: AudioStreamPlayer3D = null
 var _has_bob_origin: bool = false
 
-func _enter_tree() -> void:
-	# _enter_tree fires before _ready of children but after position is set;
-	# we capture the place-time Y here.
-	pass
-
 func _ready() -> void:
 	_bob_origin_y = position.y
 	_has_bob_origin = true
 	_body_mesh = find_child("Body", true, false) as MeshInstance3D
-	_output_port = find_child("OutputPort", true, false) as MeshInstance3D
+	_output_port_visual = find_child("OutputPort", true, false) as MeshInstance3D
 	if _body_mesh != null:
 		var mat: Material = _body_mesh.material_override
 		if mat is StandardMaterial3D:
@@ -62,13 +60,13 @@ func _process(delta: float) -> void:
 			_emissive_material.emission_energy_multiplier, target, delta * 5.0)
 
 func _on_emit_pulse(material_id: int) -> void:
-	if _output_port != null:
+	if _output_port_visual != null:
 		var tw: Tween = create_tween()
-		tw.tween_property(_output_port, "scale", Vector3.ONE * 1.2, 0.075)
-		tw.tween_property(_output_port, "scale", Vector3.ONE, 0.075)
+		tw.tween_property(_output_port_visual, "scale", Vector3.ONE * 1.2, 0.075)
+		tw.tween_property(_output_port_visual, "scale", Vector3.ONE, 0.075)
 	if _emit_click != null and _emit_click.stream != null:
 		var tier: int = MaterialDefs.TIER.get(material_id, 1)
-		_emit_click.pitch_scale = 0.8 + 0.2 * tier   # T1=1.0, T2=1.2, T3=1.4
+		_emit_click.pitch_scale = 0.8 + 0.2 * tier
 		_emit_click.play()
 
 func _update_audio() -> void:
@@ -80,12 +78,7 @@ func _update_audio() -> void:
 	elif not should_play and _hum_loop.playing:
 		_hum_loop.stop()
 
-# Subclasses override these:
-func get_input_cells() -> Array[Vector3i]:
-	return []
-
-func get_output_cells() -> Array[Vector3i]:
-	return []
+# --- Footprint ---
 
 func get_footprint_cells() -> Array[Vector3i]:
 	var cells: Array[Vector3i] = []
@@ -94,27 +87,40 @@ func get_footprint_cells() -> Array[Vector3i]:
 			cells.append(origin_cell + Vector3i(x, 0, z))
 	return cells
 
-# Called by FactoryWorld on each tick.
+# --- Ports ---
+
+func get_input_ports() -> Array[Port]:
+	var out: Array[Port] = []
+	for p: Port in ports:
+		if p.kind == Port.KIND_INPUT:
+			out.append(p)
+	return out
+
+func get_output_ports() -> Array[Port]:
+	var out: Array[Port] = []
+	for p: Port in ports:
+		if p.kind == Port.KIND_OUTPUT:
+			out.append(p)
+	return out
+
+func find_closest_port(world_pos: Vector3, kind: int) -> Port:
+	var best: Port = null
+	var best_d: float = INF
+	for p: Port in ports:
+		if p.kind != kind:
+			continue
+		var d: float = p.world_position().distance_squared_to(world_pos)
+		if d < best_d:
+			best_d = d
+			best = p
+	return best
+
+# --- Sim hooks (subclasses override) ---
+
 func tick(_tick_index: int) -> void:
 	pass
 
-# Called by FactoryWorld when an item arrives at one of our input cells.
-# Return true to accept (we take ownership), false to reject (item stays put).
-func try_accept_item(_item: FactoryItem, _from_cell: Vector3i) -> bool:
+# Called by BeltLink when an item arrives at one of our input ports.
+# Return true to consume, false to leave on the link.
+func port_accept_item(_item: FactoryItem, _port: Port) -> bool:
 	return false
-
-# Helper: given a local-space offset in the 0-rotation frame, return the world cell.
-func cell_for_local_offset(local: Vector3i) -> Vector3i:
-	var rotated: Vector3i = _rotate_offset(local, rotation_steps)
-	return origin_cell + rotated
-
-func _rotate_offset(v: Vector3i, steps: int) -> Vector3i:
-	var s: int = steps & 3
-	var x: int = v.x
-	var z: int = v.z
-	for _i: int in s:
-		var nx: int = -z
-		var nz: int = x
-		x = nx
-		z = nz
-	return Vector3i(x, v.y, z)
