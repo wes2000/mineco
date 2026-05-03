@@ -50,14 +50,21 @@ func _ready() -> void:
 	_collision.shape = _capsule_shape
 
 func _on_material_pickup(material_id: int, amount: int) -> void:
-	var ft: Label3D = FLOATING_TEXT_SCENE.instantiate() as Label3D
+	var ft: Node = FLOATING_TEXT_SCENE.instantiate()
 	get_tree().current_scene.add_child(ft)
-	# Spawn just above the player camera with a tiny random horizontal jitter
-	var jitter: Vector3 = Vector3(randf_range(-0.4, 0.4), 0.0, randf_range(-0.4, 0.4))
-	var spawn: Vector3 = _camera.global_position + Vector3(0, 0.6, 0) + jitter
-	var text: String = "+%d %s" % [amount, MaterialDefs.DISPLAY_NAME[material_id]]
+	# Spawn ~1.5m in front of the player, slightly above eye level. Using horizontal
+	# forward (player basis, not camera) so looking down doesn't dump the text on
+	# the ground. fixed_size + billboard means distance doesn't change visual size.
+	var horiz_forward: Vector3 = -global_basis.z
+	horiz_forward.y = 0
+	if horiz_forward.length() > 0.001:
+		horiz_forward = horiz_forward.normalized()
+	var jitter: Vector3 = Vector3(randf_range(-0.3, 0.3), randf_range(-0.1, 0.2), randf_range(-0.3, 0.3))
+	var spawn: Vector3 = _camera.global_position + horiz_forward * 1.5 + Vector3(0, 0.3, 0) + jitter
+	var label_text: String = "+%d %s" % [amount, MaterialDefs.DISPLAY_NAME[material_id]]
 	var col: Color = PICKUP_TEXT_COLORS.get(material_id, Color.WHITE)
-	ft.call("setup", text, spawn, col)
+	if ft.has_method("setup"):
+		ft.call("setup", label_text, spawn, col)
 
 func _on_pickup(body: Node) -> void:
 	if body is FactoryDrop:

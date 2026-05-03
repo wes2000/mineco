@@ -105,9 +105,9 @@ func _build_panel() -> void:
 	_panel.anchor_right = 0.5
 	_panel.anchor_bottom = 0.5
 	_panel.offset_left = -180
-	_panel.offset_top = -130
+	_panel.offset_top = -180
 	_panel.offset_right = 180
-	_panel.offset_bottom = 130
+	_panel.offset_bottom = 180
 	_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
 	_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE

@@ -4,11 +4,13 @@
 
 [node name="FloatingText" type="Label3D"]
 text = "+1 Stone"
-font_size = 48
-outline_size = 16
+font_size = 64
+outline_size = 18
+outline_modulate = Color(0, 0, 0, 1)
 modulate = Color(1, 1, 1, 1)
 billboard = 1
 no_depth_test = true
 fixed_size = true
-pixel_size = 0.004
+pixel_size = 0.012
+render_priority = 5
 script = ExtResource("1")
