@@ -32,9 +32,10 @@ const CONTRACT_VENDOR_INDEX: int = 1
 
 # Sink the hut bottom slightly into the terrain so that voxel surface
 # irregularities don't leave visible gaps under the box.
-const HUT_SINK: float = 0.30
-# Sample radius for the 3x3 ground grid — matches the hut footprint half-width.
-const HUT_FOOTPRINT_HALF: float = 1.6
+const HUT_SINK: float = 0.40
+# Sample radius covering a 3.2m footprint AFTER a worst-case 45° rotation
+# (so the rotated corners at √2 × 1.6 ≈ 2.26 are still covered).
+const HUT_BOUND_RADIUS: float = 2.26
 
 func _ready() -> void:
 	var gate: Node = get_node_or_null(spawn_gate_path)
@@ -87,21 +88,16 @@ func _spawn() -> void:
 			shirt_mat.roughness = 0.95
 			body_mesh.material_override = shirt_mat
 
-# Returns the MAX ground Y across a 3x3 grid of samples covering the hut
-# footprint. Anchoring to the high point ensures no corner floats — other
-# corners may sink slightly into the terrain, hidden by HUT_SINK.
+# Returns the MAX ground Y across 9 samples (center + 8 around a circle at the
+# hut's bounding radius). Anchoring to the high point ensures no corner floats —
+# other corners may sink slightly into the terrain, hidden by HUT_SINK. The
+# circle pattern is rotation-invariant: any rotation of the hut still has its
+# corners covered by the 8 perimeter samples.
 func _find_max_ground_y_in_footprint(x: float, z: float) -> float:
-	var offsets: Array[Vector2] = [
-		Vector2(-HUT_FOOTPRINT_HALF, -HUT_FOOTPRINT_HALF),
-		Vector2(0, -HUT_FOOTPRINT_HALF),
-		Vector2(HUT_FOOTPRINT_HALF, -HUT_FOOTPRINT_HALF),
-		Vector2(-HUT_FOOTPRINT_HALF, 0),
-		Vector2(0, 0),
-		Vector2(HUT_FOOTPRINT_HALF, 0),
-		Vector2(-HUT_FOOTPRINT_HALF, HUT_FOOTPRINT_HALF),
-		Vector2(0, HUT_FOOTPRINT_HALF),
-		Vector2(HUT_FOOTPRINT_HALF, HUT_FOOTPRINT_HALF),
-	]
+	var offsets: Array[Vector2] = [Vector2.ZERO]
+	for i: int in 8:
+		var ang: float = float(i) * TAU / 8.0
+		offsets.append(Vector2(cos(ang), sin(ang)) * HUT_BOUND_RADIUS)
 	var best: float = -INF
 	for o: Vector2 in offsets:
 		var y: float = await _find_ground_y_robust(x + o.x, z + o.y)
@@ -109,16 +105,17 @@ func _find_max_ground_y_in_footprint(x: float, z: float) -> float:
 			best = y
 	return best
 
-# Tries the VoxelTool raycast first (queries voxel data directly — works even
-# before chunks have visual collision shapes). Falls back to a physics raycast.
-# Retries a few times with small delays if both fail (chunks still streaming).
+# Tries the physics raycast first (accurate to the meshed visual surface).
+# Falls back to a VoxelTool raycast that returns the cell midpoint of the
+# solid voxel (only used when chunks haven't been collision-meshed yet).
+# Retries with small delays so chunks still streaming get covered.
 func _find_ground_y_robust(x: float, z: float) -> float:
 	var attempts: int = 6
 	while attempts > 0:
-		var y: float = _find_ground_y_voxel(x, z)
+		var y: float = _find_ground_y_physics(x, z)
 		if not is_nan(y):
 			return y
-		y = _find_ground_y_physics(x, z)
+		y = _find_ground_y_voxel(x, z)
 		if not is_nan(y):
 			return y
 		attempts -= 1
@@ -138,9 +135,10 @@ func _find_ground_y_voxel(x: float, z: float) -> float:
 	var result: VoxelRaycastResult = tool.raycast(origin, dir, 200.0)
 	if result == null:
 		return NAN
-	# previous_position is the air cell just above the surface voxel.
-	# The voxel surface sits at the top face of the solid voxel = previous_position.y.
-	return float(result.previous_position.y)
+	# Solid voxel cell spans [position.y, position.y+1). The actual SDF
+	# surface sits somewhere inside that cell — pick the midpoint as the
+	# best blind estimate (vs previous_position.y which is +1 too high).
+	return float(result.position.y) + 0.5
 
 func _find_ground_y_physics(x: float, z: float) -> float:
 	var space: PhysicsDirectSpaceState3D = get_tree().current_scene.get_world_3d().direct_space_state
