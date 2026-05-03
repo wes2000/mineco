@@ -10,6 +10,7 @@ extends CharacterBody3D
 @export var idle_time_max: float = 3.5
 @export var is_vendor: bool = false
 @export var is_contract_vendor: bool = false
+@export var is_boat_vendor: bool = false
 
 # Set on _ready when is_contract_vendor — the per-vendor contract state.
 var contract_board: ContractBoard = null
@@ -35,6 +36,8 @@ func _ready() -> void:
 		contract_board = ContractBoard.new()
 		contract_board.name = "ContractBoard"
 		add_child(contract_board)
+	if is_boat_vendor:
+		add_to_group("boat_vendor_npcs")
 	_begin_walk()
 
 func _physics_process(delta: float) -> void:

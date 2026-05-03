@@ -24,6 +24,10 @@ const CROUCH_LERP_SPEED: float = 8.0   # 1/seconds — controls how fast crouch 
 @onready var _shovel: Node3D = $Camera3D/Shovel
 @onready var _scanner_mesh: Node3D = $Camera3D/Scanner
 @onready var _flashlight_mesh: Node3D = $Camera3D/Flashlight
+
+# Set when in a boat; cleared on exit. While set, all the player walking +
+# tool input is suppressed and the boat handles W/S/A/D itself.
+var _driving_boat: Node = null
 @onready var _capsule_shape: CapsuleShape3D = ($CollisionShape3D.shape as CapsuleShape3D).duplicate() as CapsuleShape3D
 
 var _crouch_lerp: float = 0.0   # 0=standing, 1=fully crouched
@@ -123,6 +127,11 @@ func _unhandled_input(event: InputEvent) -> void:
 const FACTORY_LAYER_MASK: int = 4
 
 func _try_open_machine_ui() -> void:
+	# Driving a boat? E exits regardless of anything else around.
+	if _driving_boat != null:
+		_driving_boat.call("exit")
+		_driving_boat = null
+		return
 	# 1a) Sell vendor NPC within 4m? Open the sell window.
 	var vendor: Npc = _find_nearest_in_group("vendor_npcs", 4.0)
 	if vendor != null:
@@ -137,6 +146,21 @@ func _try_open_machine_ui() -> void:
 		if cu != null and cu.has_method("open"):
 			cu.call("open", contract_vendor.contract_board)
 			return
+	# 1c) Boat vendor NPC within 4m? Open the boat vendor window.
+	var boat_vendor: Npc = _find_nearest_in_group("boat_vendor_npcs", 4.0)
+	if boat_vendor != null:
+		var bu: Node = get_tree().get_first_node_in_group("boat_vendor_ui")
+		if bu != null and bu.has_method("open"):
+			bu.call("open")
+			return
+	# 1d) Boat within 4m? Climb in (only if we own one).
+	var nearby_boat: Node = _find_nearest_boat(4.5)
+	if nearby_boat != null:
+		if not _miner.get("has_boat"):
+			return  # silent — boat vendor sign should be enough hint
+		nearby_boat.call("enter", self)
+		_driving_boat = nearby_boat
+		return
 	# 2) Raycast forward on the factory layer to detect a building under the crosshair.
 	var space: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
 	var from: Vector3 = _camera.global_position
@@ -178,6 +202,19 @@ func _find_nearest_in_group(group_name: String, max_distance: float) -> Npc:
 			if d_sq < best_d:
 				best_d = d_sq
 				best = n as Npc
+	return best
+
+func _find_nearest_boat(max_distance: float) -> Node:
+	var origin: Vector3 = global_position
+	var max_sq: float = max_distance * max_distance
+	var best: Node = null
+	var best_d: float = max_sq
+	for n: Node in get_tree().get_nodes_in_group("boats"):
+		if n is Node3D:
+			var d_sq: float = (n as Node3D).global_position.distance_squared_to(origin)
+			if d_sq < best_d:
+				best_d = d_sq
+				best = n
 	return best
 
 func _hit_to_building(n: Node) -> Building:

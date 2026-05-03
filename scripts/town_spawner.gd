@@ -4,6 +4,8 @@ extends Node
 
 @export var hut_scene: PackedScene = preload("res://scenes/hut.tscn")
 @export var npc_scene: PackedScene = preload("res://scenes/npc.tscn")
+@export var dock_scene: PackedScene = preload("res://scenes/dock.tscn")
+@export var boat_scene: PackedScene = preload("res://scenes/boat.tscn")
 @export var spawn_gate_path: NodePath = NodePath("../SpawnGate")
 
 # (x, z) offsets from world origin. Cluster diameter ≈ 30m so it sits inside
@@ -55,6 +57,7 @@ func _spawn() -> void:
 		var ground_y: float = await _find_max_ground_y_in_footprint(offset.x, offset.y)
 		hut.global_position = Vector3(offset.x, ground_y - HUT_SINK, offset.y)
 		hut.rotation.y = randf_range(0.0, TAU)
+	_spawn_dock_and_boat()
 	for i: int in NPC_OFFSETS.size():
 		var offset: Vector2 = NPC_OFFSETS[i]
 		var npc: Npc = npc_scene.instantiate() as Npc
@@ -93,6 +96,48 @@ func _spawn() -> void:
 # other corners may sink slightly into the terrain, hidden by HUT_SINK. The
 # circle pattern is rotation-invariant: any rotation of the hut still has its
 # corners covered by the 8 perimeter samples.
+func _spawn_dock_and_boat() -> void:
+	# Walk outward from origin in the +Z direction until ground Y drops to
+	# water level. That gives us the south coastline. Place the dock so its
+	# inner end sits on land and its outer end juts into the water; the boat
+	# floats just past the outer end; the dockmaster stands on the dock.
+	var coast_z: float = 0.0
+	for r: int in range(40, 180, 4):
+		var y: float = await _find_ground_y_robust(0.0, float(r))
+		if y < 0.6:
+			coast_z = float(r) - 4.0   # back up one step so we're on land
+			break
+	if coast_z < 1.0:
+		coast_z = 130.0   # fallback if the scan never hit water
+	var land_y: float = await _find_ground_y_robust(0.0, coast_z)
+	# Dock: 8m long, oriented south (its +Z extends toward the water).
+	# Place the dock so its INNER edge sits at the coast, jutting outward.
+	var dock_center_z: float = coast_z + 4.0   # half the dock length forward
+	var dock: Node3D = dock_scene.instantiate() as Node3D
+	get_tree().current_scene.add_child(dock)
+	dock.global_position = Vector3(0.0, max(land_y - 0.10, 0.10), dock_center_z)
+	# Boat: floats just past the dock's outer end.
+	var boat: Node3D = boat_scene.instantiate() as Node3D
+	get_tree().current_scene.add_child(boat)
+	boat.global_position = Vector3(3.5, 0.0, dock_center_z + 5.0)
+	boat.rotation.y = -PI * 0.5   # facing east so the bow points away from shore
+	# Dockmaster NPC standing at the inner edge of the dock.
+	var npc: Npc = npc_scene.instantiate() as Npc
+	npc.is_boat_vendor = true
+	npc.wander_radius = 3.0   # keep them on the dock
+	get_tree().current_scene.add_child(npc)
+	npc.global_position = Vector3(-1.0, max(land_y, 0.20) + 1.0, coast_z + 2.0)
+	# Color the dockmaster: white sailor outfit with cool teal trim.
+	var body_mesh: MeshInstance3D = npc.find_child("Body", true, false) as MeshInstance3D
+	if body_mesh != null:
+		var shirt_mat: StandardMaterial3D = StandardMaterial3D.new()
+		shirt_mat.albedo_color = Color(0.85, 0.88, 0.92, 1)
+		shirt_mat.emission_enabled = true
+		shirt_mat.emission = Color(0.20, 0.55, 0.65, 1)
+		shirt_mat.emission_energy_multiplier = 0.35
+		shirt_mat.roughness = 0.95
+		body_mesh.material_override = shirt_mat
+
 func _find_max_ground_y_in_footprint(x: float, z: float) -> float:
 	var offsets: Array[Vector2] = [Vector2.ZERO]
 	for i: int in 8:

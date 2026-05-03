@@ -32,6 +32,9 @@ var gold_bar: int = 0
 # Currency (separate from the gold ore stack)
 var gold_currency: int = 0
 
+# Vehicles / unlocks
+var has_boat: bool = false
+
 signal inventory_changed(s: int, i: int, g: int)
 signal extended_inventory_changed
 signal material_pickup(material_id: int, amount: int)
