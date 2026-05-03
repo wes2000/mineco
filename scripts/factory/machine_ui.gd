@@ -70,6 +70,13 @@ const FLAME_ICON_PATH: String = "res://assets/icons/factory/flame.svg"
 var _bound_building: Building = null
 var _badge_style: StyleBoxFlat = null
 
+# Panel half-height presets — the deposit-less variant matches the loader's
+# effective queue column height by shrinking the panel itself.
+const PANEL_HALF_HEIGHT_WITH_DEPOSIT: float = 240.0
+const PANEL_HALF_HEIGHT_NO_DEPOSIT: float = 160.0
+
+@onready var _panel: Panel = $Panel
+
 func _ready() -> void:
 	visible = false
 	add_to_group("machine_ui")
@@ -112,8 +119,10 @@ func bind_to(building: Building) -> void:
 	if building is Loader:
 		(building as Loader).hopper_changed.connect(_on_hopper_changed)
 		_deposit_panel.visible = true
+		_resize_panel(PANEL_HALF_HEIGHT_WITH_DEPOSIT)
 	else:
 		_deposit_panel.visible = false
+		_resize_panel(PANEL_HALF_HEIGHT_NO_DEPOSIT)
 	_refresh()
 	building.status_changed.connect(_on_status_changed)
 	building.queue_changed.connect(_on_queue_changed)
@@ -137,6 +146,10 @@ func unbind() -> void:
 
 func _on_processing_changed(_n: int) -> void:
 	_refresh()
+
+func _resize_panel(half_height: float) -> void:
+	_panel.offset_top = -half_height
+	_panel.offset_bottom = half_height
 
 func _on_hopper_changed(_mid: int, _new_count: int) -> void:
 	_refresh()
