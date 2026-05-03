@@ -67,9 +67,16 @@ func mark_explored(world_pos: Vector3) -> void:
 			var idx: int = gz * GRID_SIZE + gx
 			if _explored[idx] != 0:
 				continue
+			# Try to sample terrain. If the chunk hasn't loaded yet we get a
+			# sentinel back — skip the cell so it stays as fog and gets
+			# retried on the next mark_explored call.
+			var w: Vector2 = grid_to_world(gx, gz)
+			var y: float = _sample_ground_y(w.x, w.y)
+			if y <= -0.5:
+				continue
 			_explored[idx] = 1
 			_explored_cell_count += 1
-			image.set_pixel(gx, gz, _compute_cell_color(gx, gz))
+			image.set_pixel(gx, gz, _color_for_height(y))
 			dirty = true
 	if dirty:
 		texture.update(image)
@@ -77,9 +84,7 @@ func mark_explored(world_pos: Vector3) -> void:
 
 # --- Internal ---
 
-func _compute_cell_color(gx: int, gz: int) -> Color:
-	var w: Vector2 = grid_to_world(gx, gz)
-	var y: float = _sample_ground_y(w.x, w.y)
+func _color_for_height(y: float) -> Color:
 	if y < 0.5:
 		return COLOR_WATER
 	if y < 1.8:

@@ -42,10 +42,10 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -340.0
-offset_top = -340.0
-offset_right = 340.0
-offset_bottom = 340.0
+offset_left = -260.0
+offset_top = -260.0
+offset_right = 260.0
+offset_bottom = 260.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
@@ -68,7 +68,7 @@ theme_override_colors/font_color = Color(0.85, 0.90, 0.95, 1)
 custom_minimum_size = Vector2(64, 64)
 
 [node name="MapArea" type="Control" parent="Panel/Vbox"]
-custom_minimum_size = Vector2(600, 600)
+custom_minimum_size = Vector2(440, 440)
 size_flags_vertical = 3
 mouse_filter = 2
 

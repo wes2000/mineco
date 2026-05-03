@@ -58,9 +58,10 @@ func _draw_minimap() -> void:
 	var cell_local_z: float = (ppos.z + MapData.WORLD_RADIUS_M) / MapData.CELL_SIZE_M - float(center_grid.y) - 0.5
 	src_rect.position += Vector2(cell_local_x, cell_local_z)
 	_minimap.draw_texture_rect_region(MapData.texture, Rect2(Vector2.ZERO, size), src_rect)
-	# Player marker at the center of the minimap.
+	# Player marker at the center of the minimap. Heading angle is measured
+	# clockwise from north (-Z): facing -Z -> 0, facing +X -> +PI/2.
 	var heading: Vector3 = -_player.global_basis.z
-	var ang: float = atan2(heading.x, heading.z)   # 0 = facing -Z (north up)
+	var ang: float = atan2(heading.x, -heading.z)
 	_draw_player_marker(size * 0.5, ang)
 
 func _draw_player_marker(center: Vector2, heading_rad: float) -> void:

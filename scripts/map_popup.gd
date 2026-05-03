@@ -79,7 +79,7 @@ func _draw_map() -> void:
 		var uz: float = (ppos.z + MapData.WORLD_RADIUS_M) / (MapData.WORLD_RADIUS_M * 2.0)
 		var pixel: Vector2 = origin + Vector2(ux * dim, uz * dim)
 		var heading: Vector3 = -_player.global_basis.z
-		var ang: float = atan2(heading.x, heading.z)
+		var ang: float = atan2(heading.x, -heading.z)
 		_draw_player_marker(pixel, ang)
 
 func _draw_player_marker(center: Vector2, heading_rad: float) -> void:
@@ -104,7 +104,8 @@ func _draw_compass() -> void:
 	var heading: float = 0.0
 	if _player != null:
 		var fwd: Vector3 = -_player.global_basis.z
-		heading = atan2(fwd.x, -fwd.z)
+		heading = atan2(fwd.x, -fwd.z)   # CW from north
+
 	# Cardinal labels positioned around the dial.
 	var letters: Array = [["N", 0.0], ["E", PI * 0.5], ["S", PI], ["W", PI * 1.5]]
 	for entry: Array in letters:
