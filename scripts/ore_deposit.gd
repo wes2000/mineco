@@ -11,6 +11,12 @@ enum OreType { STONE, IRON, GOLD }
 @export var ore_per_stage_array: Array[int] = []
 @export var size_label: String = "medium"
 
+# Distance past which the deposit mesh is culled. Stays well inside the
+# voxel terrain's max_view_distance so the surrounding terrain has time to
+# mesh before the deposit pops into view.
+const VISIBILITY_RANGE_END: float = 384.0
+const VISIBILITY_FADE_MARGIN: float = 24.0
+
 @onready var _mesh: MeshInstance3D = $MeshInstance3D
 @onready var _hit_fx: GPUParticles3D = $HitParticles
 @onready var _break_fx: GPUParticles3D = $BreakParticles
@@ -27,6 +33,8 @@ func _ready() -> void:
 	if stage_meshes.size() > 0:
 		_mesh.mesh = stage_meshes[0]
 	_mesh.scale = Vector3.ONE * _scale_for_stage(0)
+	_mesh.visibility_range_end = VISIBILITY_RANGE_END
+	_mesh.visibility_range_end_margin = VISIBILITY_FADE_MARGIN
 	add_to_group("ore_deposits")
 
 func take_damage(amount: int) -> void:

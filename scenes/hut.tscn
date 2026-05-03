@@ -1,4 +1,6 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=11 format=3]
+
+[ext_resource type="Script" path="res://scripts/distant_culler.gd" id="1_culler"]
 
 [sub_resource type="BoxMesh" id="Body"]
 size = Vector3(3.2, 2.6, 3.2)
@@ -35,6 +37,7 @@ emission = Color(0.6, 0.55, 0.30, 1)
 emission_energy_multiplier = 0.4
 
 [node name="Hut" type="Node3D"]
+script = ExtResource("1_culler")
 
 [node name="Body" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.3, 0)

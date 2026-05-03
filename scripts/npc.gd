@@ -22,11 +22,18 @@ var claim_board: Node = null
 
 enum State { WALK, IDLE }
 
+# Distance past which the NPC is hidden (visibility_range_end) and physics
+# is parked at spawn — keeps the player from seeing distant NPCs falling
+# through unstreamed chunks before they pop into view.
+const VISIBILITY_DIST: float = 256.0
+const PHYSICS_ACTIVE_DIST: float = 96.0
+
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 var _spawn_pos: Vector3
 var _heading: Vector3 = Vector3(0, 0, 1)
 var _state: int = State.IDLE
 var _state_remaining: float = 0.0
+var _player_cached: Node3D = null
 
 func _ready() -> void:
 	# Capture the post-physics-settle spawn so wander_radius is anchored to the
@@ -53,9 +60,25 @@ func _ready() -> void:
 		claim_board = board_script.new()
 		claim_board.name = "ClaimBoard"
 		add_child(claim_board)
+	_apply_visibility_range_recursive(self)
 	_begin_walk()
 
+func _apply_visibility_range_recursive(node: Node) -> void:
+	if node is GeometryInstance3D:
+		var g: GeometryInstance3D = node
+		g.visibility_range_end = VISIBILITY_DIST
+		g.visibility_range_end_margin = 16.0
+	for c: Node in node.get_children():
+		_apply_visibility_range_recursive(c)
+
 func _physics_process(delta: float) -> void:
+	# Park at spawn while the player is far away — without this NPCs run
+	# gravity over unstreamed chunks and visibly fall through the void
+	# while the surrounding terrain is still meshing in.
+	if not _is_player_within(PHYSICS_ACTIVE_DIST):
+		global_position = _spawn_pos
+		velocity = Vector3.ZERO
+		return
 	if not is_on_floor():
 		velocity.y -= _gravity * delta
 	_state_remaining -= delta
@@ -99,3 +122,10 @@ func _begin_walk() -> void:
 func _begin_idle() -> void:
 	_state = State.IDLE
 	_state_remaining = randf_range(idle_time_min, idle_time_max)
+
+func _is_player_within(dist: float) -> bool:
+	if _player_cached == null:
+		_player_cached = get_node_or_null("/root/Main/Player") as Node3D
+	if _player_cached == null:
+		return true   # no player yet — don't pre-emptively freeze
+	return global_position.distance_squared_to(_player_cached.global_position) <= dist * dist
