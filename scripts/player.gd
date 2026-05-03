@@ -27,19 +27,6 @@ var _crouch_lerp: float = 0.0   # 0=standing, 1=fully crouched
 
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 
-const FLOATING_TEXT_SCENE: PackedScene = preload("res://scenes/floating_text.tscn")
-const PICKUP_TEXT_COLORS: Dictionary = {
-	0: Color(0.85, 0.85, 0.9),    # STONE
-	1: Color(1.0, 0.55, 0.4),     # BRICK
-	2: Color(0.6, 0.6, 0.6),      # BLOCK
-	3: Color(0.85, 0.65, 0.5),    # IRON_ORE
-	4: Color(0.9, 0.9, 0.95),     # IRON_INGOT
-	5: Color(1, 1, 1),            # IRON_BAR
-	6: Color(0.9, 0.78, 0.35),    # GOLD_ORE
-	7: Color(1, 0.85, 0.4),       # GOLD_INGOT
-	8: Color(1, 0.9, 0.5),        # GOLD_BAR
-}
-
 func _ready() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	BuildController.bind_player(self, _camera)
@@ -50,21 +37,9 @@ func _ready() -> void:
 	_collision.shape = _capsule_shape
 
 func _on_material_pickup(material_id: int, amount: int) -> void:
-	var ft: Node = FLOATING_TEXT_SCENE.instantiate()
-	get_tree().current_scene.add_child(ft)
-	# Spawn ~1.5m in front of the player, slightly above eye level. Using horizontal
-	# forward (player basis, not camera) so looking down doesn't dump the text on
-	# the ground. fixed_size + billboard means distance doesn't change visual size.
-	var horiz_forward: Vector3 = -global_basis.z
-	horiz_forward.y = 0
-	if horiz_forward.length() > 0.001:
-		horiz_forward = horiz_forward.normalized()
-	var jitter: Vector3 = Vector3(randf_range(-0.3, 0.3), randf_range(-0.1, 0.2), randf_range(-0.3, 0.3))
-	var spawn: Vector3 = _camera.global_position + horiz_forward * 1.5 + Vector3(0, 0.3, 0) + jitter
-	var label_text: String = "+%d %s" % [amount, MaterialDefs.DISPLAY_NAME[material_id]]
-	var col: Color = PICKUP_TEXT_COLORS.get(material_id, Color.WHITE)
-	if ft.has_method("setup"):
-		ft.call("setup", label_text, spawn, col)
+	var feed: Node = get_tree().get_first_node_in_group("pickup_feed")
+	if feed != null and feed.has_method("add_message"):
+		feed.call("add_message", material_id, amount)
 
 func _on_pickup(body: Node) -> void:
 	if body is FactoryDrop:

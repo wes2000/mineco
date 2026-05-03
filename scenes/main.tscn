@@ -24,6 +24,7 @@
 [ext_resource type="PackedScene" path="res://scenes/inventory_overlay.tscn" id="27_inv"]
 [ext_resource type="PackedScene" path="res://scenes/bottom_hud.tscn" id="28_bhud"]
 [ext_resource type="Script" path="res://scripts/bird_spawner.gd" id="29_birds"]
+[ext_resource type="PackedScene" path="res://scenes/pickup_feed.tscn" id="30_feed"]
 
 [sub_resource type="VoxelMesherTransvoxel" id="Mesher_1"]
 
@@ -74,6 +75,8 @@ autoplay = true
 [node name="MachineUI" parent="HUD" instance=ExtResource("24_mui")]
 
 [node name="BottomHud" parent="HUD" instance=ExtResource("28_bhud")]
+
+[node name="PickupFeed" parent="HUD" instance=ExtResource("30_feed")]
 
 [node name="PauseMenu" parent="HUD" instance=ExtResource("26_menu")]
 
