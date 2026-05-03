@@ -24,6 +24,7 @@
 [ext_resource type="PackedScene" path="res://scenes/inventory_overlay.tscn" id="27_inv"]
 [ext_resource type="PackedScene" path="res://scenes/bottom_hud.tscn" id="28_bhud"]
 [ext_resource type="Script" path="res://scripts/bird_spawner.gd" id="29_birds"]
+[ext_resource type="Script" path="res://scripts/town_spawner.gd" id="31_town"]
 [ext_resource type="PackedScene" path="res://scenes/pickup_feed.tscn" id="30_feed"]
 
 [sub_resource type="VoxelMesherTransvoxel" id="Mesher_1"]
@@ -84,6 +85,10 @@ autoplay = true
 
 [node name="BirdSpawner" type="Node" parent="."]
 script = ExtResource("29_birds")
+
+[node name="TownSpawner" type="Node" parent="."]
+script = ExtResource("31_town")
+spawn_gate_path = NodePath("../SpawnGate")
 
 [node name="OreGenerator" type="Node3D" parent="."]
 script = ExtResource("13_oregen")
