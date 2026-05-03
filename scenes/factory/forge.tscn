@@ -42,13 +42,13 @@ material_override = SubResource("PortMat")
 
 [node name="HumLoop" type="AudioStreamPlayer3D" parent="."]
 autoplay = false
-volume_db = -6.0
+volume_db = -11.0
 max_distance = 20.0
 
 [node name="EmitClick" type="AudioStreamPlayer3D" parent="."]
 stream = ExtResource("AudioClick")
 autoplay = false
-volume_db = -6.0
+volume_db = -11.0
 max_distance = 20.0
 
 [node name="StaticBody" type="StaticBody3D" parent="."]

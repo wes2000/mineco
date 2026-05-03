@@ -1,7 +1,7 @@
 extends Control
 ## Modal recipe panel. Bound to one Building at a time. Opened via E by player.
 
-const SLOT_SIZE: Vector2 = Vector2(72, 72)
+const SLOT_SIZE: Vector2 = Vector2(56, 56)
 const ITEM_COLORS: Dictionary = {
 	0: Color(0.6, 0.6, 0.6),    # STONE
 	1: Color(0.7, 0.35, 0.25),  # BRICK
@@ -13,6 +13,27 @@ const ITEM_COLORS: Dictionary = {
 	7: Color(0.95, 0.8, 0.3),   # GOLD_INGOT
 	8: Color(1.0, 0.85, 0.4),   # GOLD_BAR
 }
+const ITEM_ICONS: Dictionary = {
+	0: "res://assets/icons/factory/item_stone.svg",
+	1: "res://assets/icons/factory/item_brick.svg",
+	2: "res://assets/icons/factory/item_block.svg",
+	3: "res://assets/icons/factory/item_iron_ore.svg",
+	4: "res://assets/icons/factory/item_iron_ingot.svg",
+	5: "res://assets/icons/factory/item_iron_bar.svg",
+	6: "res://assets/icons/factory/item_gold_ore.svg",
+	7: "res://assets/icons/factory/item_gold_ingot.svg",
+	8: "res://assets/icons/factory/item_gold_bar.svg",
+}
+static var _icon_texture_cache: Dictionary = {}
+
+static func _icon_for(material_id: int) -> Texture2D:
+	if not ITEM_ICONS.has(material_id):
+		return null
+	if _icon_texture_cache.has(material_id):
+		return _icon_texture_cache[material_id]
+	var tex: Texture2D = load(ITEM_ICONS[material_id]) as Texture2D
+	_icon_texture_cache[material_id] = tex
+	return tex
 
 @onready var _name_label: Label = $Panel/Vbox/Name
 @onready var _status_label: Label = $Panel/Vbox/Status
@@ -40,16 +61,15 @@ func bind_to(building: Building) -> void:
 	visible = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	_populate_recipes()
+	_input_col.visible = true   # All buildings show INPUT (Loader's input = hopper)
+	if building is Loader:
+		(building as Loader).hopper_changed.connect(_on_hopper_changed)
+		_deposit_panel.visible = true
+	else:
+		_deposit_panel.visible = false
 	_refresh()
 	building.status_changed.connect(_on_status_changed)
 	building.queue_changed.connect(_on_queue_changed)
-	if building is Loader:
-		_input_col.visible = false   # Loader: hopper IS the input; no input queue UI
-		_deposit_panel.visible = true
-		_refresh_deposit_panel()
-	else:
-		_input_col.visible = true
-		_deposit_panel.visible = false
 
 func unbind() -> void:
 	if _bound_building != null:
@@ -57,9 +77,16 @@ func unbind() -> void:
 			_bound_building.status_changed.disconnect(_on_status_changed)
 		if _bound_building.queue_changed.is_connected(_on_queue_changed):
 			_bound_building.queue_changed.disconnect(_on_queue_changed)
+		if _bound_building is Loader:
+			var ldr: Loader = _bound_building as Loader
+			if ldr.hopper_changed.is_connected(_on_hopper_changed):
+				ldr.hopper_changed.disconnect(_on_hopper_changed)
 	_bound_building = null
 	visible = false
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+func _on_hopper_changed(_mid: int, _new_count: int) -> void:
+	_refresh()
 
 func _populate_recipes() -> void:
 	_recipe_select.clear()
@@ -112,12 +139,37 @@ func _refresh() -> void:
 		type_name = "Forge"
 	_name_label.text = type_name
 	_status_label.text = "Status: %s" % Building.Status.find_key(_bound_building.status)
-	_render_slots(_input_slots, _bound_building.input_queue)
+	if _bound_building is Loader:
+		_render_hopper_slots(_input_slots, (_bound_building as Loader).hopper)
+		_input_take_btn.text = "Take hopper"
+		_input_take_btn.disabled = _hopper_total((_bound_building as Loader).hopper) == 0
+	else:
+		_render_slots(_input_slots, _bound_building.input_queue)
+		_input_take_btn.text = "Take input"
+		_input_take_btn.disabled = _bound_building.input_queue.is_empty()
 	_render_slots(_output_slots, _bound_building.output_queue)
-	_input_take_btn.disabled = _bound_building.input_queue.is_empty()
+	_output_take_btn.text = "Take output"
 	_output_take_btn.disabled = _bound_building.output_queue.is_empty()
 	if _bound_building is Loader:
 		_refresh_deposit_panel()
+
+func _hopper_total(hopper: Dictionary) -> int:
+	var t: int = 0
+	for k: int in hopper:
+		t += hopper[k]
+	return t
+
+func _render_hopper_slots(parent: HBoxContainer, hopper: Dictionary) -> void:
+	for child: Node in parent.get_children():
+		child.queue_free()
+	var any: bool = false
+	for mid: int in MaterialDefs.TIER_1_MATERIALS:
+		var c: int = hopper.get(mid, 0)
+		if c > 0:
+			parent.add_child(_make_slot(mid, c))
+			any = true
+	if not any:
+		parent.add_child(_make_slot(-1, 0))
 
 func _render_slots(parent: HBoxContainer, queue: Array) -> void:
 	for child: Node in parent.get_children():
@@ -140,7 +192,7 @@ func _render_slots(parent: HBoxContainer, queue: Array) -> void:
 func _make_slot(material_id: int, count: int) -> Panel:
 	var panel: Panel = Panel.new()
 	panel.custom_minimum_size = SLOT_SIZE
-	# Material color fill
+	# Dim material color fill behind the icon
 	var fill: ColorRect = ColorRect.new()
 	fill.anchor_right = 1.0
 	fill.anchor_bottom = 1.0
@@ -151,13 +203,30 @@ func _make_slot(material_id: int, count: int) -> Panel:
 	if material_id < 0:
 		fill.color = Color(0.15, 0.15, 0.18, 1)
 	else:
-		fill.color = ITEM_COLORS.get(material_id, Color.WHITE)
+		var c: Color = ITEM_COLORS.get(material_id, Color.WHITE)
+		fill.color = Color(c.r * 0.35, c.g * 0.35, c.b * 0.35, 1)
 	panel.add_child(fill)
+	# Icon overlay
+	if material_id >= 0:
+		var tex: Texture2D = _icon_for(material_id)
+		if tex != null:
+			var icon: TextureRect = TextureRect.new()
+			icon.texture = tex
+			icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			icon.anchor_right = 1.0
+			icon.anchor_bottom = 1.0
+			icon.offset_left = 6
+			icon.offset_top = 6
+			icon.offset_right = -6
+			icon.offset_bottom = -6
+			icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			panel.add_child(icon)
 	# Count overlay (bottom-right)
 	if count > 0:
 		var lbl: Label = Label.new()
 		lbl.text = str(count)
-		lbl.add_theme_font_size_override("font_size", 18)
+		lbl.add_theme_font_size_override("font_size", 16)
 		lbl.add_theme_color_override("font_color", Color.WHITE)
 		lbl.add_theme_color_override("font_outline_color", Color.BLACK)
 		lbl.add_theme_constant_override("outline_size", 4)
@@ -165,17 +234,41 @@ func _make_slot(material_id: int, count: int) -> Panel:
 		lbl.anchor_top = 1.0
 		lbl.anchor_right = 1.0
 		lbl.anchor_bottom = 1.0
-		lbl.offset_left = -32
-		lbl.offset_top = -28
+		lbl.offset_left = -28
+		lbl.offset_top = -22
 		lbl.offset_right = -4
 		lbl.offset_bottom = -4
 		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		lbl.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+		lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		panel.add_child(lbl)
 	return panel
 
 func _on_take_input() -> void:
 	if _bound_building == null:
+		return
+	if _bound_building is Loader:
+		# Withdraw the entire hopper back to the player's inventory
+		var ldr: Loader = _bound_building as Loader
+		var miner: Node = get_tree().get_first_node_in_group("player_miner")
+		if miner == null:
+			return
+		var mapping: Array = [
+			[MaterialDefs.MaterialId.STONE, "stone"],
+			[MaterialDefs.MaterialId.IRON_ORE, "iron"],
+			[MaterialDefs.MaterialId.GOLD_ORE, "gold"],
+		]
+		for entry: Array in mapping:
+			var mid: int = entry[0]
+			var field: String = entry[1]
+			var n: int = ldr.hopper.get(mid, 0)
+			if n > 0:
+				miner.set(field, miner.get(field) + n)
+				ldr.hopper[mid] = 0
+				ldr.hopper_changed.emit(mid, 0)
+		if miner.has_signal("inventory_changed"):
+			miner.inventory_changed.emit(miner.get("stone"), miner.get("iron"), miner.get("gold"))
+		_refresh()
 		return
 	var taken: Array[int] = _bound_building.take_all_from_queue(Building.QUEUE_KIND_INPUT)
 	_credit_player(taken)

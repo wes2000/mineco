@@ -49,14 +49,48 @@ func _build_curve() -> void:
 	curve = Curve3D.new()
 	var start_pos: Vector3 = source_port.world_position()
 	var end_pos: Vector3 = dest_port.world_position()
+	var src_facing: Vector3 = source_port.world_facing()
+	var dst_facing: Vector3 = dest_port.world_facing()
 	var dist: float = start_pos.distance_to(end_pos)
 	var handle_len: float = max(dist / 3.0, 0.5)
-	var start_tangent: Vector3 = source_port.world_facing() * handle_len
-	# Dest port's facing points OUT of the building. The curve arrives FROM the
-	# opposite direction, so the in-tangent is -dest_facing * handle_len.
-	var end_in_tangent: Vector3 = -dest_port.world_facing() * handle_len
-	curve.add_point(start_pos, Vector3.ZERO, start_tangent)
-	curve.add_point(end_pos, end_in_tangent, Vector3.ZERO)
+	# Detect a "wrap-around" case: the dest port is on the far side of the dest
+	# building relative to the source. Symptom: dest_facing points roughly the
+	# same direction as source→dest (both point away from source). In that case,
+	# inserting an intermediate waypoint that swings out lateral to the
+	# straight line lets the curve route AROUND the dest building instead of
+	# through it.
+	var src_to_dst: Vector3 = end_pos - start_pos
+	var src_to_dst_norm: Vector3 = src_to_dst.normalized() if src_to_dst.length() > 0.001 else Vector3.FORWARD
+	var wrap_dot: float = dst_facing.dot(src_to_dst_norm)
+	if wrap_dot > 0.3:
+		# Compute lateral perpendicular in the XZ plane
+		var perp: Vector3 = Vector3(-src_to_dst_norm.z, 0, src_to_dst_norm.x).normalized()
+		# Choose the side that pushes AWAY from the dest building's center
+		var dst_bld: Node3D = dest_port.owner_building as Node3D
+		if dst_bld != null:
+			var bld_to_perp_pos: Vector3 = dst_bld.global_position - end_pos
+			if perp.dot(bld_to_perp_pos) > 0:
+				perp = -perp
+		# Offset distance proportional to dest building footprint + clearance
+		var bld_radius: float = 1.5
+		if dst_bld != null and dst_bld is Building:
+			bld_radius = max((dst_bld as Building).footprint_size.x, (dst_bld as Building).footprint_size.y) * 0.8 + 1.0
+		var wp: Vector3 = (start_pos + end_pos) * 0.5 + perp * bld_radius
+		# Tangents at the waypoint follow the perpendicular direction so the
+		# curve smoothly arcs through the side
+		var wp_handle: float = max(dist / 4.0, 0.8)
+		var wp_in: Vector3 = -src_to_dst_norm * wp_handle
+		var wp_out: Vector3 = src_to_dst_norm * wp_handle
+		var src_tangent: Vector3 = src_facing * handle_len
+		var dst_in: Vector3 = -dst_facing * handle_len
+		curve.add_point(start_pos, Vector3.ZERO, src_tangent)
+		curve.add_point(wp, wp_in, wp_out)
+		curve.add_point(end_pos, dst_in, Vector3.ZERO)
+	else:
+		var start_tangent: Vector3 = src_facing * handle_len
+		var end_in_tangent: Vector3 = -dst_facing * handle_len
+		curve.add_point(start_pos, Vector3.ZERO, start_tangent)
+		curve.add_point(end_pos, end_in_tangent, Vector3.ZERO)
 	_curve_length = curve.get_baked_length()
 
 func _build_visuals() -> void:
