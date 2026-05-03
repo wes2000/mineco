@@ -1,19 +1,19 @@
 [gd_scene load_steps=10 format=3]
 
 [sub_resource type="BoxMesh" id="Body"]
-size = Vector3(3.2, 2.0, 3.2)
+size = Vector3(3.2, 2.6, 3.2)
 
 [sub_resource type="PrismMesh" id="Roof"]
 size = Vector3(3.6, 1.4, 3.4)
 
 [sub_resource type="BoxMesh" id="Door"]
-size = Vector3(0.8, 1.4, 0.08)
+size = Vector3(0.8, 1.6, 0.08)
 
 [sub_resource type="BoxMesh" id="Window"]
 size = Vector3(0.7, 0.6, 0.08)
 
 [sub_resource type="BoxShape3D" id="BodyShape"]
-size = Vector3(3.2, 2.0, 3.2)
+size = Vector3(3.2, 2.6, 3.2)
 
 [sub_resource type="StandardMaterial3D" id="WoodMat"]
 albedo_color = Color(0.55, 0.40, 0.25, 1)
@@ -37,32 +37,32 @@ emission_energy_multiplier = 0.4
 [node name="Hut" type="Node3D"]
 
 [node name="Body" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.0, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.3, 0)
 mesh = SubResource("Body")
 material_override = SubResource("WoodMat")
 
 [node name="Roof" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.7, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.3, 0)
 mesh = SubResource("Roof")
 material_override = SubResource("RoofMat")
 
 [node name="Door" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, 1.62)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 1.62)
 mesh = SubResource("Door")
 material_override = SubResource("DoorMat")
 
 [node name="WindowL" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.0, 1.4, 1.62)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.0, 1.9, 1.62)
 mesh = SubResource("Window")
 material_override = SubResource("WindowMat")
 
 [node name="WindowR" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.0, 1.4, 1.62)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.0, 1.9, 1.62)
 mesh = SubResource("Window")
 material_override = SubResource("WindowMat")
 
 [node name="WindowSide" type="MeshInstance3D" parent="."]
-transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 1.62, 1.4, 0)
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 1.62, 1.9, 0)
 mesh = SubResource("Window")
 material_override = SubResource("WindowMat")
 
@@ -71,5 +71,5 @@ collision_layer = 1
 collision_mask = 0
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.0, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.3, 0)
 shape = SubResource("BodyShape")

@@ -32,7 +32,9 @@ const CONTRACT_VENDOR_INDEX: int = 1
 
 # Sink the hut bottom slightly into the terrain so that voxel surface
 # irregularities don't leave visible gaps under the box.
-const HUT_SINK: float = 0.25
+const HUT_SINK: float = 0.30
+# Sample radius for the 3x3 ground grid — matches the hut footprint half-width.
+const HUT_FOOTPRINT_HALF: float = 1.6
 
 func _ready() -> void:
 	var gate: Node = get_node_or_null(spawn_gate_path)
@@ -49,7 +51,7 @@ func _spawn() -> void:
 	for offset: Vector2 in HUT_OFFSETS:
 		var hut: Node3D = hut_scene.instantiate() as Node3D
 		get_tree().current_scene.add_child(hut)
-		var ground_y: float = await _find_ground_y_robust(offset.x, offset.y)
+		var ground_y: float = await _find_max_ground_y_in_footprint(offset.x, offset.y)
 		hut.global_position = Vector3(offset.x, ground_y - HUT_SINK, offset.y)
 		hut.rotation.y = randf_range(0.0, TAU)
 	for i: int in NPC_OFFSETS.size():
@@ -84,6 +86,28 @@ func _spawn() -> void:
 				shirt_mat.albedo_color = NPC_SHIRT_COLORS[i % NPC_SHIRT_COLORS.size()]
 			shirt_mat.roughness = 0.95
 			body_mesh.material_override = shirt_mat
+
+# Returns the MAX ground Y across a 3x3 grid of samples covering the hut
+# footprint. Anchoring to the high point ensures no corner floats — other
+# corners may sink slightly into the terrain, hidden by HUT_SINK.
+func _find_max_ground_y_in_footprint(x: float, z: float) -> float:
+	var offsets: Array[Vector2] = [
+		Vector2(-HUT_FOOTPRINT_HALF, -HUT_FOOTPRINT_HALF),
+		Vector2(0, -HUT_FOOTPRINT_HALF),
+		Vector2(HUT_FOOTPRINT_HALF, -HUT_FOOTPRINT_HALF),
+		Vector2(-HUT_FOOTPRINT_HALF, 0),
+		Vector2(0, 0),
+		Vector2(HUT_FOOTPRINT_HALF, 0),
+		Vector2(-HUT_FOOTPRINT_HALF, HUT_FOOTPRINT_HALF),
+		Vector2(0, HUT_FOOTPRINT_HALF),
+		Vector2(HUT_FOOTPRINT_HALF, HUT_FOOTPRINT_HALF),
+	]
+	var best: float = -INF
+	for o: Vector2 in offsets:
+		var y: float = await _find_ground_y_robust(x + o.x, z + o.y)
+		if y > best:
+			best = y
+	return best
 
 # Tries the VoxelTool raycast first (queries voxel data directly — works even
 # before chunks have visual collision shapes). Falls back to a physics raycast.
