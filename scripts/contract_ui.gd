@@ -4,7 +4,7 @@ extends Control
 ## contracts (with an Activate button). Same panel styling as MachineUI /
 ## VendorUI / PauseMenu.
 
-const SLOT_SIZE: Vector2 = Vector2(36, 36)
+const SLOT_SIZE: Vector2 = Vector2(28, 28)
 
 const ITEM_COLORS: Dictionary = {
 	0: Color(0.6, 0.6, 0.6), 1: Color(0.7, 0.35, 0.25), 2: Color(0.4, 0.4, 0.4),
