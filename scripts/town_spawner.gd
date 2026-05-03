@@ -27,31 +27,35 @@ const NPC_SHIRT_COLORS: Array[Color] = [
 	Color(0.85, 0.65, 0.30),   # yellow
 ]
 
+# Sink the hut bottom slightly into the terrain so that voxel surface
+# irregularities don't leave visible gaps under the box.
+const HUT_SINK: float = 0.25
+
 func _ready() -> void:
 	var gate: Node = get_node_or_null(spawn_gate_path)
 	if gate != null and gate.has_signal("world_ready"):
 		gate.world_ready.connect(_spawn)
 	else:
-		# Fallback: spawn after a short delay so the terrain has time to mesh.
 		await get_tree().create_timer(2.0).timeout
 		_spawn()
 
 func _spawn() -> void:
+	# Give distant chunks a beat to stream in past the player chunk that triggered
+	# world_ready — the spawner needs ground at points up to ~17m away.
+	await get_tree().create_timer(1.5).timeout
 	for offset: Vector2 in HUT_OFFSETS:
 		var hut: Node3D = hut_scene.instantiate() as Node3D
 		get_tree().current_scene.add_child(hut)
-		var ground_y: float = _find_ground_y(offset.x, offset.y)
-		hut.global_position = Vector3(offset.x, ground_y, offset.y)
+		var ground_y: float = await _find_ground_y_robust(offset.x, offset.y)
+		hut.global_position = Vector3(offset.x, ground_y - HUT_SINK, offset.y)
 		hut.rotation.y = randf_range(0.0, TAU)
 	for i: int in NPC_OFFSETS.size():
 		var offset: Vector2 = NPC_OFFSETS[i]
 		var npc: Node3D = npc_scene.instantiate() as Node3D
 		get_tree().current_scene.add_child(npc)
-		var ground_y: float = _find_ground_y(offset.x, offset.y)
-		# Spawn 1m above the ground; gravity will settle them.
-		npc.global_position = Vector3(offset.x, ground_y + 1.0, offset.y)
+		var ground_y: float = await _find_ground_y_robust(offset.x, offset.y)
+		npc.global_position = Vector3(offset.x, ground_y + 1.5, offset.y)
 		npc.rotation.y = randf_range(0.0, TAU)
-		# Color the shirt for variety
 		var body_mesh: MeshInstance3D = npc.find_child("Body", true, false) as MeshInstance3D
 		if body_mesh != null:
 			var shirt_mat: StandardMaterial3D = StandardMaterial3D.new()
@@ -59,14 +63,45 @@ func _spawn() -> void:
 			shirt_mat.roughness = 0.95
 			body_mesh.material_override = shirt_mat
 
-func _find_ground_y(x: float, z: float) -> float:
-	# Cast a ray from high up straight down through the world to find the
-	# voxel terrain surface. Returns a fallback Y if nothing is hit.
+# Tries the VoxelTool raycast first (queries voxel data directly — works even
+# before chunks have visual collision shapes). Falls back to a physics raycast.
+# Retries a few times with small delays if both fail (chunks still streaming).
+func _find_ground_y_robust(x: float, z: float) -> float:
+	var attempts: int = 6
+	while attempts > 0:
+		var y: float = _find_ground_y_voxel(x, z)
+		if not is_nan(y):
+			return y
+		y = _find_ground_y_physics(x, z)
+		if not is_nan(y):
+			return y
+		attempts -= 1
+		await get_tree().create_timer(0.4).timeout
+	push_warning("TownSpawner: gave up finding ground at (%s, %s)" % [x, z])
+	return 5.0
+
+func _find_ground_y_voxel(x: float, z: float) -> float:
+	var terrain: VoxelTerrain = get_tree().current_scene.find_child("VoxelTerrain", true, false) as VoxelTerrain
+	if terrain == null:
+		return NAN
+	var tool: VoxelTool = terrain.get_voxel_tool()
+	if tool == null:
+		return NAN
+	var origin: Vector3 = Vector3(x, 100.0, z)
+	var dir: Vector3 = Vector3(0, -1, 0)
+	var result: VoxelRaycastResult = tool.raycast(origin, dir, 200.0)
+	if result == null:
+		return NAN
+	# previous_position is the air cell just above the surface voxel.
+	# The voxel surface sits at the top face of the solid voxel = previous_position.y.
+	return float(result.previous_position.y)
+
+func _find_ground_y_physics(x: float, z: float) -> float:
 	var space: PhysicsDirectSpaceState3D = get_tree().current_scene.get_world_3d().direct_space_state
 	var query: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(
 		Vector3(x, 100.0, z), Vector3(x, -50.0, z))
-	query.collision_mask = 1   # terrain layer only
+	query.collision_mask = 1
 	var hit: Dictionary = space.intersect_ray(query)
 	if hit.is_empty():
-		return 5.0
+		return NAN
 	return hit.position.y
