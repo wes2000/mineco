@@ -26,6 +26,8 @@
 [ext_resource type="Script" path="res://scripts/bird_spawner.gd" id="29_birds"]
 [ext_resource type="Script" path="res://scripts/town_spawner.gd" id="31_town"]
 [ext_resource type="PackedScene" path="res://scenes/pickup_feed.tscn" id="30_feed"]
+[ext_resource type="PackedScene" path="res://scenes/gold_display.tscn" id="32_gold"]
+[ext_resource type="PackedScene" path="res://scenes/vendor_ui.tscn" id="33_vend"]
 
 [sub_resource type="VoxelMesherTransvoxel" id="Mesher_1"]
 
@@ -78,6 +80,10 @@ autoplay = true
 [node name="BottomHud" parent="HUD" instance=ExtResource("28_bhud")]
 
 [node name="PickupFeed" parent="HUD" instance=ExtResource("30_feed")]
+
+[node name="GoldDisplay" parent="HUD" instance=ExtResource("32_gold")]
+
+[node name="VendorUI" parent="HUD" instance=ExtResource("33_vend")]
 
 [node name="PauseMenu" parent="HUD" instance=ExtResource("26_menu")]
 

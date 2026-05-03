@@ -1,7 +1,6 @@
 class_name Npc
 extends CharacterBody3D
-## A simple wandering NPC. No interaction yet — just walks around in a small
-## radius around its spawn point, occasionally stopping to idle.
+## A simple wandering NPC. Some are vendors (player can sell items via E).
 
 @export var walk_speed: float = 1.4
 @export var wander_radius: float = 9.0
@@ -9,6 +8,7 @@ extends CharacterBody3D
 @export var walk_time_max: float = 5.0
 @export var idle_time_min: float = 1.5
 @export var idle_time_max: float = 3.5
+@export var is_vendor: bool = false
 
 enum State { WALK, IDLE }
 
@@ -22,6 +22,10 @@ func _ready() -> void:
 	# Capture the post-physics-settle spawn so wander_radius is anchored to the
 	# actual ground position, not the slightly-elevated drop position.
 	_spawn_pos = global_position
+	# Vendor lookups go through the 'vendor_npcs' group. Joining here means the
+	# town spawner only has to flip is_vendor and we'll show up next frame.
+	if is_vendor:
+		add_to_group("vendor_npcs")
 	_begin_walk()
 
 func _physics_process(delta: float) -> void:

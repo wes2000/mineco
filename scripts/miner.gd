@@ -29,9 +29,50 @@ var block: int = 0
 var iron_bar: int = 0
 var gold_bar: int = 0
 
+# Currency (separate from the gold ore stack)
+var gold_currency: int = 0
+
 signal inventory_changed(s: int, i: int, g: int)
 signal extended_inventory_changed
 signal material_pickup(material_id: int, amount: int)
+signal gold_currency_changed(new_amount: int)
+
+func add_gold_currency(amount: int) -> void:
+	gold_currency += amount
+	gold_currency_changed.emit(gold_currency)
+
+func get_material_count(material_id: int) -> int:
+	match material_id:
+		MaterialDefs.MaterialId.STONE: return stone
+		MaterialDefs.MaterialId.BRICK: return brick
+		MaterialDefs.MaterialId.BLOCK: return block
+		MaterialDefs.MaterialId.IRON_ORE: return iron
+		MaterialDefs.MaterialId.IRON_INGOT: return iron_ingot
+		MaterialDefs.MaterialId.IRON_BAR: return iron_bar
+		MaterialDefs.MaterialId.GOLD_ORE: return gold
+		MaterialDefs.MaterialId.GOLD_INGOT: return gold_ingot
+		MaterialDefs.MaterialId.GOLD_BAR: return gold_bar
+	return 0
+
+func remove_material(material_id: int, amount: int) -> int:
+	# Returns the amount actually removed.
+	var have: int = get_material_count(material_id)
+	var taken: int = min(have, amount)
+	if taken <= 0:
+		return 0
+	match material_id:
+		MaterialDefs.MaterialId.STONE: stone -= taken
+		MaterialDefs.MaterialId.BRICK: brick -= taken
+		MaterialDefs.MaterialId.BLOCK: block -= taken
+		MaterialDefs.MaterialId.IRON_ORE: iron -= taken
+		MaterialDefs.MaterialId.IRON_INGOT: iron_ingot -= taken
+		MaterialDefs.MaterialId.IRON_BAR: iron_bar -= taken
+		MaterialDefs.MaterialId.GOLD_ORE: gold -= taken
+		MaterialDefs.MaterialId.GOLD_INGOT: gold_ingot -= taken
+		MaterialDefs.MaterialId.GOLD_BAR: gold_bar -= taken
+	inventory_changed.emit(stone, iron, gold)
+	extended_inventory_changed.emit()
+	return taken
 
 func _ready() -> void:
 	_player = get_parent() as CharacterBody3D

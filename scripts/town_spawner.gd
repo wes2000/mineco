@@ -26,6 +26,9 @@ const NPC_SHIRT_COLORS: Array[Color] = [
 	Color(0.40, 0.65, 0.35),   # green
 	Color(0.85, 0.65, 0.30),   # yellow
 ]
+# Index into NPC_OFFSETS / NPC_SHIRT_COLORS for the vendor.
+const VENDOR_INDEX: int = 0
+const COIN_ICON_PATH: String = "res://assets/icons/hotbar/gold_coin.svg"
 
 # Sink the hut bottom slightly into the terrain so that voxel surface
 # irregularities don't leave visible gaps under the box.
@@ -51,7 +54,11 @@ func _spawn() -> void:
 		hut.rotation.y = randf_range(0.0, TAU)
 	for i: int in NPC_OFFSETS.size():
 		var offset: Vector2 = NPC_OFFSETS[i]
-		var npc: Node3D = npc_scene.instantiate() as Node3D
+		var npc: Npc = npc_scene.instantiate() as Npc
+		# Set is_vendor BEFORE add_child so npc._ready() picks it up and joins
+		# the vendor_npcs group on first entry to the tree.
+		if i == VENDOR_INDEX:
+			npc.is_vendor = true
 		get_tree().current_scene.add_child(npc)
 		var ground_y: float = await _find_ground_y_robust(offset.x, offset.y)
 		npc.global_position = Vector3(offset.x, ground_y + 1.5, offset.y)
@@ -59,9 +66,26 @@ func _spawn() -> void:
 		var body_mesh: MeshInstance3D = npc.find_child("Body", true, false) as MeshInstance3D
 		if body_mesh != null:
 			var shirt_mat: StandardMaterial3D = StandardMaterial3D.new()
-			shirt_mat.albedo_color = NPC_SHIRT_COLORS[i % NPC_SHIRT_COLORS.size()]
+			if i == VENDOR_INDEX:
+				# Vendor wears a gold/yellow shirt + emissive trim so they stand out.
+				shirt_mat.albedo_color = Color(0.95, 0.78, 0.25, 1)
+				shirt_mat.emission_enabled = true
+				shirt_mat.emission = Color(0.6, 0.45, 0.10, 1)
+				shirt_mat.emission_energy_multiplier = 0.4
+			else:
+				shirt_mat.albedo_color = NPC_SHIRT_COLORS[i % NPC_SHIRT_COLORS.size()]
 			shirt_mat.roughness = 0.95
 			body_mesh.material_override = shirt_mat
+		if i == VENDOR_INDEX:
+			# Floating coin marker above the vendor so the player spots them.
+			var marker: Sprite3D = Sprite3D.new()
+			marker.texture = load(COIN_ICON_PATH) as Texture2D
+			marker.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			marker.no_depth_test = true
+			marker.fixed_size = true
+			marker.pixel_size = 0.012
+			marker.position = Vector3(0, 2.5, 0)
+			npc.add_child(marker)
 
 # Tries the VoxelTool raycast first (queries voxel data directly — works even
 # before chunks have visual collision shapes). Falls back to a physics raycast.

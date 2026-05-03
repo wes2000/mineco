@@ -63,8 +63,14 @@ func _unhandled_input(event: InputEvent) -> void:
 const FACTORY_LAYER_MASK: int = 4
 
 func _try_open_machine_ui() -> void:
-	# Raycast forward 4m on factory layer; if we hit a building, open MachineUI.
-	# Otherwise fall back to proximity-find closest Building within 4m.
+	# 1) Vendor NPC within 4m? Open the vendor UI.
+	var vendor: Npc = _find_nearest_vendor(4.0)
+	if vendor != null:
+		var vu: Node = get_tree().get_first_node_in_group("vendor_ui")
+		if vu != null and vu.has_method("open"):
+			vu.call("open")
+			return
+	# 2) Raycast forward on the factory layer to detect a building under the crosshair.
 	var space: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
 	var from: Vector3 = _camera.global_position
 	var to: Vector3 = from + (-_camera.global_transform.basis.z) * 4.0
@@ -78,7 +84,7 @@ func _try_open_machine_ui() -> void:
 		if bld_hit != null and ui != null and ui.has_method("bind_to"):
 			ui.call("bind_to", bld_hit)
 			return
-	# Fallback: proximity-find closest Building within 4m
+	# 3) Proximity-find closest Building within 4m.
 	var origin: Vector3 = global_position
 	var best: Building = null
 	var best_dist_sq: float = 16.0
@@ -93,6 +99,19 @@ func _try_open_machine_ui() -> void:
 				best = owner as Building
 	if best != null and ui != null and ui.has_method("bind_to"):
 		ui.call("bind_to", best)
+
+func _find_nearest_vendor(max_distance: float) -> Npc:
+	var origin: Vector3 = global_position
+	var max_sq: float = max_distance * max_distance
+	var best: Npc = null
+	var best_d: float = max_sq
+	for n: Node in get_tree().get_nodes_in_group("vendor_npcs"):
+		if n is Npc and (n as Npc).is_vendor:
+			var d_sq: float = (n as Node3D).global_position.distance_squared_to(origin)
+			if d_sq < best_d:
+				best_d = d_sq
+				best = n as Npc
+	return best
 
 func _hit_to_building(n: Node) -> Building:
 	while n != null:
