@@ -24,6 +24,7 @@ func bind_to(building: Building) -> void:
 	_populate_recipes()
 	_refresh()
 	building.status_changed.connect(_on_status_changed)
+	building.queue_changed.connect(_on_queue_changed)
 	if building is Loader:
 		_deposit_panel.visible = true
 		_refresh_deposit_panel()
@@ -31,11 +32,17 @@ func bind_to(building: Building) -> void:
 		_deposit_panel.visible = false
 
 func unbind() -> void:
-	if _bound_building != null and _bound_building.status_changed.is_connected(_on_status_changed):
-		_bound_building.status_changed.disconnect(_on_status_changed)
+	if _bound_building != null:
+		if _bound_building.status_changed.is_connected(_on_status_changed):
+			_bound_building.status_changed.disconnect(_on_status_changed)
+		if _bound_building.queue_changed.is_connected(_on_queue_changed):
+			_bound_building.queue_changed.disconnect(_on_queue_changed)
 	_bound_building = null
 	visible = false
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+func _on_queue_changed(_kind: int, _new_count: int) -> void:
+	_refresh()
 
 func _populate_recipes() -> void:
 	_recipe_select.clear()
@@ -90,18 +97,24 @@ func _refresh() -> void:
 		type_name = "Forge"
 	_name_label.text = type_name
 	_status_label.text = "Status: %s" % Building.Status.find_key(_bound_building.status)
-	# Input/Output row labels (best-effort introspection)
+	var in_count: int = _bound_building.input_queue.size()
+	var out_count: int = _bound_building.output_queue.size()
 	if _bound_building is Loader:
 		_input_label.text = "Input: N/A"
-		_output_label.text = "Output: %s" % MaterialDefs.DISPLAY_NAME[(_bound_building as Loader).selected_material]
+		_output_label.text = "Output queue: %d / %d  (%s)" % [
+			out_count, Building.QUEUE_MAX, MaterialDefs.DISPLAY_NAME[(_bound_building as Loader).selected_material]]
 	elif _bound_building is Smelter:
 		var sm: Smelter = _bound_building as Smelter
-		_input_label.text = "Input recipe: %s" % MaterialDefs.DISPLAY_NAME[sm.recipe_input]
-		_output_label.text = "Output: %s" % MaterialDefs.DISPLAY_NAME[MaterialDefs.SMELT_RECIPE[sm.recipe_input]]
+		_input_label.text = "Input queue: %d / %d  (recipe: %s)" % [
+			in_count, Building.QUEUE_MAX, MaterialDefs.DISPLAY_NAME[sm.recipe_input]]
+		_output_label.text = "Output queue: %d / %d  (%s)" % [
+			out_count, Building.QUEUE_MAX, MaterialDefs.DISPLAY_NAME[MaterialDefs.SMELT_RECIPE[sm.recipe_input]]]
 	elif _bound_building is Forge:
 		var fg: Forge = _bound_building as Forge
-		_input_label.text = "Input recipe: %s" % MaterialDefs.DISPLAY_NAME[fg.recipe_input]
-		_output_label.text = "Output: %s" % MaterialDefs.DISPLAY_NAME[MaterialDefs.FORGE_RECIPE[fg.recipe_input]]
+		_input_label.text = "Input queue: %d / %d  (recipe: %s)" % [
+			in_count, Building.QUEUE_MAX, MaterialDefs.DISPLAY_NAME[fg.recipe_input]]
+		_output_label.text = "Output queue: %d / %d  (%s)" % [
+			out_count, Building.QUEUE_MAX, MaterialDefs.DISPLAY_NAME[MaterialDefs.FORGE_RECIPE[fg.recipe_input]]]
 
 func _refresh_deposit_panel() -> void:
 	for child: Node in _deposit_panel.get_children():

@@ -1,6 +1,7 @@
 class_name Loader
 extends Building
-## Player-fed hopper that emits one selected material onto its attached belt link.
+## Player-fed hopper that produces selected material into its output queue,
+## then drains the output queue onto the attached belt link as space allows.
 
 const HOPPER_CAP: int = 999
 
@@ -14,10 +15,9 @@ func _ready() -> void:
 	footprint_size = Vector2i(2, 2)
 	for mid: int in MaterialDefs.TIER_1_MATERIALS:
 		hopper[mid] = 0
-	# Single output port on the front face, centered on the 2x2 footprint
 	var p: Port = Port.new()
 	p.owner_building = self
-	p.local_position = Vector3(1.0, 0.5, 1.95)   # matches OutputPort mesh in scene
+	p.local_position = Vector3(1.0, 0.5, 1.95)
 	p.local_facing = Vector3(0, 0, 1)
 	p.kind = Port.KIND_OUTPUT
 	ports.append(p)
@@ -32,25 +32,36 @@ func deposit(material_id: int, amount: int) -> int:
 	return accepted
 
 func tick(_tick_index: int) -> void:
+	_drain_output_to_link()
+	# Generate a new item into output_queue if hopper has stock and queue has space
 	if hopper.get(selected_material, 0) <= 0:
-		status = Status.IDLE
+		status = Status.IDLE if output_queue.is_empty() else Status.WORKING
+		return
+	if not output_queue_can_accept():
+		status = Status.OUTPUT_BLOCKED
 		return
 	if _cycle_remaining_ticks > 0:
 		_cycle_remaining_ticks -= 1
 		status = Status.WORKING
 		return
-	var out_port: Port = ports[0]
-	if out_port.attached_link == null:
-		status = Status.OUTPUT_BLOCKED
-		return
-	var link: BeltLink = out_port.attached_link as BeltLink
-	if not link.can_accept():
-		status = Status.OUTPUT_BLOCKED
-		return
-	var item: FactoryItem = FactoryWorld.item_pool.acquire(selected_material)
-	link.push_item(item)
+	output_queue_push(selected_material)
 	hopper[selected_material] -= 1
 	hopper_changed.emit(selected_material, hopper[selected_material])
 	item_emitted.emit(selected_material)
 	_cycle_remaining_ticks = MaterialDefs.LOADER_EMIT_TICKS[selected_material]
 	status = Status.WORKING
+
+func _drain_output_to_link() -> void:
+	if output_queue.is_empty():
+		return
+	var out_port: Port = ports[0]
+	if out_port.attached_link == null:
+		return
+	var link: BeltLink = out_port.attached_link as BeltLink
+	if not link.can_accept():
+		return
+	var mid: int = output_queue[0]
+	var item: FactoryItem = FactoryWorld.item_pool.acquire(mid)
+	link.push_item(item)
+	output_queue.pop_front()
+	queue_changed.emit(QUEUE_KIND_OUTPUT, output_queue.size())

@@ -23,6 +23,17 @@ var status: int = Status.IDLE :
 # Ports — populated by subclasses in _ready()
 var ports: Array[Port] = []
 
+# --- Queues ---
+# Each queue holds material_id values (int). FIFO. Max 100.
+const QUEUE_MAX: int = 100
+
+signal queue_changed(kind: int, new_count: int)   # kind: 0=input, 1=output
+const QUEUE_KIND_INPUT: int = 0
+const QUEUE_KIND_OUTPUT: int = 1
+
+var input_queue: Array[int] = []
+var output_queue: Array[int] = []
+
 var _bob_origin_y: float = 0.0
 var _body_mesh: MeshInstance3D = null
 var _output_port_visual: MeshInstance3D = null
@@ -44,7 +55,15 @@ func _ready() -> void:
 	_emit_click = find_child("EmitClick", true, false) as AudioStreamPlayer3D
 	if not item_emitted.is_connected(_on_emit_pulse):
 		item_emitted.connect(_on_emit_pulse)
+	# Hook count labels up to queue_changed
+	queue_changed.connect(_on_queue_changed)
 	set_process(true)
+
+func _on_queue_changed(kind: int, new_count: int) -> void:
+	var box_name: String = "InputQueueBox" if kind == QUEUE_KIND_INPUT else "OutputQueueBox"
+	var label: Label3D = find_child(box_name, true, false).find_child("CountLabel", true, false) as Label3D if find_child(box_name, true, false) != null else null
+	if label != null:
+		label.text = str(new_count)
 
 func _process(delta: float) -> void:
 	if not _has_bob_origin:
@@ -114,6 +133,40 @@ func find_closest_port(world_pos: Vector3, kind: int) -> Port:
 			best_d = d
 			best = p
 	return best
+
+# --- Queue helpers ---
+
+func input_queue_can_accept() -> bool:
+	return input_queue.size() < QUEUE_MAX
+
+func input_queue_push(material_id: int) -> bool:
+	if not input_queue_can_accept():
+		return false
+	input_queue.append(material_id)
+	queue_changed.emit(QUEUE_KIND_INPUT, input_queue.size())
+	return true
+
+func output_queue_can_accept() -> bool:
+	return output_queue.size() < QUEUE_MAX
+
+func output_queue_push(material_id: int) -> bool:
+	if not output_queue_can_accept():
+		return false
+	output_queue.append(material_id)
+	queue_changed.emit(QUEUE_KIND_OUTPUT, output_queue.size())
+	return true
+
+func take_all_from_queue(kind: int) -> Array[int]:
+	var taken: Array[int] = []
+	if kind == QUEUE_KIND_INPUT:
+		taken = input_queue.duplicate()
+		input_queue.clear()
+		queue_changed.emit(QUEUE_KIND_INPUT, 0)
+	elif kind == QUEUE_KIND_OUTPUT:
+		taken = output_queue.duplicate()
+		output_queue.clear()
+		queue_changed.emit(QUEUE_KIND_OUTPUT, 0)
+	return taken
 
 # --- Sim hooks (subclasses override) ---
 

@@ -1,7 +1,19 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://scripts/factory/loader.gd" id="1"]
 [ext_resource type="AudioStream" path="res://assets/audio/mine_thump.ogg" id="AudioClick"]
+
+[sub_resource type="BoxMesh" id="QueueBoxMesh"]
+size = Vector3(0.5, 0.5, 0.5)
+
+[sub_resource type="BoxShape3D" id="QueueBoxShape"]
+size = Vector3(0.55, 0.55, 0.55)
+
+[sub_resource type="StandardMaterial3D" id="QueueBoxInputMat"]
+albedo_color = Color(0.85, 0.35, 0.35, 1)
+
+[sub_resource type="StandardMaterial3D" id="QueueBoxOutputMat"]
+albedo_color = Color(0.35, 0.85, 0.4, 1)
 
 [sub_resource type="BoxMesh" id="Body"]
 size = Vector3(1.8, 1.5, 1.8)
@@ -48,11 +60,13 @@ material_override = SubResource("PortMat")
 
 [node name="HumLoop" type="AudioStreamPlayer3D" parent="."]
 autoplay = false
+volume_db = -6.0
 max_distance = 20.0
 
 [node name="EmitClick" type="AudioStreamPlayer3D" parent="."]
 stream = ExtResource("AudioClick")
 autoplay = false
+volume_db = -6.0
 max_distance = 20.0
 
 [node name="StaticBody" type="StaticBody3D" parent="."]
@@ -62,3 +76,26 @@ collision_mask = 0
 [node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.00, 0.75, 1.00)
 shape = SubResource("ColliderShape")
+
+[node name="OutputQueueBox" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.0, 1.4, 1.5)
+mesh = SubResource("QueueBoxMesh")
+material_override = SubResource("QueueBoxOutputMat")
+
+[node name="OutputQueueBoxBody" type="StaticBody3D" parent="OutputQueueBox"]
+collision_layer = 4
+collision_mask = 0
+metadata/queue_kind = 1
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="OutputQueueBox/OutputQueueBoxBody"]
+shape = SubResource("QueueBoxShape")
+
+[node name="CountLabel" type="Label3D" parent="OutputQueueBox"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 0)
+billboard = 1
+no_depth_test = true
+fixed_size = true
+text = "0"
+font_size = 32
+modulate = Color(1, 1, 1, 1)
+outline_size = 6

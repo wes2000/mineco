@@ -6,7 +6,6 @@ const OVERFLOW_CAP: int = 50
 
 @export var recipe_input: int = MaterialDefs.MaterialId.BRICK   # one of TIER_2_MATERIALS
 
-var _input_item: FactoryItem = null
 var _cycle_remaining_ticks: int = 0
 var _input_material: int = -1
 
@@ -27,12 +26,14 @@ func _ready() -> void:
 	super._ready()
 
 func port_accept_item(item: FactoryItem, _port: Port) -> bool:
-	if _input_item != null:
+	if not input_queue_can_accept():
 		return false
-	_input_item = item
+	input_queue_push(item.material_id)
+	FactoryWorld.item_pool.release(item)
 	return true
 
 func tick(_tick_index: int) -> void:
+	_drain_output_to_link()
 	if _is_overflowing():
 		status = Status.OVERFLOWING
 		return
@@ -41,34 +42,42 @@ func tick(_tick_index: int) -> void:
 		status = Status.WORKING
 		return
 	if _input_material != -1:
-		if not _try_emit():
+		if not output_queue_can_accept():
 			status = Status.OUTPUT_BLOCKED
 			return
+		var out_material: int = MaterialDefs.FORGE_RECIPE[_input_material]
+		output_queue_push(out_material)
+		item_emitted.emit(out_material)
 		_input_material = -1
-	if _input_item == null:
+	if input_queue.is_empty():
 		status = Status.IDLE
 		return
-	if _input_item.material_id != recipe_input:
+	var head: int = input_queue[0]
+	if head != recipe_input:
 		status = Status.INPUT_JAMMED
 		return
-	_input_material = _input_item.material_id
-	FactoryWorld.item_pool.release(_input_item)
-	_input_item = null
+	if not output_queue_can_accept():
+		status = Status.OUTPUT_BLOCKED
+		return
+	_input_material = input_queue.pop_front()
+	queue_changed.emit(QUEUE_KIND_INPUT, input_queue.size())
 	_cycle_remaining_ticks = MaterialDefs.FORGE_TICKS[_input_material]
 	status = Status.WORKING
 
-func _try_emit() -> bool:
-	var out_material: int = MaterialDefs.FORGE_RECIPE[_input_material]
+func _drain_output_to_link() -> void:
+	if output_queue.is_empty():
+		return
 	var out_port: Port = ports[1]
 	if out_port.attached_link == null:
-		return false
+		return
 	var link: BeltLink = out_port.attached_link as BeltLink
 	if not link.can_accept():
-		return false
-	var item: FactoryItem = FactoryWorld.item_pool.acquire(out_material)
+		return
+	var mid: int = output_queue[0]
+	var item: FactoryItem = FactoryWorld.item_pool.acquire(mid)
 	link.push_item(item)
-	item_emitted.emit(out_material)
-	return true
+	output_queue.pop_front()
+	queue_changed.emit(QUEUE_KIND_OUTPUT, output_queue.size())
 
 func _is_overflowing() -> bool:
 	var count: int = 0

@@ -34,12 +34,39 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("machine_interact"):
 		_try_open_machine_ui()
 
+const FACTORY_LAYER_MASK: int = 4
+
 func _try_open_machine_ui() -> void:
-	# Buildings have no collider, so use proximity instead of raycast.
-	# Find the closest Building within 4m.
+	# Step 1: raycast forward 4m on factory layer; if we hit a queue box,
+	# transfer its contents to inventory. If we hit a building (non-queue),
+	# open MachineUI for it.
+	var space: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
+	var from: Vector3 = _camera.global_position
+	var to: Vector3 = from + (-_camera.global_transform.basis.z) * 4.0
+	var query: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(from, to)
+	query.collide_with_areas = false
+	query.collision_mask = FACTORY_LAYER_MASK
+	var hit: Dictionary = space.intersect_ray(query)
+	if not hit.is_empty():
+		var collider: Object = hit.get("collider")
+		if collider != null and collider.has_meta("queue_kind"):
+			var kind: int = int(collider.get_meta("queue_kind"))
+			var bld: Building = _hit_to_building(collider as Node)
+			if bld != null:
+				var taken: Array[int] = bld.take_all_from_queue(kind)
+				for mid: int in taken:
+					_miner.add_factory_material(mid, 1)
+			return
+		var bld_hit: Building = _hit_to_building(collider as Node)
+		if bld_hit != null:
+			var ui: Node = get_tree().get_first_node_in_group("machine_ui")
+			if ui != null and ui.has_method("bind_to"):
+				ui.call("bind_to", bld_hit)
+			return
+	# Step 2: fallback — proximity-find closest Building within 4m
 	var origin: Vector3 = global_position
 	var best: Building = null
-	var best_dist_sq: float = 16.0   # 4m squared
+	var best_dist_sq: float = 16.0
 	var seen: Dictionary = {}
 	for cell: Vector3i in FactoryWorld._cells:
 		var owner: Node3D = FactoryWorld._cells[cell]
@@ -54,6 +81,13 @@ func _try_open_machine_ui() -> void:
 	var ui: Node = get_tree().get_first_node_in_group("machine_ui")
 	if ui != null and ui.has_method("bind_to"):
 		ui.call("bind_to", best)
+
+func _hit_to_building(n: Node) -> Building:
+	while n != null:
+		if n is Building:
+			return n
+		n = n.get_parent()
+	return null
 
 func _physics_process(delta: float) -> void:
 	# Sync collision-shape state to admin toggle so re-enabling noclip mid-frame is safe.
