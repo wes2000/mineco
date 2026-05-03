@@ -70,10 +70,14 @@ func _spawn() -> void:
 			npc.is_contract_vendor = true
 		elif i == CLAIM_VENDOR_INDEX:
 			npc.is_claim_vendor = true
-		get_tree().current_scene.add_child(npc)
+		# Position MUST be set before add_child — Npc._ready captures _spawn_pos
+		# from global_position. If we set position after add_child, _spawn_pos
+		# stays at (0, 0, 0) and the y-fallthrough self-heal then teleports
+		# the NPC back to origin (which is below ground in this scene).
 		var ground_y: float = await _find_ground_y_robust(offset.x, offset.y)
-		npc.global_position = Vector3(offset.x, ground_y + 1.5, offset.y)
+		npc.position = Vector3(offset.x, ground_y + 1.5, offset.y)
 		npc.rotation.y = randf_range(0.0, TAU)
+		get_tree().current_scene.add_child(npc)
 		var body_mesh: MeshInstance3D = npc.find_child("Body", true, false) as MeshInstance3D
 		if body_mesh != null:
 			var shirt_mat: StandardMaterial3D = StandardMaterial3D.new()
