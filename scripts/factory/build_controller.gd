@@ -72,11 +72,19 @@ func _input(event: InputEvent) -> void:
 		# R always rotates the ghost — belts AND buildings.
 		ghost_rotation_steps = (ghost_rotation_steps + 1) & 3
 		_refresh_ghost()
-	elif event.is_action_pressed("build_place"):
-		if Input.is_action_pressed("build_remove"):
-			_try_remove()
-		else:
-			_try_place()
+	elif event is InputEventMouseButton and event.pressed:
+		var mb: InputEventMouseButton = event
+		if mb.button_index == MOUSE_BUTTON_WHEEL_UP:
+			ghost_rotation_steps = (ghost_rotation_steps + 1) & 3
+			_refresh_ghost()
+		elif mb.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			ghost_rotation_steps = (ghost_rotation_steps - 1) & 3
+			_refresh_ghost()
+		elif mb.button_index == MOUSE_BUTTON_LEFT:
+			if Input.is_action_pressed("build_remove"):
+				_try_remove()
+			else:
+				_try_place()
 
 const NO_CELL: Vector3i = Vector3i(-2147483648, -2147483648, -2147483648)
 
