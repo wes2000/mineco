@@ -1,6 +1,88 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scripts/factory/machine_ui.gd" id="1"]
+
+[sub_resource type="StyleBoxFlat" id="PanelStyle"]
+bg_color = Color(0.09, 0.10, 0.13, 0.95)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.2, 0.22, 0.28, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="InputColStyle"]
+bg_color = Color(0.36, 0.16, 0.16, 0.4)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.55, 0.25, 0.25, 0.8)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+content_margin_left = 8
+content_margin_top = 8
+content_margin_right = 8
+content_margin_bottom = 8
+
+[sub_resource type="StyleBoxFlat" id="ProcessingColStyle"]
+bg_color = Color(0.42, 0.27, 0.10, 0.4)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.65, 0.45, 0.20, 0.8)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+content_margin_left = 8
+content_margin_top = 8
+content_margin_right = 8
+content_margin_bottom = 8
+
+[sub_resource type="StyleBoxFlat" id="OutputColStyle"]
+bg_color = Color(0.13, 0.36, 0.20, 0.4)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.25, 0.60, 0.35, 0.8)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+content_margin_left = 8
+content_margin_top = 8
+content_margin_right = 8
+content_margin_bottom = 8
+
+[sub_resource type="StyleBoxFlat" id="StatusBadgeStyle"]
+bg_color = Color(0.4, 0.4, 0.45, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+content_margin_left = 8
+content_margin_top = 3
+content_margin_right = 8
+content_margin_bottom = 3
+
+[sub_resource type="StyleBoxFlat" id="DepositRowStyle"]
+bg_color = Color(0.13, 0.15, 0.18, 0.6)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+content_margin_left = 6
+content_margin_top = 4
+content_margin_right = 6
+content_margin_bottom = 4
 
 [node name="MachineUI" type="Control"]
 anchors_preset = 15
@@ -15,87 +97,136 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -290.0
-offset_top = -210.0
-offset_right = 290.0
-offset_bottom = 210.0
+offset_left = -340.0
+offset_top = -240.0
+offset_right = 340.0
+offset_bottom = 240.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_styles/panel = SubResource("PanelStyle")
 
 [node name="Vbox" type="VBoxContainer" parent="Panel"]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 16.0
-offset_top = 16.0
-offset_right = -16.0
-offset_bottom = -16.0
+offset_left = 14.0
+offset_top = 12.0
+offset_right = -14.0
+offset_bottom = -12.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_constants/separation = 8
 
-[node name="Name" type="Label" parent="Panel/Vbox"]
+[node name="HeaderRow" type="HBoxContainer" parent="Panel/Vbox"]
+theme_override_constants/separation = 10
+
+[node name="StatusBadgePanel" type="PanelContainer" parent="Panel/Vbox/HeaderRow"]
+theme_override_styles/panel = SubResource("StatusBadgeStyle")
+
+[node name="StatusBadge" type="Label" parent="Panel/Vbox/HeaderRow/StatusBadgePanel"]
+text = "IDLE"
+theme_override_font_sizes/font_size = 13
+
+[node name="Name" type="Label" parent="Panel/Vbox/HeaderRow"]
 text = "Machine"
+size_flags_horizontal = 3
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 18
 
-[node name="Status" type="Label" parent="Panel/Vbox"]
-text = "Status: IDLE"
+[node name="CloseBtn" type="Button" parent="Panel/Vbox/HeaderRow"]
+custom_minimum_size = Vector2(30, 28)
+text = "X"
+flat = true
 
 [node name="RecipeRow" type="HBoxContainer" parent="Panel/Vbox"]
+theme_override_constants/separation = 10
 
 [node name="Label" type="Label" parent="Panel/Vbox/RecipeRow"]
-text = "Recipe:"
+text = "RECIPE"
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.7, 0.75, 0.8, 1)
 
 [node name="RecipeSelect" type="OptionButton" parent="Panel/Vbox/RecipeRow"]
 size_flags_horizontal = 3
 
 [node name="QueuesRow" type="HBoxContainer" parent="Panel/Vbox"]
 size_flags_vertical = 3
+theme_override_constants/separation = 10
 
-[node name="InputCol" type="VBoxContainer" parent="Panel/Vbox/QueuesRow"]
+[node name="InputCol" type="PanelContainer" parent="Panel/Vbox/QueuesRow"]
 size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("InputColStyle")
 
-[node name="Header" type="Label" parent="Panel/Vbox/QueuesRow/InputCol"]
+[node name="V" type="VBoxContainer" parent="Panel/Vbox/QueuesRow/InputCol"]
+theme_override_constants/separation = 6
+
+[node name="Header" type="Label" parent="Panel/Vbox/QueuesRow/InputCol/V"]
 text = "INPUT"
 horizontal_alignment = 1
+theme_override_font_sizes/font_size = 14
 
-[node name="Slots" type="HBoxContainer" parent="Panel/Vbox/QueuesRow/InputCol"]
+[node name="Slots" type="HBoxContainer" parent="Panel/Vbox/QueuesRow/InputCol/V"]
 size_flags_vertical = 3
+alignment = 1
+theme_override_constants/separation = 4
 
-[node name="TakeBtn" type="Button" parent="Panel/Vbox/QueuesRow/InputCol"]
+[node name="TakeBtn" type="Button" parent="Panel/Vbox/QueuesRow/InputCol/V"]
 text = "Take input"
 
-[node name="ProcessingCol" type="VBoxContainer" parent="Panel/Vbox/QueuesRow"]
+[node name="ProcessingCol" type="PanelContainer" parent="Panel/Vbox/QueuesRow"]
 size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("ProcessingColStyle")
 
-[node name="Header" type="Label" parent="Panel/Vbox/QueuesRow/ProcessingCol"]
+[node name="V" type="VBoxContainer" parent="Panel/Vbox/QueuesRow/ProcessingCol"]
+theme_override_constants/separation = 6
+
+[node name="Header" type="Label" parent="Panel/Vbox/QueuesRow/ProcessingCol/V"]
 text = "PROCESSING"
 horizontal_alignment = 1
+theme_override_font_sizes/font_size = 14
 
-[node name="Slots" type="HBoxContainer" parent="Panel/Vbox/QueuesRow/ProcessingCol"]
+[node name="Slots" type="HBoxContainer" parent="Panel/Vbox/QueuesRow/ProcessingCol/V"]
 size_flags_vertical = 3
-
-[node name="FlameRow" type="HBoxContainer" parent="Panel/Vbox/QueuesRow/ProcessingCol"]
 alignment = 1
+theme_override_constants/separation = 4
 
-[node name="Flame" type="TextureRect" parent="Panel/Vbox/QueuesRow/ProcessingCol/FlameRow"]
-custom_minimum_size = Vector2(20, 20)
+[node name="FlameRow" type="HBoxContainer" parent="Panel/Vbox/QueuesRow/ProcessingCol/V"]
+alignment = 1
+theme_override_constants/separation = 6
+
+[node name="Flame" type="TextureRect" parent="Panel/Vbox/QueuesRow/ProcessingCol/V/FlameRow"]
+custom_minimum_size = Vector2(28, 28)
 expand_mode = 1
 stretch_mode = 5
 visible = false
 
-[node name="Countdown" type="Label" parent="Panel/Vbox/QueuesRow/ProcessingCol/FlameRow"]
+[node name="Countdown" type="Label" parent="Panel/Vbox/QueuesRow/ProcessingCol/V/FlameRow"]
 text = ""
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(1, 0.85, 0.6, 1)
 
-[node name="OutputCol" type="VBoxContainer" parent="Panel/Vbox/QueuesRow"]
+[node name="OutputCol" type="PanelContainer" parent="Panel/Vbox/QueuesRow"]
 size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("OutputColStyle")
 
-[node name="Header" type="Label" parent="Panel/Vbox/QueuesRow/OutputCol"]
+[node name="V" type="VBoxContainer" parent="Panel/Vbox/QueuesRow/OutputCol"]
+theme_override_constants/separation = 6
+
+[node name="Header" type="Label" parent="Panel/Vbox/QueuesRow/OutputCol/V"]
 text = "OUTPUT"
 horizontal_alignment = 1
+theme_override_font_sizes/font_size = 14
 
-[node name="Slots" type="HBoxContainer" parent="Panel/Vbox/QueuesRow/OutputCol"]
+[node name="Slots" type="HBoxContainer" parent="Panel/Vbox/QueuesRow/OutputCol/V"]
 size_flags_vertical = 3
+alignment = 1
+theme_override_constants/separation = 4
 
-[node name="TakeBtn" type="Button" parent="Panel/Vbox/QueuesRow/OutputCol"]
+[node name="TakeBtn" type="Button" parent="Panel/Vbox/QueuesRow/OutputCol/V"]
 text = "Take output"
 
 [node name="DepositPanel" type="VBoxContainer" parent="Panel/Vbox"]
+theme_override_constants/separation = 4
