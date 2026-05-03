@@ -75,6 +75,13 @@ func _physics_process(delta: float) -> void:
 		velocity.x = 0.0
 		velocity.z = 0.0
 	move_and_slide()
+	# Self-heal: voxel chunks unload while the player is far away, leaving the
+	# NPC standing on nothing. They fall into the void and stay there once the
+	# player returns. Snap them back to spawn if they've dropped unreasonably
+	# far below it.
+	if global_position.y < _spawn_pos.y - 8.0:
+		global_position = _spawn_pos
+		velocity = Vector3.ZERO
 	# If we've drifted too far from spawn, redirect inward right away.
 	var horiz: Vector2 = Vector2(global_position.x - _spawn_pos.x, global_position.z - _spawn_pos.z)
 	if horiz.length() > wander_radius:

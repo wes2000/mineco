@@ -8,12 +8,12 @@ class_name IslandVoxelGenerator
 # the claim system reads to know how rich an island is (1 = poor, 5 = elite).
 # Y stays inside the existing voxel terrain bounds AABB(-208 .. +208 on x/z).
 const CLAIM_ISLANDS: Array = [
-	{"id": "kelp_cay",     "name": "Kelp Cay",       "tier": 1, "center": Vector2( 165.0,  -90.0), "radius": 22.0, "height": 11.0},
-	{"id": "tin_atoll",    "name": "Tin Atoll",      "tier": 1, "center": Vector2(-145.0,  -55.0), "radius": 22.0, "height": 11.0},
-	{"id": "smelters_isle","name": "Smelter's Isle", "tier": 2, "center": Vector2( 175.0,  130.0), "radius": 26.0, "height": 14.0},
-	{"id": "ironback",     "name": "Ironback",       "tier": 3, "center": Vector2(-160.0,  155.0), "radius": 28.0, "height": 16.0},
-	{"id": "veinmount",    "name": "Veinmount",      "tier": 4, "center": Vector2( -25.0, -185.0), "radius": 30.0, "height": 19.0},
-	{"id": "diadem_keep",  "name": "Diadem Keep",    "tier": 5, "center": Vector2(-185.0,  -15.0), "radius": 34.0, "height": 22.0},
+	{"id": "kelp_cay",     "name": "Kelp Cay",       "tier": 1, "center": Vector2( 250.0, -130.0), "radius": 24.0, "height": 11.0},
+	{"id": "tin_atoll",    "name": "Tin Atoll",      "tier": 1, "center": Vector2(-220.0,  -90.0), "radius": 24.0, "height": 11.0},
+	{"id": "smelters_isle","name": "Smelter's Isle", "tier": 2, "center": Vector2( 270.0,  190.0), "radius": 28.0, "height": 14.0},
+	{"id": "ironback",     "name": "Ironback",       "tier": 3, "center": Vector2(-240.0,  220.0), "radius": 30.0, "height": 16.0},
+	{"id": "veinmount",    "name": "Veinmount",      "tier": 4, "center": Vector2( -40.0, -290.0), "radius": 32.0, "height": 19.0},
+	{"id": "diadem_keep",  "name": "Diadem Keep",    "tier": 5, "center": Vector2(-296.0,  -30.0), "radius": 36.0, "height": 22.0},
 ]
 
 # --- Tunables (editable on the .tres in inspector) ---

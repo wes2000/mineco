@@ -4,9 +4,9 @@ extends Node
 ## fog; on first exploration we sample the terrain Y at the cell's center
 ## and assign a height-banded color.
 
-const WORLD_RADIUS_M: float = 200.0   # half-extent of map coverage
+const WORLD_RADIUS_M: float = 360.0   # half-extent of map coverage
 const CELL_SIZE_M: float = 4.0
-const GRID_SIZE: int = int((WORLD_RADIUS_M * 2.0) / CELL_SIZE_M)   # 100x100
+const GRID_SIZE: int = int((WORLD_RADIUS_M * 2.0) / CELL_SIZE_M)   # 180x180
 const EXPLORE_RADIUS_CELLS: int = 7   # 28m radius around the player
 const FOG_COLOR: Color = Color(0.06, 0.07, 0.10, 1)
 
@@ -73,12 +73,13 @@ func mark_explored(world_pos: Vector3) -> void:
 			var idx: int = gz * GRID_SIZE + gx
 			if _explored[idx] != 0:
 				continue
-			# Try to sample terrain. If the chunk hasn't loaded yet we get a
-			# sentinel back — skip the cell so it stays as fog and gets
-			# retried on the next mark_explored call.
+			# Try to sample terrain. NAN means "couldn't sample, retry later"
+			# (e.g. chunks haven't streamed in over a non-water cell). Any real
+			# float is a height — including very negative values, which are
+			# the seabed under open water and color as COLOR_WATER.
 			var w: Vector2 = grid_to_world(gx, gz)
 			var y: float = _sample_ground_y(w.x, w.y, explorer_at_sea)
-			if y <= -0.5:
+			if is_nan(y):
 				continue
 			_explored[idx] = 1
 			_explored_cell_count += 1
@@ -104,17 +105,23 @@ func _color_for_height(y: float) -> Color:
 	return COLOR_SNOW
 
 func _sample_ground_y(x: float, z: float, water_if_no_hit: bool) -> float:
+	# Returns a height in meters, or NAN if the cell can't be classified yet
+	# (chunks not streamed). Returning NAN lets the caller skip and retry;
+	# every other return value (including very negative seabed values) is a
+	# real height that should be colored.
 	var terrain: VoxelTerrain = get_tree().current_scene.find_child("VoxelTerrain", true, false) as VoxelTerrain
 	if terrain == null:
-		return 0.0 if water_if_no_hit else -1.0
+		return 0.0 if water_if_no_hit else NAN
 	var tool: VoxelTool = terrain.get_voxel_tool()
 	if tool == null:
-		return 0.0 if water_if_no_hit else -1.0
+		return 0.0 if water_if_no_hit else NAN
 	var result: VoxelRaycastResult = tool.raycast(Vector3(x, 100.0, z), Vector3(0, -1, 0), 200.0)
 	if result == null:
 		# No terrain in this column. If the explorer is at sea level we can
 		# safely call it water; otherwise the chunk just hasn't streamed in
 		# yet (e.g. mountain edge) and we should retry next call.
-		return 0.0 if water_if_no_hit else -1.0
-	# Solid voxel cell midpoint — close enough for biome tinting.
+		return 0.0 if water_if_no_hit else NAN
+	# Solid voxel cell midpoint — close enough for biome tinting. The seabed
+	# under open water sits well below 0, which _color_for_height maps to
+	# COLOR_WATER, so we don't need to special-case it here.
 	return float(result.position.y) + 0.5

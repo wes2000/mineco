@@ -53,8 +53,8 @@ shadow_blur = 2.0
 [node name="VoxelTerrain" type="VoxelTerrain" parent="." unique_id=1048499164]
 generator = ExtResource("3_gen")
 mesher = SubResource("Mesher_1")
-bounds = AABB(-208, -112, -208, 416, 224, 416)
-max_view_distance = 256
+bounds = AABB(-352, -112, -352, 704, 224, 704)
+max_view_distance = 384
 material_override = ExtResource("2_mat")
 run_stream_in_editor = false
 

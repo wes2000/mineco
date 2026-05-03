@@ -115,9 +115,16 @@ func _on_hit_frame() -> void:
 		return  # whiff: no audio, no effect
 	var collider = hit.collider
 	if collider is OreDeposit:
+		var hit_pos: Vector3 = (collider as Node3D).global_position
+		# Land claims gate mining on the offshore islands. If this deposit
+		# sits inside a claim island that the player doesn't own, refuse the
+		# swing (still play the audio so the feedback is "you tried").
+		if _is_locked_claim_deposit(hit_pos):
+			_ore_audio.play()
+			return
 		if not collider.chunk_broken.is_connected(_on_chunk_broken):
 			collider.chunk_broken.connect(_on_chunk_broken)
-		_last_ore_hit_pos = (collider as Node3D).global_position
+		_last_ore_hit_pos = hit_pos
 		collider.take_damage(_shovel.get_effective_damage())
 		_ore_audio.play()
 	else:
@@ -143,6 +150,23 @@ func _on_chunk_broken(material: int, amount: int, _stage: int) -> void:
 	if pickup_id != -1:
 		material_pickup.emit(pickup_id, amount)
 	_credit_owned_claim(material, amount)
+
+func _is_locked_claim_deposit(world_pos: Vector3) -> bool:
+	# Returns true if the deposit at world_pos sits inside a claim island
+	# that the player does NOT currently own. Owned-island deposits and
+	# main-island deposits return false (mining allowed).
+	var owned_id: String = ""
+	var npc: Node = get_tree().get_first_node_in_group("claim_vendor_npcs")
+	if npc != null:
+		var board: Node = npc.get("claim_board")
+		if board != null and board.has_owned():
+			owned_id = String(board.owned_island().id)
+	for isle: Dictionary in IslandVoxelGenerator.CLAIM_ISLANDS:
+		var dx: float = world_pos.x - float(isle.center.x)
+		var dz: float = world_pos.z - float(isle.center.y)
+		if sqrt(dx * dx + dz * dz) <= float(isle.radius):
+			return String(isle.id) != owned_id
+	return false
 
 func _credit_owned_claim(ore_type: int, amount: int) -> void:
 	# Find the claim vendor's board (one per game) and let it decide whether
