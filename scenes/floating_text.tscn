@@ -1,0 +1,14 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/floating_text.gd" id="1"]
+
+[node name="FloatingText" type="Label3D"]
+text = "+1 Stone"
+font_size = 48
+outline_size = 16
+modulate = Color(1, 1, 1, 1)
+billboard = 1
+no_depth_test = true
+fixed_size = true
+pixel_size = 0.004
+script = ExtResource("1")

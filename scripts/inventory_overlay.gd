@@ -42,6 +42,7 @@ var _slots: Dictionary = {}   # material_id -> Panel
 
 func _ready() -> void:
 	visible = false
+	add_to_group("inventory_overlay")
 	_build_panel()
 
 func _input(event: InputEvent) -> void:

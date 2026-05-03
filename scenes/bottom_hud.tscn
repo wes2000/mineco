@@ -54,12 +54,13 @@ anchor_left = 0.5
 anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
-offset_left = -240.0
+offset_left = 0.0
 offset_top = -100.0
-offset_right = 240.0
+offset_right = 0.0
 offset_bottom = -16.0
 grow_horizontal = 2
 grow_vertical = 0
+size_flags_horizontal = 4
 theme_override_styles/panel = SubResource("PanelStyle")
 
 [node name="Vbox" type="VBoxContainer" parent="Panel"]

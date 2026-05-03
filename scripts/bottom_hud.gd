@@ -28,6 +28,8 @@ static var _slot_style_selected: StyleBoxFlat = null
 var _slots: Array = []   # current slot Panel nodes (active set)
 var _stamina: Node = null
 
+const MODAL_GROUPS: Array[String] = ["machine_ui", "pause_menu", "inventory_overlay"]
+
 func _ready() -> void:
 	_init_styles()
 	BuildController.active_changed.connect(_on_build_mode_changed)
@@ -41,6 +43,17 @@ func _ready() -> void:
 		_stamina_bar.min_value = 0.0
 		_stamina_bar.max_value = float(_stamina.max_value)
 		_stamina_bar.value = _stamina.current
+	set_process(true)
+
+func _process(_delta: float) -> void:
+	# Hide while any modal UI is open so the hotbar doesn't overlap their panels.
+	var any_modal: bool = false
+	for group_name: String in MODAL_GROUPS:
+		var node: Node = get_tree().get_first_node_in_group(group_name)
+		if node != null and node is Control and (node as Control).visible:
+			any_modal = true
+			break
+	visible = not any_modal
 
 func _on_stamina_changed(current: float, max_v: int) -> void:
 	_stamina_bar.max_value = float(max_v)

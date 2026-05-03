@@ -31,6 +31,7 @@ var gold_bar: int = 0
 
 signal inventory_changed(s: int, i: int, g: int)
 signal extended_inventory_changed
+signal material_pickup(material_id: int, amount: int)
 
 func _ready() -> void:
 	_player = get_parent() as CharacterBody3D
@@ -73,11 +74,20 @@ func _on_hit_frame() -> void:
 		_dirt_audio.play()
 
 func _on_chunk_broken(material: int, amount: int, _stage: int) -> void:
+	var pickup_id: int = -1
 	match material:
-		OreDeposit.OreType.STONE: stone += amount
-		OreDeposit.OreType.IRON:  iron  += amount
-		OreDeposit.OreType.GOLD:  gold  += amount
+		OreDeposit.OreType.STONE:
+			stone += amount
+			pickup_id = MaterialDefs.MaterialId.STONE
+		OreDeposit.OreType.IRON:
+			iron  += amount
+			pickup_id = MaterialDefs.MaterialId.IRON_ORE
+		OreDeposit.OreType.GOLD:
+			gold  += amount
+			pickup_id = MaterialDefs.MaterialId.GOLD_ORE
 	inventory_changed.emit(stone, iron, gold)
+	if pickup_id != -1:
+		material_pickup.emit(pickup_id, amount)
 
 func add_factory_material(material_id: int, amount: int) -> void:
 	# Used by FactoryDrop pickup. material_id is MaterialDefs.MaterialId enum value.
@@ -93,3 +103,4 @@ func add_factory_material(material_id: int, amount: int) -> void:
 		MaterialDefs.MaterialId.GOLD_BAR: gold_bar += amount
 	inventory_changed.emit(stone, iron, gold)
 	extended_inventory_changed.emit()
+	material_pickup.emit(material_id, amount)
