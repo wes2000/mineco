@@ -3,7 +3,7 @@ extends Node3D
 ## range so distant rocks/buildings/dock planks don't pop into view before
 ## the surrounding voxel terrain has had time to mesh.
 
-@export var range_end: float = 384.0
+@export var range_end: float = 224.0
 @export var fade_margin: float = 24.0
 
 func _ready() -> void:

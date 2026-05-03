@@ -24,9 +24,10 @@ enum State { WALK, IDLE }
 
 # Distance past which the NPC is hidden (visibility_range_end) and physics
 # is parked at spawn — keeps the player from seeing distant NPCs falling
-# through unstreamed chunks before they pop into view.
-const VISIBILITY_DIST: float = 256.0
-const PHYSICS_ACTIVE_DIST: float = 96.0
+# through unstreamed chunks before they pop into view. Kept well inside
+# the terrain mesher's reliable-near-player radius.
+const VISIBILITY_DIST: float = 160.0
+const PHYSICS_ACTIVE_DIST: float = 80.0
 
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 var _spawn_pos: Vector3

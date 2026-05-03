@@ -11,10 +11,12 @@ enum OreType { STONE, IRON, GOLD }
 @export var ore_per_stage_array: Array[int] = []
 @export var size_label: String = "medium"
 
-# Distance past which the deposit mesh is culled. Stays well inside the
-# voxel terrain's max_view_distance so the surrounding terrain has time to
-# mesh before the deposit pops into view.
-const VISIBILITY_RANGE_END: float = 384.0
+# Distance past which the deposit mesh is culled. Kept well inside the
+# voxel terrain's max_view_distance AND inside the distance the mesher can
+# reliably keep up with at sailing speed — far enough past visibility_range
+# means terrain at that range has been queued for ages but might still not
+# be meshed yet, leading to floating deposits over un-meshed islands.
+const VISIBILITY_RANGE_END: float = 224.0
 const VISIBILITY_FADE_MARGIN: float = 24.0
 
 @onready var _mesh: MeshInstance3D = $MeshInstance3D
