@@ -28,7 +28,7 @@ static var _slot_style_selected: StyleBoxFlat = null
 var _slots: Array = []   # current slot Panel nodes (active set)
 var _stamina: Node = null
 
-const MODAL_GROUPS: Array[String] = ["machine_ui", "pause_menu", "inventory_overlay", "vendor_ui"]
+const MODAL_GROUPS: Array[String] = ["machine_ui", "pause_menu", "inventory_overlay", "vendor_ui", "contract_ui"]
 
 func _ready() -> void:
 	_init_styles()

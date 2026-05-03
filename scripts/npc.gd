@@ -9,6 +9,10 @@ extends CharacterBody3D
 @export var idle_time_min: float = 1.5
 @export var idle_time_max: float = 3.5
 @export var is_vendor: bool = false
+@export var is_contract_vendor: bool = false
+
+# Set on _ready when is_contract_vendor — the per-vendor contract state.
+var contract_board: ContractBoard = null
 
 enum State { WALK, IDLE }
 
@@ -26,6 +30,11 @@ func _ready() -> void:
 	# town spawner only has to flip is_vendor and we'll show up next frame.
 	if is_vendor:
 		add_to_group("vendor_npcs")
+	if is_contract_vendor:
+		add_to_group("contract_vendor_npcs")
+		contract_board = ContractBoard.new()
+		contract_board.name = "ContractBoard"
+		add_child(contract_board)
 	_begin_walk()
 
 func _physics_process(delta: float) -> void:

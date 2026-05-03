@@ -29,6 +29,7 @@
 [ext_resource type="PackedScene" path="res://scenes/gold_display.tscn" id="32_gold"]
 [ext_resource type="PackedScene" path="res://scenes/vendor_ui.tscn" id="33_vend"]
 [ext_resource type="PackedScene" path="res://scenes/scanner_overlay.tscn" id="34_scan"]
+[ext_resource type="PackedScene" path="res://scenes/contract_ui.tscn" id="35_contract"]
 
 [sub_resource type="VoxelMesherTransvoxel" id="Mesher_1"]
 
@@ -87,6 +88,8 @@ autoplay = true
 [node name="VendorUI" parent="HUD" instance=ExtResource("33_vend")]
 
 [node name="ScannerOverlay" parent="HUD" instance=ExtResource("34_scan")]
+
+[node name="ContractUI" parent="HUD" instance=ExtResource("35_contract")]
 
 [node name="PauseMenu" parent="HUD" instance=ExtResource("26_menu")]
 

@@ -26,8 +26,9 @@ const NPC_SHIRT_COLORS: Array[Color] = [
 	Color(0.40, 0.65, 0.35),   # green
 	Color(0.85, 0.65, 0.30),   # yellow
 ]
-# Index into NPC_OFFSETS / NPC_SHIRT_COLORS for the vendor.
+# Indices into NPC_OFFSETS / NPC_SHIRT_COLORS for special NPCs.
 const VENDOR_INDEX: int = 0
+const CONTRACT_VENDOR_INDEX: int = 1
 
 # Sink the hut bottom slightly into the terrain so that voxel surface
 # irregularities don't leave visible gaps under the box.
@@ -54,10 +55,12 @@ func _spawn() -> void:
 	for i: int in NPC_OFFSETS.size():
 		var offset: Vector2 = NPC_OFFSETS[i]
 		var npc: Npc = npc_scene.instantiate() as Npc
-		# Set is_vendor BEFORE add_child so npc._ready() picks it up and joins
-		# the vendor_npcs group on first entry to the tree.
+		# Set vendor flags BEFORE add_child so npc._ready() picks them up and
+		# joins the right groups on first entry to the tree.
 		if i == VENDOR_INDEX:
 			npc.is_vendor = true
+		elif i == CONTRACT_VENDOR_INDEX:
+			npc.is_contract_vendor = true
 		get_tree().current_scene.add_child(npc)
 		var ground_y: float = await _find_ground_y_robust(offset.x, offset.y)
 		npc.global_position = Vector3(offset.x, ground_y + 1.5, offset.y)
@@ -66,10 +69,16 @@ func _spawn() -> void:
 		if body_mesh != null:
 			var shirt_mat: StandardMaterial3D = StandardMaterial3D.new()
 			if i == VENDOR_INDEX:
-				# Vendor wears a gold/yellow shirt + emissive trim so they stand out.
+				# Sell vendor: gold shirt with warm emissive trim.
 				shirt_mat.albedo_color = Color(0.95, 0.78, 0.25, 1)
 				shirt_mat.emission_enabled = true
 				shirt_mat.emission = Color(0.6, 0.45, 0.10, 1)
+				shirt_mat.emission_energy_multiplier = 0.4
+			elif i == CONTRACT_VENDOR_INDEX:
+				# Contract vendor: dark navy "business attire" with cool blue trim.
+				shirt_mat.albedo_color = Color(0.20, 0.30, 0.55, 1)
+				shirt_mat.emission_enabled = true
+				shirt_mat.emission = Color(0.10, 0.30, 0.55, 1)
 				shirt_mat.emission_energy_multiplier = 0.4
 			else:
 				shirt_mat.albedo_color = NPC_SHIRT_COLORS[i % NPC_SHIRT_COLORS.size()]
