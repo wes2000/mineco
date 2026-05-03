@@ -15,7 +15,6 @@ const STANDARD_KEYBINDS: Array = [
 	["E", "interact"],
 	["Tab", "inventory (hold)"],
 	["Esc", "menu / close"],
-	["F1", "admin (menu)"],
 	["B", "build mode"],
 ]
 const BUILD_KEYBINDS: Array = [

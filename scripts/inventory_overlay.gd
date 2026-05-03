@@ -3,7 +3,7 @@ extends Control
 ## a 3×3 slot grid (T1/T2/T3 × Stone/Iron/Gold). Mouse stays captured —
 ## the player can keep moving and looking around while peeking at inventory.
 
-const SLOT_SIZE: Vector2 = Vector2(64, 64)
+const SLOT_SIZE: Vector2 = Vector2(36, 36)
 
 const ITEM_COLORS: Dictionary = {
 	0: Color(0.6, 0.6, 0.6), 1: Color(0.7, 0.35, 0.25), 2: Color(0.4, 0.4, 0.4),
@@ -103,10 +103,10 @@ func _build_panel() -> void:
 	_panel.anchor_top = 0.5
 	_panel.anchor_right = 0.5
 	_panel.anchor_bottom = 0.5
-	_panel.offset_left = -260
-	_panel.offset_top = -180
-	_panel.offset_right = 260
-	_panel.offset_bottom = 180
+	_panel.offset_left = -180
+	_panel.offset_top = -130
+	_panel.offset_right = 180
+	_panel.offset_bottom = 130
 	_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
 	_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -188,18 +188,18 @@ func _make_slot(material_id: int) -> Panel:
 	var lbl: Label = Label.new()
 	lbl.name = "CountLabel"
 	lbl.text = "0"
-	lbl.add_theme_font_size_override("font_size", 14)
+	lbl.add_theme_font_size_override("font_size", 11)
 	lbl.add_theme_color_override("font_color", Color.WHITE)
 	lbl.add_theme_color_override("font_outline_color", Color.BLACK)
-	lbl.add_theme_constant_override("outline_size", 5)
+	lbl.add_theme_constant_override("outline_size", 4)
 	lbl.anchor_left = 1.0
 	lbl.anchor_top = 1.0
 	lbl.anchor_right = 1.0
 	lbl.anchor_bottom = 1.0
-	lbl.offset_left = -32
-	lbl.offset_top = -22
-	lbl.offset_right = -3
-	lbl.offset_bottom = -3
+	lbl.offset_left = -22
+	lbl.offset_top = -16
+	lbl.offset_right = -2
+	lbl.offset_bottom = -2
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	lbl.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE

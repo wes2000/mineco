@@ -30,8 +30,13 @@ var _link_source_port: Port = null   # set after first click on an output port
 
 var _ghost_node: Node3D = null
 var _link_preview: MeshInstance3D = null
+var _link_target_indicator: MeshInstance3D = null   # locks onto the port the cursor is over
+var _link_source_indicator: MeshInstance3D = null   # marks the locked source port (after first click)
 var _player: Node3D = null
 var _player_camera: Camera3D = null
+
+const PORT_LOCK_COLOR_TARGET: Color = Color(0.25, 1.0, 0.4, 1)
+const PORT_LOCK_COLOR_SOURCE: Color = Color(0.45, 0.85, 1.0, 1)
 
 func _ready() -> void:
 	set_process(true)
@@ -47,7 +52,7 @@ func _process(_delta: float) -> void:
 		_clear_ghost()
 		_update_link_preview()
 	else:
-		_clear_link_preview()
+		_clear_all_link_visuals()
 		_update_ghost_position()
 
 func _input(event: InputEvent) -> void:
@@ -55,7 +60,7 @@ func _input(event: InputEvent) -> void:
 		active = not active
 		if not active:
 			_clear_ghost()
-			_clear_link_preview()
+			_clear_all_link_visuals()
 			_link_source_port = null
 			link_state_changed.emit(false)
 		return
@@ -162,45 +167,59 @@ func _apply_ghost_color(placeable: bool) -> void:
 # --- Belt link mode ---
 
 func _update_link_preview() -> void:
+	# Always update the source-port marker if we have one locked in.
+	if _link_source_port != null:
+		_show_source_indicator(_link_source_port.world_position())
+	else:
+		_hide_source_indicator()
+	# Find what (if anything) we're aiming at on the factory layer.
+	var hit: Dictionary = _raycast(FACTORY_LAYER_MASK)
+	var bld: Building = null
+	var hovered_port: Port = null
+	var port_kind_to_find: int = Port.KIND_OUTPUT if _link_source_port == null else Port.KIND_INPUT
+	if not hit.is_empty():
+		bld = _hit_to_building(hit.collider as Node)
+		if bld != null:
+			var p: Port = bld.find_closest_port(hit.position, port_kind_to_find)
+			if p != null and p.is_free() and p.world_position().distance_to(hit.position) <= PORT_PICK_RADIUS:
+				hovered_port = p
+	# Update target lock-on indicator
+	if hovered_port != null:
+		_show_target_indicator(hovered_port.world_position())
+	else:
+		_hide_target_indicator()
+	# Update preview line (only when we already have a source)
 	if _link_source_port == null:
 		_clear_link_preview()
 		return
-	# Show a simple line from the source port to whatever output/cursor we're aiming at.
-	var hit: Dictionary = _raycast(FACTORY_LAYER_MASK)
 	var end_pos: Vector3
-	if hit.is_empty():
-		# Fall back to terrain raycast for visualization
+	if hovered_port != null:
+		end_pos = hovered_port.world_position()
+	elif not hit.is_empty():
+		end_pos = hit.position
+	else:
 		var t_hit: Dictionary = _raycast(TERRAIN_LAYER_MASK)
 		if t_hit.is_empty():
 			_clear_link_preview()
 			return
 		end_pos = t_hit.position
-	else:
-		var bld: Building = _hit_to_building(hit)
-		if bld != null:
-			var port: Port = bld.find_closest_port(hit.position, Port.KIND_INPUT)
-			if port != null and port.world_position().distance_to(hit.position) <= PORT_PICK_RADIUS:
-				end_pos = port.world_position()
-			else:
-				end_pos = hit.position
-		else:
-			end_pos = hit.position
-	_draw_link_preview(_link_source_port.world_position(), end_pos)
+	_draw_link_preview(_link_source_port.world_position(), end_pos, hovered_port != null)
 
-func _draw_link_preview(from: Vector3, to: Vector3) -> void:
+func _draw_link_preview(from: Vector3, to: Vector3, locked_to_port: bool = false) -> void:
 	if _link_preview == null:
 		_link_preview = MeshInstance3D.new()
 		_link_preview.set_process(false)
 		var mat: StandardMaterial3D = StandardMaterial3D.new()
-		mat.albedo_color = Color(0.4, 0.9, 0.4, 0.5)
 		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		_link_preview.material_override = mat
 		get_tree().current_scene.add_child(_link_preview)
+	var mat2: StandardMaterial3D = _link_preview.material_override as StandardMaterial3D
+	mat2.albedo_color = Color(0.25, 1.0, 0.4, 0.75) if locked_to_port else Color(1.0, 0.9, 0.3, 0.45)
 	var mid: Vector3 = (from + to) * 0.5
 	var diff: Vector3 = to - from
 	var len: float = max(diff.length(), 0.01)
 	var box: BoxMesh = BoxMesh.new()
-	box.size = Vector3(0.1, 0.1, len)
+	box.size = Vector3(0.08, 0.08, len)
 	_link_preview.mesh = box
 	_link_preview.global_position = mid
 	_link_preview.look_at(to, Vector3.UP)
@@ -210,11 +229,57 @@ func _clear_link_preview() -> void:
 		_link_preview.queue_free()
 		_link_preview = null
 
+# --- Port lock-on indicators ---
+
+func _ensure_indicator(existing: MeshInstance3D, color: Color) -> MeshInstance3D:
+	if existing != null:
+		return existing
+	var mi: MeshInstance3D = MeshInstance3D.new()
+	var sm: SphereMesh = SphereMesh.new()
+	sm.radius = 0.18
+	sm.height = 0.36
+	mi.mesh = sm
+	var mat: StandardMaterial3D = StandardMaterial3D.new()
+	mat.albedo_color = color
+	mat.emission_enabled = true
+	mat.emission = color
+	mat.emission_energy_multiplier = 2.5
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	var transparent_color: Color = color
+	transparent_color.a = 0.85
+	mat.albedo_color = transparent_color
+	mi.material_override = mat
+	get_tree().current_scene.add_child(mi)
+	return mi
+
+func _show_target_indicator(world_pos: Vector3) -> void:
+	_link_target_indicator = _ensure_indicator(_link_target_indicator, PORT_LOCK_COLOR_TARGET)
+	_link_target_indicator.global_position = world_pos
+	_link_target_indicator.visible = true
+
+func _hide_target_indicator() -> void:
+	if _link_target_indicator != null:
+		_link_target_indicator.visible = false
+
+func _show_source_indicator(world_pos: Vector3) -> void:
+	_link_source_indicator = _ensure_indicator(_link_source_indicator, PORT_LOCK_COLOR_SOURCE)
+	_link_source_indicator.global_position = world_pos
+	_link_source_indicator.visible = true
+
+func _hide_source_indicator() -> void:
+	if _link_source_indicator != null:
+		_link_source_indicator.visible = false
+
+func _clear_all_link_visuals() -> void:
+	_clear_link_preview()
+	_hide_target_indicator()
+	_hide_source_indicator()
+
 func _try_link_click() -> void:
 	var hit: Dictionary = _raycast(FACTORY_LAYER_MASK)
 	if hit.is_empty():
 		return
-	var bld: Building = _hit_to_building(hit)
+	var bld: Building = _hit_to_building(hit.collider as Node)
 	if bld == null:
 		return
 	if _link_source_port == null:
@@ -237,9 +302,8 @@ func _try_link_click() -> void:
 		_link_source_port = null
 		link_state_changed.emit(false)
 
-func _hit_to_building(hit: Dictionary) -> Building:
+func _hit_to_building(n: Node) -> Building:
 	# Climb the parent chain looking for a Building (StaticBody is a child of the building Node3D).
-	var n: Node = hit.get("collider")
 	while n != null:
 		if n is Building:
 			return n
@@ -322,7 +386,7 @@ func _try_remove() -> void:
 		var link: BeltLink = collider.get_meta("belt_link") as BeltLink
 		FactoryWorld.remove_link(link)
 		return
-	var bld: Building = _hit_to_building(hit)
+	var bld: Building = _hit_to_building(hit.collider as Node)
 	if bld != null:
 		# Find any registered cell of this building and remove it
 		FactoryWorld.remove(bld.origin_cell)

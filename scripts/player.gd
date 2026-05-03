@@ -34,11 +34,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		var menu: Node = get_tree().get_first_node_in_group("pause_menu")
 		if menu != null and menu.has_method("toggle"):
 			menu.toggle()
-	elif event.is_action_pressed("admin_toggle"):
-		# F1 opens the menu jumped to the Admin tab.
-		var menu: Node = get_tree().get_first_node_in_group("pause_menu")
-		if menu != null and menu.has_method("open"):
-			menu.open(4)   # PauseMenu.TAB_ADMIN
 	elif event.is_action_pressed("machine_interact"):
 		_try_open_machine_ui()
 
