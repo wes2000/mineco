@@ -43,6 +43,7 @@ func generate() -> void:
 		return
 	_scatter_surface_rocks()
 	_scatter_underground_by_rank(terrain)
+	_scatter_claim_island_ore()
 
 func _scatter_surface_rocks() -> void:
 	# Use the deterministic island height directly — independent of voxel chunk streaming.
@@ -137,6 +138,51 @@ func _instantiate_deposit(prefab: PackedScene, pos: Vector3) -> void:
 	var deposit := prefab.instantiate() as OreDeposit
 	deposit.position = pos
 	add_child(deposit)
+
+# Scatter ore on each offshore claim island per its tier. Tiered counts come
+# from ClaimDef.TIER_TABLE so the vendor's "expected yield" matches what's
+# actually placed in the world. Deposits sit a few meters under the surface
+# of each island, sampled against the deterministic _height function so this
+# works before voxel chunks have streamed in.
+func _scatter_claim_island_ore() -> void:
+	var stone_pool: Array = [stone_small_scn, stone_medium_scn, stone_large_scn]
+	var iron_pool: Array = [iron_small_scn, iron_large_scn]
+	var gold_pool: Array = [gold_small_scn, gold_large_scn]
+	var total_placed: int = 0
+	for isle: Dictionary in IslandVoxelGenerator.CLAIM_ISLANDS:
+		var info: Dictionary = ClaimDef.tier(isle.tier)
+		var deps: Dictionary = info.deposits
+		var placed: int = 0
+		placed += _scatter_ring_deposits(isle, gold_pool,  deps.gold)
+		placed += _scatter_ring_deposits(isle, iron_pool,  deps.iron)
+		placed += _scatter_ring_deposits(isle, stone_pool, deps.stone)
+		total_placed += placed
+		print("OreGenerator: %s (T%d) — placed %d deposits" % [isle.name, isle.tier, placed])
+	print("OreGenerator: claim islands total %d deposits" % total_placed)
+
+func _scatter_ring_deposits(isle: Dictionary, prefab_pool: Array, count: int) -> int:
+	if count <= 0 or prefab_pool.is_empty():
+		return 0
+	var placed: int = 0
+	var attempts: int = 0
+	# Keep deposits inside ~85% of the island radius so they're under solid
+	# voxel rather than poking out of the beach edge.
+	var max_r: float = isle.radius * 0.85
+	while placed < count and attempts < count * 12:
+		attempts += 1
+		var theta: float = _rng.randf() * TAU
+		var r: float = sqrt(_rng.randf()) * max_r
+		var x: float = isle.center.x + cos(theta) * r
+		var z: float = isle.center.y + sin(theta) * r
+		var surface_y: float = _island_generator._height(x, z)
+		# Need at least ~3m of solid above the deposit so the player has to dig.
+		if surface_y < 3.0:
+			continue
+		var depth: float = _rng.randf_range(2.5, max(2.6, surface_y - 1.5))
+		var y: float = surface_y - depth
+		_instantiate_deposit(prefab_pool.pick_random(), Vector3(x, y, z))
+		placed += 1
+	return placed
 
 func _random_underground_position() -> Vector3:
 	var theta: float = _rng.randf() * TAU

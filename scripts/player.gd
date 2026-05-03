@@ -146,6 +146,13 @@ func _try_open_machine_ui() -> void:
 		if cu != null and cu.has_method("open"):
 			cu.call("open", contract_vendor.contract_board)
 			return
+	# 1b2) Claim vendor NPC within 4m? Open the land-claim board.
+	var claim_vendor: Npc = _find_nearest_in_group("claim_vendor_npcs", 4.0)
+	if claim_vendor != null and claim_vendor.claim_board != null:
+		var clu: Node = get_tree().get_first_node_in_group("claim_vendor_ui")
+		if clu != null and clu.has_method("open"):
+			clu.call("open", claim_vendor.claim_board)
+			return
 	# 1c) Boat vendor NPC within 4m? Open the boat vendor window.
 	var boat_vendor: Npc = _find_nearest_in_group("boat_vendor_npcs", 4.0)
 	if boat_vendor != null:

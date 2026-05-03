@@ -11,9 +11,14 @@ extends CharacterBody3D
 @export var is_vendor: bool = false
 @export var is_contract_vendor: bool = false
 @export var is_boat_vendor: bool = false
+@export var is_claim_vendor: bool = false
 
 # Set on _ready when is_contract_vendor — the per-vendor contract state.
 var contract_board: ContractBoard = null
+# Set on _ready when is_claim_vendor — the per-vendor land-claim state.
+# Untyped (Node) so the editor's class cache doesn't need to resolve
+# ClaimVendorBoard to parse this file on first import.
+var claim_board: Node = null
 
 enum State { WALK, IDLE }
 
@@ -40,6 +45,14 @@ func _ready() -> void:
 		add_child(contract_board)
 	if is_boat_vendor:
 		add_to_group("boat_vendor_npcs")
+	if is_claim_vendor:
+		add_to_group("claim_vendor_npcs")
+		# Instantiate via load() to avoid needing the class_name to be in the
+		# parser's class cache at npc.gd parse time.
+		var board_script: GDScript = load("res://scripts/claim_vendor_board.gd")
+		claim_board = board_script.new()
+		claim_board.name = "ClaimBoard"
+		add_child(claim_board)
 	_begin_walk()
 
 func _physics_process(delta: float) -> void:

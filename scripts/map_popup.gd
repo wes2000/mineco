@@ -10,6 +10,8 @@ const PLAYER_MARKER_COLOR: Color = Color(1, 0.85, 0.4, 1)
 const COMPASS_RADIUS: float = 26.0
 const NPC_ICON_RADIUS: float = 3.5
 const NPC_ICON_OUTLINE: Color = Color(0.05, 0.05, 0.08, 1)
+const CLAIM_PIN_RADIUS: float = 6.5
+const CLAIM_HOVER_PX: float = 12.0
 
 const ZOOM_MIN: float = 1.0
 const ZOOM_MAX: float = 6.0
@@ -26,9 +28,7 @@ func _ready() -> void:
 	visible = false
 	_map_area.draw.connect(_draw_map)
 	_map_area.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	# MapArea needs to actually receive scroll-wheel events for zoom.
-	_map_area.mouse_filter = Control.MOUSE_FILTER_STOP
-	_map_area.gui_input.connect(_on_map_input)
+	_map_area.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_compass.draw.connect(_draw_compass)
 	call_deferred("_subscribe")
 	set_process(true)
@@ -45,22 +45,26 @@ func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("map_toggle"):
 		toggle()
 		accept_event()
-	elif visible and event.is_action_pressed("ui_cancel"):
+		return
+	if not visible:
+		return
+	if event.is_action_pressed("ui_cancel"):
 		# Esc closes the map IF no other modal is in front of us. The pause
 		# menu's _input runs at the same priority but its handler only fires
 		# when it's already visible, so closing the map first is fine.
 		hide_map()
 		accept_event()
-
-func _on_map_input(event: InputEvent) -> void:
+		return
+	# Scroll-wheel zoom — handled at Control._input so it works while the
+	# mouse is still captured (the map is non-modal, doesn't release the cursor).
 	if event is InputEventMouseButton and event.pressed:
 		var mb: InputEventMouseButton = event
 		if mb.button_index == MOUSE_BUTTON_WHEEL_UP:
 			_zoom = clamp(_zoom * ZOOM_STEP, ZOOM_MIN, ZOOM_MAX)
-			_map_area.accept_event()
+			accept_event()
 		elif mb.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			_zoom = clamp(_zoom / ZOOM_STEP, ZOOM_MIN, ZOOM_MAX)
-			_map_area.accept_event()
+			accept_event()
 
 func toggle() -> void:
 	if visible:
@@ -106,6 +110,8 @@ func _draw_map() -> void:
 	_map_area.draw_rect(dst, Color(0.2, 0.22, 0.28, 1), false, 2.0)
 	# NPC dots (under the player marker so the player stays on top).
 	_draw_npc_icons(dst, src, grid)
+	# Owned claim pin (above NPCs, below player).
+	_draw_owned_claim_pin(dst, src, grid)
 	# Player marker.
 	if _player != null:
 		var pixel: Vector2 = _world_to_pixel(_player.global_position, dst, src, grid)
@@ -119,6 +125,60 @@ func _draw_map() -> void:
 			"%dx" % roundi(_zoom),
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 12,
 			Color(0.85, 0.88, 0.92, 0.85),
+		)
+	# Fixed corner panel showing the owned claim's remaining materials.
+	_draw_owned_claim_panel(dst)
+
+func _claim_board() -> Node:
+	var npc: Node = get_tree().get_first_node_in_group("claim_vendor_npcs")
+	if npc == null:
+		return null
+	return npc.get("claim_board") as Node
+
+func _draw_owned_claim_pin(dst: Rect2, src: Rect2, grid: float) -> void:
+	var board: Node = _claim_board()
+	if board == null or not board.has_owned():
+		return
+	var isle: Dictionary = board.owned_island()
+	var world_pos: Vector3 = Vector3(isle.center.x, 0.0, isle.center.y)
+	var cx: float = (world_pos.x + MapData.WORLD_RADIUS_M) / MapData.CELL_SIZE_M
+	var cz: float = (world_pos.z + MapData.WORLD_RADIUS_M) / MapData.CELL_SIZE_M
+	if cx < src.position.x or cx > src.position.x + src.size.x:
+		return
+	if cz < src.position.y or cz > src.position.y + src.size.y:
+		return
+	var pixel: Vector2 = _world_to_pixel(world_pos, dst, src, grid)
+	# Star-style pin: outer ring + filled inner.
+	_map_area.draw_circle(pixel, CLAIM_PIN_RADIUS + 1.5, Color(0.05, 0.05, 0.08, 1))
+	_map_area.draw_circle(pixel, CLAIM_PIN_RADIUS, Color(0.95, 0.85, 0.30, 1))
+	_map_area.draw_circle(pixel, CLAIM_PIN_RADIUS - 2.0, Color(0.20, 0.55, 0.30, 1))
+
+func _draw_owned_claim_panel(dst: Rect2) -> void:
+	var board: Node = _claim_board()
+	if board == null or not board.has_owned():
+		return
+	var isle: Dictionary = board.owned_island()
+	var remaining: Dictionary = board.owned_remaining_estimate()
+	var lines: PackedStringArray = PackedStringArray()
+	lines.append(String(isle.name))
+	lines.append("Stone   ≈ %d" % int(remaining.get(MaterialDefs.MaterialId.STONE, 0)))
+	lines.append("Iron    ≈ %d" % int(remaining.get(MaterialDefs.MaterialId.IRON_ORE, 0)))
+	lines.append("Gold    ≈ %d" % int(remaining.get(MaterialDefs.MaterialId.GOLD_ORE, 0)))
+	# Background panel in the bottom-right corner of the map area.
+	var pad: float = 8.0
+	var line_h: float = 16.0
+	var panel_w: float = 142.0
+	var panel_h: float = pad * 2.0 + line_h * float(lines.size())
+	var top_left: Vector2 = dst.position + Vector2(dst.size.x - panel_w - 6.0, dst.size.y - panel_h - 6.0)
+	_map_area.draw_rect(Rect2(top_left, Vector2(panel_w, panel_h)), Color(0.05, 0.10, 0.06, 0.90))
+	_map_area.draw_rect(Rect2(top_left, Vector2(panel_w, panel_h)), Color(0.30, 0.65, 0.35, 1), false, 1.0)
+	for i: int in lines.size():
+		var col: Color = Color(0.65, 0.95, 0.65, 1) if i == 0 else Color(0.85, 0.88, 0.92, 1)
+		var size: int = 13 if i == 0 else 12
+		_map_area.draw_string(
+			ThemeDB.fallback_font,
+			top_left + Vector2(pad, pad + line_h * (float(i) + 0.7)),
+			lines[i], HORIZONTAL_ALIGNMENT_LEFT, -1, size, col,
 		)
 
 func _world_to_pixel(world_pos: Vector3, dst: Rect2, src: Rect2, grid: float) -> Vector2:

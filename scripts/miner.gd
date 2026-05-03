@@ -17,6 +17,12 @@ var _terrain: VoxelTerrain
 var _player: CharacterBody3D
 var _voxel_tool: VoxelTool
 
+# World position of the most recent ore deposit hit. The chunk_broken signal
+# doesn't carry a position, so we capture it here and read it back when the
+# follow-up signal arrives (used to credit destroyed deposits to the owned
+# land claim).
+var _last_ore_hit_pos: Vector3 = Vector3.ZERO
+
 var stone: int = 0
 var iron: int = 0
 var gold: int = 0
@@ -111,6 +117,7 @@ func _on_hit_frame() -> void:
 	if collider is OreDeposit:
 		if not collider.chunk_broken.is_connected(_on_chunk_broken):
 			collider.chunk_broken.connect(_on_chunk_broken)
+		_last_ore_hit_pos = (collider as Node3D).global_position
 		collider.take_damage(_shovel.get_effective_damage())
 		_ore_audio.play()
 	else:
@@ -135,6 +142,24 @@ func _on_chunk_broken(material: int, amount: int, _stage: int) -> void:
 	inventory_changed.emit(stone, iron, gold)
 	if pickup_id != -1:
 		material_pickup.emit(pickup_id, amount)
+	_credit_owned_claim(material, amount)
+
+func _credit_owned_claim(ore_type: int, amount: int) -> void:
+	# Find the claim vendor's board (one per game) and let it decide whether
+	# the most recent hit fell inside the owned island radius. Board lookup
+	# is untyped so the parser doesn't need ClaimVendorBoard's class cache.
+	var npc: Node = get_tree().get_first_node_in_group("claim_vendor_npcs")
+	if npc == null:
+		return
+	var board: Node = npc.get("claim_board")
+	if board == null or not board.has_owned():
+		return
+	var isle: Dictionary = board.owned_island()
+	var dx: float = _last_ore_hit_pos.x - float(isle.center.x)
+	var dz: float = _last_ore_hit_pos.z - float(isle.center.y)
+	if sqrt(dx * dx + dz * dz) > float(isle.radius):
+		return
+	board.credit_mining(ore_type, amount)
 
 func add_factory_material(material_id: int, amount: int) -> void:
 	# Used by FactoryDrop pickup. material_id is MaterialDefs.MaterialId enum value.

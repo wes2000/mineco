@@ -31,6 +31,7 @@ const NPC_SHIRT_COLORS: Array[Color] = [
 # Indices into NPC_OFFSETS / NPC_SHIRT_COLORS for special NPCs.
 const VENDOR_INDEX: int = 0
 const CONTRACT_VENDOR_INDEX: int = 1
+const CLAIM_VENDOR_INDEX: int = 2
 
 # Sink the hut bottom slightly into the terrain so that voxel surface
 # irregularities don't leave visible gaps under the box.
@@ -67,6 +68,8 @@ func _spawn() -> void:
 			npc.is_vendor = true
 		elif i == CONTRACT_VENDOR_INDEX:
 			npc.is_contract_vendor = true
+		elif i == CLAIM_VENDOR_INDEX:
+			npc.is_claim_vendor = true
 		get_tree().current_scene.add_child(npc)
 		var ground_y: float = await _find_ground_y_robust(offset.x, offset.y)
 		npc.global_position = Vector3(offset.x, ground_y + 1.5, offset.y)
@@ -86,6 +89,13 @@ func _spawn() -> void:
 				shirt_mat.emission_enabled = true
 				shirt_mat.emission = Color(0.10, 0.30, 0.55, 1)
 				shirt_mat.emission_energy_multiplier = 0.4
+			elif i == CLAIM_VENDOR_INDEX:
+				# Claim vendor: rich emerald with bright gold-green trim — sets
+				# the "land baron" vibe and stands out against the other vendors.
+				shirt_mat.albedo_color = Color(0.20, 0.55, 0.30, 1)
+				shirt_mat.emission_enabled = true
+				shirt_mat.emission = Color(0.55, 0.85, 0.30, 1)
+				shirt_mat.emission_energy_multiplier = 0.45
 			else:
 				shirt_mat.albedo_color = NPC_SHIRT_COLORS[i % NPC_SHIRT_COLORS.size()]
 			shirt_mat.roughness = 0.95

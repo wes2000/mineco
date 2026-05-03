@@ -60,11 +60,34 @@ func _draw_minimap() -> void:
 	_minimap.draw_texture_rect_region(MapData.texture, Rect2(Vector2.ZERO, size), src_rect)
 	# NPC icons (under the player so the player marker stays on top).
 	_draw_npc_icons(size, src_rect)
+	# Owned-claim pin so the player can spot their island while sailing.
+	_draw_claim_pin(size, src_rect)
 	# Player marker at the center of the minimap. Heading angle is measured
 	# clockwise from north (-Z): facing -Z -> 0, facing +X -> +PI/2.
 	var heading: Vector3 = -_player.global_basis.z
 	var ang: float = atan2(heading.x, -heading.z)
 	_draw_player_marker(size * 0.5, ang)
+
+func _draw_claim_pin(size: Vector2, src_rect: Rect2) -> void:
+	var npc: Node = get_tree().get_first_node_in_group("claim_vendor_npcs")
+	if npc == null:
+		return
+	var board: Node = npc.get("claim_board") as Node
+	if board == null or not board.has_owned():
+		return
+	var isle: Dictionary = board.owned_island()
+	var cx: float = (float(isle.center.x) + MapData.WORLD_RADIUS_M) / MapData.CELL_SIZE_M
+	var cz: float = (float(isle.center.y) + MapData.WORLD_RADIUS_M) / MapData.CELL_SIZE_M
+	if cx < src_rect.position.x or cx > src_rect.position.x + src_rect.size.x:
+		return
+	if cz < src_rect.position.y or cz > src_rect.position.y + src_rect.size.y:
+		return
+	var u: float = (cx - src_rect.position.x) / src_rect.size.x
+	var v: float = (cz - src_rect.position.y) / src_rect.size.y
+	var pixel: Vector2 = Vector2(u * size.x, v * size.y)
+	_minimap.draw_circle(pixel, 4.5, Color(0.05, 0.05, 0.08, 1))
+	_minimap.draw_circle(pixel, 3.5, Color(0.95, 0.85, 0.30, 1))
+	_minimap.draw_circle(pixel, 1.5, Color(0.20, 0.55, 0.30, 1))
 
 func _draw_npc_icons(size: Vector2, src_rect: Rect2) -> void:
 	for n: Node in get_tree().get_nodes_in_group("npcs"):

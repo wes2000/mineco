@@ -1,0 +1,129 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/claim_vendor_ui.gd" id="1"]
+
+[sub_resource type="StyleBoxFlat" id="PanelStyle"]
+bg_color = Color(0.09, 0.10, 0.13, 0.97)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.20, 0.42, 0.25, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="XPBarBg"]
+bg_color = Color(0.12, 0.13, 0.16, 1)
+border_color = Color(0.20, 0.42, 0.25, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_left = 3
+corner_radius_bottom_right = 3
+
+[sub_resource type="StyleBoxFlat" id="XPBarFill"]
+bg_color = Color(0.45, 0.85, 0.40, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[node name="ClaimVendorUI" type="Control"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 1
+script = ExtResource("1")
+
+[node name="Panel" type="Panel" parent="."]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -240.0
+offset_top = -230.0
+offset_right = 240.0
+offset_bottom = 230.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("PanelStyle")
+
+[node name="Vbox" type="VBoxContainer" parent="Panel"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 14.0
+offset_top = 12.0
+offset_right = -14.0
+offset_bottom = -12.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 8
+
+[node name="HeaderRow" type="HBoxContainer" parent="Panel/Vbox"]
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="Panel/Vbox/HeaderRow"]
+text = "LAND CLAIMS"
+size_flags_horizontal = 3
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(0.65, 0.95, 0.65, 1)
+
+[node name="CloseBtn" type="Button" parent="Panel/Vbox/HeaderRow"]
+custom_minimum_size = Vector2(30, 28)
+text = "X"
+flat = true
+
+[node name="Subtitle" type="Label" parent="Panel/Vbox"]
+text = "Buy a stake in an offshore island. Mine it dry, then release."
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.55, 0.65, 0.55, 1)
+
+[node name="LevelRow" type="HBoxContainer" parent="Panel/Vbox"]
+theme_override_constants/separation = 10
+
+[node name="LevelLabel" type="Label" parent="Panel/Vbox/LevelRow"]
+text = "LEVEL 1"
+custom_minimum_size = Vector2(140, 0)
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.95, 0.85, 0.45, 1)
+
+[node name="XPBar" type="ProgressBar" parent="Panel/Vbox/LevelRow"]
+custom_minimum_size = Vector2(0, 16)
+size_flags_horizontal = 3
+size_flags_vertical = 5
+show_percentage = false
+theme_override_styles/background = SubResource("XPBarBg")
+theme_override_styles/fill = SubResource("XPBarFill")
+max_value = 100.0
+value = 0.0
+
+[node name="XPLabel" type="Label" parent="Panel/Vbox/LevelRow"]
+text = "0 / 100 XP"
+custom_minimum_size = Vector2(110, 0)
+vertical_alignment = 1
+horizontal_alignment = 2
+theme_override_font_sizes/font_size = 12
+theme_override_colors/font_color = Color(0.7, 0.78, 0.85, 1)
+
+[node name="Scroll" type="ScrollContainer" parent="Panel/Vbox"]
+size_flags_vertical = 3
+
+[node name="V" type="VBoxContainer" parent="Panel/Vbox/Scroll"]
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="OwnedSection" type="VBoxContainer" parent="Panel/Vbox/Scroll/V"]
+theme_override_constants/separation = 4
+
+[node name="AvailableSection" type="VBoxContainer" parent="Panel/Vbox/Scroll/V"]
+theme_override_constants/separation = 4
