@@ -10,7 +10,6 @@
 [ext_resource type="Script" uid="uid://bj5yq6juetkoi" path="res://scripts/spawn_gate.gd" id="6_gate"]
 [ext_resource type="Script" uid="uid://c6ix7x1gbhcuy" path="res://scripts/water_init.gd" id="6_tipki"]
 [ext_resource type="AudioStream" uid="uid://bo61ym5whvefn" path="res://assets/audio/wind_ambient.ogg" id="10_ya4ey"]
-[ext_resource type="Script" uid="uid://dclxpm2i1vm7t" path="res://scripts/inventory_hud.gd" id="11_ya4ey"]
 [ext_resource type="Script" path="res://scripts/stamina_bar.gd" id="12_sbar"]
 [ext_resource type="Script" path="res://scripts/ore_generator.gd" id="13_oregen"]
 [ext_resource type="PackedScene" path="res://scenes/ore_deposits/stone_small.tscn" id="14_p1"]
@@ -70,14 +69,6 @@ volume_db = -29.8
 autoplay = true
 
 [node name="HUD" type="CanvasLayer" parent="." unique_id=911672643]
-
-[node name="InventoryLabel" type="Label" parent="HUD" unique_id=1467189824]
-offset_left = 20.0
-offset_top = 20.0
-offset_right = 500.0
-offset_bottom = 130.0
-text = "T1  Stone: 0   Iron Ore: 0   Gold Ore: 0\nT2  Brick: 0   Iron Ingot: 0   Gold Ingot: 0\nT3  Block: 0   Iron Bar: 0   Gold Bar: 0"
-script = ExtResource("11_ya4ey")
 
 [node name="StaminaBar" type="ProgressBar" parent="HUD"]
 anchor_left = 0.5

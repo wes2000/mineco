@@ -126,6 +126,9 @@ theme_override_font_sizes/font_size = 14
 
 [node name="Game" type="Control" parent="Panel/Vbox/Tabs"]
 
+[node name="Inventory" type="Control" parent="Panel/Vbox/Tabs"]
+visible = false
+
 [node name="Audio" type="Control" parent="Panel/Vbox/Tabs"]
 visible = false
 

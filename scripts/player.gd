@@ -38,7 +38,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		# F1 opens the menu jumped to the Admin tab.
 		var menu: Node = get_tree().get_first_node_in_group("pause_menu")
 		if menu != null and menu.has_method("open"):
-			menu.open(4)   # PauseMenu.TAB_ADMIN
+			menu.open(5)   # PauseMenu.TAB_ADMIN (index shifted after Inventory was added)
 	elif event.is_action_pressed("machine_interact"):
 		_try_open_machine_ui()
 
