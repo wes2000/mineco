@@ -55,15 +55,7 @@ func _ready() -> void:
 	_emit_click = find_child("EmitClick", true, false) as AudioStreamPlayer3D
 	if not item_emitted.is_connected(_on_emit_pulse):
 		item_emitted.connect(_on_emit_pulse)
-	# Hook count labels up to queue_changed
-	queue_changed.connect(_on_queue_changed)
 	set_process(true)
-
-func _on_queue_changed(kind: int, new_count: int) -> void:
-	var box_name: String = "InputQueueBox" if kind == QUEUE_KIND_INPUT else "OutputQueueBox"
-	var label: Label3D = find_child(box_name, true, false).find_child("CountLabel", true, false) as Label3D if find_child(box_name, true, false) != null else null
-	if label != null:
-		label.text = str(new_count)
 
 func _process(delta: float) -> void:
 	if not _has_bob_origin:

@@ -1,11 +1,27 @@
 extends Control
 ## Modal recipe panel. Bound to one Building at a time. Opened via E by player.
 
+const SLOT_SIZE: Vector2 = Vector2(72, 72)
+const ITEM_COLORS: Dictionary = {
+	0: Color(0.6, 0.6, 0.6),    # STONE
+	1: Color(0.7, 0.35, 0.25),  # BRICK
+	2: Color(0.4, 0.4, 0.4),    # BLOCK
+	3: Color(0.55, 0.4, 0.3),   # IRON_ORE
+	4: Color(0.7, 0.7, 0.75),   # IRON_INGOT
+	5: Color(0.85, 0.85, 0.9),  # IRON_BAR
+	6: Color(0.7, 0.6, 0.2),    # GOLD_ORE
+	7: Color(0.95, 0.8, 0.3),   # GOLD_INGOT
+	8: Color(1.0, 0.85, 0.4),   # GOLD_BAR
+}
+
 @onready var _name_label: Label = $Panel/Vbox/Name
 @onready var _status_label: Label = $Panel/Vbox/Status
-@onready var _input_label: Label = $Panel/Vbox/InputRow/Label
-@onready var _output_label: Label = $Panel/Vbox/OutputRow/Label
-@onready var _recipe_select: OptionButton = $Panel/Vbox/RecipeSelect
+@onready var _recipe_select: OptionButton = $Panel/Vbox/RecipeRow/RecipeSelect
+@onready var _input_slots: HBoxContainer = $Panel/Vbox/QueuesRow/InputCol/Slots
+@onready var _output_slots: HBoxContainer = $Panel/Vbox/QueuesRow/OutputCol/Slots
+@onready var _input_take_btn: Button = $Panel/Vbox/QueuesRow/InputCol/TakeBtn
+@onready var _output_take_btn: Button = $Panel/Vbox/QueuesRow/OutputCol/TakeBtn
+@onready var _input_col: VBoxContainer = $Panel/Vbox/QueuesRow/InputCol
 @onready var _deposit_panel: VBoxContainer = $Panel/Vbox/DepositPanel
 
 var _bound_building: Building = null
@@ -14,6 +30,8 @@ func _ready() -> void:
 	visible = false
 	add_to_group("machine_ui")
 	_recipe_select.item_selected.connect(_on_recipe_selected)
+	_input_take_btn.pressed.connect(_on_take_input)
+	_output_take_btn.pressed.connect(_on_take_output)
 
 func bind_to(building: Building) -> void:
 	if _bound_building != null:
@@ -26,9 +44,11 @@ func bind_to(building: Building) -> void:
 	building.status_changed.connect(_on_status_changed)
 	building.queue_changed.connect(_on_queue_changed)
 	if building is Loader:
+		_input_col.visible = false   # Loader: hopper IS the input; no input queue UI
 		_deposit_panel.visible = true
 		_refresh_deposit_panel()
 	else:
+		_input_col.visible = true
 		_deposit_panel.visible = false
 
 func unbind() -> void:
@@ -41,37 +61,28 @@ func unbind() -> void:
 	visible = false
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
-func _on_queue_changed(_kind: int, _new_count: int) -> void:
-	_refresh()
-
 func _populate_recipes() -> void:
 	_recipe_select.clear()
 	if _bound_building is Loader:
 		for mid: int in MaterialDefs.TIER_1_MATERIALS:
 			_recipe_select.add_item(MaterialDefs.DISPLAY_NAME[mid], mid)
-		var current: int = (_bound_building as Loader).selected_material
-		for i: int in _recipe_select.item_count:
-			if _recipe_select.get_item_id(i) == current:
-				_recipe_select.select(i)
-				break
+		_select_current_recipe((_bound_building as Loader).selected_material)
 	elif _bound_building is Smelter:
 		for mid: int in MaterialDefs.SMELT_RECIPE:
 			var label: String = "%s -> %s" % [MaterialDefs.DISPLAY_NAME[mid], MaterialDefs.DISPLAY_NAME[MaterialDefs.SMELT_RECIPE[mid]]]
 			_recipe_select.add_item(label, mid)
-		var current2: int = (_bound_building as Smelter).recipe_input
-		for i: int in _recipe_select.item_count:
-			if _recipe_select.get_item_id(i) == current2:
-				_recipe_select.select(i)
-				break
+		_select_current_recipe((_bound_building as Smelter).recipe_input)
 	elif _bound_building is Forge:
 		for mid: int in MaterialDefs.FORGE_RECIPE:
 			var label2: String = "%s -> %s" % [MaterialDefs.DISPLAY_NAME[mid], MaterialDefs.DISPLAY_NAME[MaterialDefs.FORGE_RECIPE[mid]]]
 			_recipe_select.add_item(label2, mid)
-		var current3: int = (_bound_building as Forge).recipe_input
-		for i: int in _recipe_select.item_count:
-			if _recipe_select.get_item_id(i) == current3:
-				_recipe_select.select(i)
-				break
+		_select_current_recipe((_bound_building as Forge).recipe_input)
+
+func _select_current_recipe(target: int) -> void:
+	for i: int in _recipe_select.item_count:
+		if _recipe_select.get_item_id(i) == target:
+			_recipe_select.select(i)
+			return
 
 func _on_recipe_selected(idx: int) -> void:
 	var mid: int = _recipe_select.get_item_id(idx)
@@ -81,9 +92,13 @@ func _on_recipe_selected(idx: int) -> void:
 		(_bound_building as Smelter).recipe_input = mid
 	elif _bound_building is Forge:
 		(_bound_building as Forge).recipe_input = mid
+	_refresh()
 
 func _on_status_changed(new_status: int) -> void:
 	_status_label.text = "Status: %s" % Building.Status.find_key(new_status)
+
+func _on_queue_changed(_kind: int, _new_count: int) -> void:
+	_refresh()
 
 func _refresh() -> void:
 	if _bound_building == null:
@@ -97,24 +112,86 @@ func _refresh() -> void:
 		type_name = "Forge"
 	_name_label.text = type_name
 	_status_label.text = "Status: %s" % Building.Status.find_key(_bound_building.status)
-	var in_count: int = _bound_building.input_queue.size()
-	var out_count: int = _bound_building.output_queue.size()
+	_render_slots(_input_slots, _bound_building.input_queue)
+	_render_slots(_output_slots, _bound_building.output_queue)
+	_input_take_btn.disabled = _bound_building.input_queue.is_empty()
+	_output_take_btn.disabled = _bound_building.output_queue.is_empty()
 	if _bound_building is Loader:
-		_input_label.text = "Input: N/A"
-		_output_label.text = "Output queue: %d / %d  (%s)" % [
-			out_count, Building.QUEUE_MAX, MaterialDefs.DISPLAY_NAME[(_bound_building as Loader).selected_material]]
-	elif _bound_building is Smelter:
-		var sm: Smelter = _bound_building as Smelter
-		_input_label.text = "Input queue: %d / %d  (recipe: %s)" % [
-			in_count, Building.QUEUE_MAX, MaterialDefs.DISPLAY_NAME[sm.recipe_input]]
-		_output_label.text = "Output queue: %d / %d  (%s)" % [
-			out_count, Building.QUEUE_MAX, MaterialDefs.DISPLAY_NAME[MaterialDefs.SMELT_RECIPE[sm.recipe_input]]]
-	elif _bound_building is Forge:
-		var fg: Forge = _bound_building as Forge
-		_input_label.text = "Input queue: %d / %d  (recipe: %s)" % [
-			in_count, Building.QUEUE_MAX, MaterialDefs.DISPLAY_NAME[fg.recipe_input]]
-		_output_label.text = "Output queue: %d / %d  (%s)" % [
-			out_count, Building.QUEUE_MAX, MaterialDefs.DISPLAY_NAME[MaterialDefs.FORGE_RECIPE[fg.recipe_input]]]
+		_refresh_deposit_panel()
+
+func _render_slots(parent: HBoxContainer, queue: Array) -> void:
+	for child: Node in parent.get_children():
+		child.queue_free()
+	# Group by material_id, preserving first-occurrence order
+	var counts: Dictionary = {}
+	var order: Array = []
+	for mid: int in queue:
+		if not counts.has(mid):
+			counts[mid] = 0
+			order.append(mid)
+		counts[mid] = counts[mid] + 1
+	if order.is_empty():
+		# Render one empty slot as a placeholder
+		parent.add_child(_make_slot(-1, 0))
+		return
+	for mid: int in order:
+		parent.add_child(_make_slot(mid, counts[mid]))
+
+func _make_slot(material_id: int, count: int) -> Panel:
+	var panel: Panel = Panel.new()
+	panel.custom_minimum_size = SLOT_SIZE
+	# Material color fill
+	var fill: ColorRect = ColorRect.new()
+	fill.anchor_right = 1.0
+	fill.anchor_bottom = 1.0
+	fill.offset_left = 4
+	fill.offset_top = 4
+	fill.offset_right = -4
+	fill.offset_bottom = -4
+	if material_id < 0:
+		fill.color = Color(0.15, 0.15, 0.18, 1)
+	else:
+		fill.color = ITEM_COLORS.get(material_id, Color.WHITE)
+	panel.add_child(fill)
+	# Count overlay (bottom-right)
+	if count > 0:
+		var lbl: Label = Label.new()
+		lbl.text = str(count)
+		lbl.add_theme_font_size_override("font_size", 18)
+		lbl.add_theme_color_override("font_color", Color.WHITE)
+		lbl.add_theme_color_override("font_outline_color", Color.BLACK)
+		lbl.add_theme_constant_override("outline_size", 4)
+		lbl.anchor_left = 1.0
+		lbl.anchor_top = 1.0
+		lbl.anchor_right = 1.0
+		lbl.anchor_bottom = 1.0
+		lbl.offset_left = -32
+		lbl.offset_top = -28
+		lbl.offset_right = -4
+		lbl.offset_bottom = -4
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		lbl.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+		panel.add_child(lbl)
+	return panel
+
+func _on_take_input() -> void:
+	if _bound_building == null:
+		return
+	var taken: Array[int] = _bound_building.take_all_from_queue(Building.QUEUE_KIND_INPUT)
+	_credit_player(taken)
+
+func _on_take_output() -> void:
+	if _bound_building == null:
+		return
+	var taken: Array[int] = _bound_building.take_all_from_queue(Building.QUEUE_KIND_OUTPUT)
+	_credit_player(taken)
+
+func _credit_player(materials: Array[int]) -> void:
+	var miner: Node = get_tree().get_first_node_in_group("player_miner")
+	if miner == null:
+		return
+	for mid: int in materials:
+		miner.add_factory_material(mid, 1)
 
 func _refresh_deposit_panel() -> void:
 	for child: Node in _deposit_panel.get_children():
@@ -126,6 +203,10 @@ func _refresh_deposit_panel() -> void:
 		_deposit_panel.add_child(warn)
 		return
 	var loader: Loader = _bound_building as Loader
+	var header: Label = Label.new()
+	header.text = "DEPOSIT FROM INVENTORY"
+	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_deposit_panel.add_child(header)
 	var rows: Array = [
 		[MaterialDefs.MaterialId.STONE, "stone"],
 		[MaterialDefs.MaterialId.IRON_ORE, "iron"],
@@ -138,8 +219,9 @@ func _refresh_deposit_panel() -> void:
 		var label: Label = Label.new()
 		var hopper_count: int = loader.hopper.get(mid, 0)
 		var inv_count: int = miner.get(miner_field)
-		label.text = "%s — Inv: %d / Hopper: %d" % [MaterialDefs.DISPLAY_NAME[mid], inv_count, hopper_count]
-		label.custom_minimum_size = Vector2(260, 0)
+		label.text = "%s — Inv: %d / Hopper: %d / %d" % [
+			MaterialDefs.DISPLAY_NAME[mid], inv_count, hopper_count, Loader.HOPPER_CAP]
+		label.custom_minimum_size = Vector2(300, 0)
 		hbox.add_child(label)
 		var btn_10: Button = Button.new()
 		btn_10.text = "+10"
@@ -164,7 +246,7 @@ func _do_deposit(material_id: int, miner_field: String, requested: int) -> void:
 	miner.set(miner_field, available - accepted)
 	if miner.has_signal("inventory_changed"):
 		miner.inventory_changed.emit(miner.get("stone"), miner.get("iron"), miner.get("gold"))
-	_refresh_deposit_panel()
+	_refresh()
 
 func _input(event: InputEvent) -> void:
 	if not visible:

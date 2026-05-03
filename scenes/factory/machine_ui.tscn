@@ -15,10 +15,10 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -240.0
-offset_top = -200.0
-offset_right = 240.0
-offset_bottom = 200.0
+offset_left = -300.0
+offset_top = -240.0
+offset_right = 300.0
+offset_bottom = 240.0
 grow_horizontal = 2
 grow_vertical = 2
 
@@ -39,16 +39,41 @@ text = "Machine"
 [node name="Status" type="Label" parent="Panel/Vbox"]
 text = "Status: IDLE"
 
-[node name="InputRow" type="HBoxContainer" parent="Panel/Vbox"]
+[node name="RecipeRow" type="HBoxContainer" parent="Panel/Vbox"]
 
-[node name="Label" type="Label" parent="Panel/Vbox/InputRow"]
-text = "Input: -"
+[node name="Label" type="Label" parent="Panel/Vbox/RecipeRow"]
+text = "Recipe:"
 
-[node name="OutputRow" type="HBoxContainer" parent="Panel/Vbox"]
+[node name="RecipeSelect" type="OptionButton" parent="Panel/Vbox/RecipeRow"]
+size_flags_horizontal = 3
 
-[node name="Label" type="Label" parent="Panel/Vbox/OutputRow"]
-text = "Output: -"
+[node name="QueuesRow" type="HBoxContainer" parent="Panel/Vbox"]
+size_flags_vertical = 3
 
-[node name="RecipeSelect" type="OptionButton" parent="Panel/Vbox"]
+[node name="InputCol" type="VBoxContainer" parent="Panel/Vbox/QueuesRow"]
+size_flags_horizontal = 3
+
+[node name="Header" type="Label" parent="Panel/Vbox/QueuesRow/InputCol"]
+text = "INPUT"
+horizontal_alignment = 1
+
+[node name="Slots" type="HBoxContainer" parent="Panel/Vbox/QueuesRow/InputCol"]
+size_flags_vertical = 3
+
+[node name="TakeBtn" type="Button" parent="Panel/Vbox/QueuesRow/InputCol"]
+text = "Take input"
+
+[node name="OutputCol" type="VBoxContainer" parent="Panel/Vbox/QueuesRow"]
+size_flags_horizontal = 3
+
+[node name="Header" type="Label" parent="Panel/Vbox/QueuesRow/OutputCol"]
+text = "OUTPUT"
+horizontal_alignment = 1
+
+[node name="Slots" type="HBoxContainer" parent="Panel/Vbox/QueuesRow/OutputCol"]
+size_flags_vertical = 3
+
+[node name="TakeBtn" type="Button" parent="Panel/Vbox/QueuesRow/OutputCol"]
+text = "Take output"
 
 [node name="DepositPanel" type="VBoxContainer" parent="Panel/Vbox"]
