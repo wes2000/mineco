@@ -1,0 +1,150 @@
+[gd_scene format=3 uid="uid://b8cmkm8w8w8w0"]
+
+[ext_resource type="Script" path="res://scripts/weapon.gd" id="1_weapon"]
+[ext_resource type="AudioStream" uid="uid://cc0dt2jgnu637" path="res://assets/audio/mine_thump.ogg" id="2_audio"]
+
+[sub_resource type="BoxMesh" id="BladeBlade"]
+size = Vector3(0.06, 0.06, 0.7)
+
+[sub_resource type="BoxMesh" id="BladeGuard"]
+size = Vector3(0.22, 0.04, 0.04)
+
+[sub_resource type="BoxMesh" id="BladeGrip"]
+size = Vector3(0.05, 0.05, 0.18)
+
+[sub_resource type="StandardMaterial3D" id="BladeMat"]
+albedo_color = Color(0.78, 0.78, 0.82, 1)
+metallic = 0.6
+roughness = 0.4
+
+[sub_resource type="StandardMaterial3D" id="GripMat"]
+albedo_color = Color(0.30, 0.20, 0.14, 1)
+roughness = 0.95
+
+[sub_resource type="BoxMesh" id="BowStock"]
+size = Vector3(0.08, 0.10, 0.55)
+
+[sub_resource type="BoxMesh" id="BowArm"]
+size = Vector3(0.55, 0.04, 0.04)
+
+[sub_resource type="StandardMaterial3D" id="StockMat"]
+albedo_color = Color(0.36, 0.22, 0.14, 1)
+roughness = 0.85
+
+[sub_resource type="Animation" id="AnimIdle"]
+loop_mode = 1
+length = 1.0
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath(".:position")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(0, 0, 0)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath(".:rotation")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(0, 0, 0)]
+}
+
+[sub_resource type="Animation" id="AnimSwing"]
+length = 0.5
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath(".:rotation")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.15, 0.3, 0.5),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 0), Vector3(0.5, -0.3, 0.2), Vector3(-0.7, 0.2, -0.3), Vector3(0, 0, 0)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath(".:position")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.15, 0.3, 0.5),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 0), Vector3(0, 0.05, -0.05), Vector3(0, -0.08, -0.1), Vector3(0, 0, 0)]
+}
+tracks/2/type = "method"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath(".")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0.22),
+"transitions": PackedFloat32Array(1),
+"values": [{
+"args": [],
+"method": &"_emit_hit_frame"
+}]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimLib"]
+_data = {
+&"idle": SubResource("AnimIdle"),
+&"swing": SubResource("AnimSwing")
+}
+
+[node name="Weapon" type="Node3D"]
+script = ExtResource("1_weapon")
+
+[node name="MeleeMesh" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.45, -0.30, -0.55)
+
+[node name="Blade" type="MeshInstance3D" parent="MeleeMesh"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.35)
+mesh = SubResource("BladeBlade")
+material_override = SubResource("BladeMat")
+
+[node name="Guard" type="MeshInstance3D" parent="MeleeMesh"]
+mesh = SubResource("BladeGuard")
+material_override = SubResource("BladeMat")
+
+[node name="Grip" type="MeshInstance3D" parent="MeleeMesh"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.10)
+mesh = SubResource("BladeGrip")
+material_override = SubResource("GripMat")
+
+[node name="RangedMesh" type="Node3D" parent="."]
+visible = false
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.45, -0.30, -0.55)
+
+[node name="Stock" type="MeshInstance3D" parent="RangedMesh"]
+mesh = SubResource("BowStock")
+material_override = SubResource("StockMat")
+
+[node name="Arm" type="MeshInstance3D" parent="RangedMesh"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.04, -0.20)
+mesh = SubResource("BowArm")
+material_override = SubResource("BladeMat")
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+libraries/ = SubResource("AnimLib")
+autoplay = "idle"
+
+[node name="HitAudio" type="AudioStreamPlayer3D" parent="."]
+stream = ExtResource("2_audio")
+volume_db = -8.0
+unit_size = 1.0
+max_distance = 12.0

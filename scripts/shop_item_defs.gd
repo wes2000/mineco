@@ -18,8 +18,12 @@ extends RefCounted
 const CAT_PICKAXE: StringName = &"pickaxe"
 const CAT_SCANNER: StringName = &"scanner"
 const CAT_UTILITY: StringName = &"utility"
+const CAT_WEAPON: StringName = &"weapon"
 
-const EQUIP_CATEGORIES: Array[StringName] = [CAT_PICKAXE, CAT_SCANNER]
+# Weapon items are equip-slot too — only one weapon equipped at a time. Their
+# `modifiers` arrays stay empty: the Weapon node reads its def from
+# WeaponDefs by id instead of going through the PlayerStats mod system.
+const EQUIP_CATEGORIES: Array[StringName] = [CAT_PICKAXE, CAT_SCANNER, CAT_WEAPON]
 
 const ITEMS: Array = [
 	# --- Pickaxes (equip slot) ---
@@ -107,6 +111,32 @@ const ITEMS: Array = [
 		"modifiers": [{"stat": "boat_speed_mult", "op": "mul", "value": 1.2}],
 		"description": "+20% boat top speed.",
 	},
+	# --- Weapons (equip slot) ---
+	# These mirror WeaponDefs by id. No `modifiers` — combat damage is read
+	# directly from the WeaponDefs entry by the Weapon node, not the stat
+	# system. The shop's equip flow stores the chosen id in
+	# Miner.equipped_items["weapon"]; the player reads that on swing.
+	{
+		"id": "rusty_blade", "name": "Rusty Blade",
+		"category": CAT_WEAPON, "price": 400, "requires": [],
+		"icon": "res://assets/icons/shop/weapon_rusty_blade.svg",
+		"modifiers": [],
+		"description": "Cheap melee. Short reach, fast swing.",
+	},
+	{
+		"id": "prospector_hammer", "name": "Prospector Hammer",
+		"category": CAT_WEAPON, "price": 1100, "requires": ["rusty_blade"],
+		"icon": "res://assets/icons/shop/weapon_prospector_hammer.svg",
+		"modifiers": [],
+		"description": "Slower melee, much higher damage.",
+	},
+	{
+		"id": "scrap_crossbow", "name": "Scrap Crossbow",
+		"category": CAT_WEAPON, "price": 1800, "requires": [],
+		"icon": "res://assets/icons/shop/weapon_scrap_crossbow.svg",
+		"modifiers": [],
+		"description": "Ranged hitscan. Long cooldown.",
+	},
 ]
 
 static var _icon_cache: Dictionary = {}
@@ -141,6 +171,7 @@ static func category_name(cat: StringName) -> String:
 	if cat == CAT_PICKAXE: return "Pickaxes"
 	if cat == CAT_SCANNER: return "Scanners"
 	if cat == CAT_UTILITY: return "Utility"
+	if cat == CAT_WEAPON: return "Weapons"
 	return String(cat)
 
 # True if the item's prerequisites are all satisfied by `owned_ids`.

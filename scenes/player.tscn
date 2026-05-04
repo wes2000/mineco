@@ -9,6 +9,8 @@
 [ext_resource type="Script" uid="uid://b6pfyshsk3srr" path="res://scripts/stamina.gd" id="7_ur7pv"]
 [ext_resource type="PackedScene" path="res://scenes/scanner.tscn" id="8_scanner"]
 [ext_resource type="PackedScene" path="res://scenes/flashlight.tscn" id="9_flash"]
+[ext_resource type="PackedScene" path="res://scenes/weapon.tscn" id="10_weapon"]
+[ext_resource type="Script" path="res://scripts/health.gd" id="11_health"]
 
 [sub_resource type="CapsuleShape3D" id="Capsule_1"]
 radius = 0.4
@@ -35,6 +37,9 @@ transform = Transform3D(-0.64944786, -0.58695614, -0.13009603, -0.42972317, 0.58
 visible = false
 
 [node name="Flashlight" parent="Camera3D" instance=ExtResource("9_flash")]
+visible = false
+
+[node name="Weapon" parent="Camera3D" instance=ExtResource("10_weapon")]
 visible = false
 
 [node name="Footsteps" type="Node3D" parent="." unique_id=1200121627]
@@ -72,3 +77,8 @@ monitoring = true
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="PickupArea"]
 shape = SubResource("Pickup_1")
+
+[node name="Health" type="Node" parent="."]
+script = ExtResource("11_health")
+base_max = 100
+apply_player_health_bonus = true

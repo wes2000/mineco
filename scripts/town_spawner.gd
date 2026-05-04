@@ -6,6 +6,7 @@ extends Node
 @export var npc_scene: PackedScene = preload("res://scenes/npc.tscn")
 @export var dock_scene: PackedScene = preload("res://scenes/dock.tscn")
 @export var boat_scene: PackedScene = preload("res://scenes/boat.tscn")
+@export var dummy_scene: PackedScene = preload("res://scenes/training_dummy.tscn")
 @export var spawn_gate_path: NodePath = NodePath("../SpawnGate")
 
 # (x, z) offsets from world origin. Cluster diameter ≈ 30m so it sits inside
@@ -60,6 +61,7 @@ func _spawn() -> void:
 		hut.global_position = Vector3(offset.x, ground_y - HUT_SINK, offset.y)
 		hut.rotation.y = randf_range(0.0, TAU)
 	_spawn_dock_and_boat()
+	await _spawn_training_dummy()
 	for i: int in NPC_OFFSETS.size():
 		var offset: Vector2 = NPC_OFFSETS[i]
 		var npc: Npc = npc_scene.instantiate() as Npc
@@ -163,6 +165,21 @@ func _spawn_dock_and_boat() -> void:
 		shirt_mat.emission_energy_multiplier = 0.35
 		shirt_mat.roughness = 0.95
 		body_mesh.material_override = shirt_mat
+
+func _spawn_training_dummy() -> void:
+	# Place a single combat dummy a few meters away from the item shop NPC
+	# (offset NPC_OFFSETS[ITEM_SHOP_INDEX] = (2, 7)). Sits next to the shop so
+	# the brand-new weapon has an obvious target.
+	if dummy_scene == null:
+		return
+	var origin: Vector2 = NPC_OFFSETS[ITEM_SHOP_INDEX]
+	var spot: Vector2 = origin + Vector2(2.5, 1.5)
+	var ground_y: float = await _find_ground_y_robust(spot.x, spot.y)
+	var dummy: Node3D = dummy_scene.instantiate() as Node3D
+	get_tree().current_scene.add_child(dummy)
+	# Body is centered ~1.15m above the post; sink the post-base into the
+	# terrain a hair so it doesn't appear to float on irregular voxel surfaces.
+	dummy.global_position = Vector3(spot.x, ground_y - 0.05, spot.y)
 
 func _find_max_ground_y_in_footprint(x: float, z: float) -> float:
 	var offsets: Array[Vector2] = [Vector2.ZERO]

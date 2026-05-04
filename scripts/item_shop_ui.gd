@@ -8,11 +8,12 @@ extends Control
 const _ShopDefs: GDScript = preload("res://scripts/shop_item_defs.gd")
 
 const CATEGORY_ORDER: Array[StringName] = [
-	&"pickaxe", &"scanner", &"utility",
+	&"pickaxe", &"scanner", &"weapon", &"utility",
 ]
 const CATEGORY_ACCENT: Dictionary = {
 	&"pickaxe": Color(0.95, 0.65, 0.40, 1),
 	&"scanner": Color(0.55, 0.85, 0.95, 1),
+	&"weapon": Color(0.95, 0.45, 0.45, 1),
 	&"utility": Color(0.85, 0.85, 0.55, 1),
 }
 

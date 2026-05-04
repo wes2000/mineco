@@ -10,7 +10,13 @@ const STANDARD_SLOTS: Array = [
 	["res://assets/icons/hotbar/tool_pickaxe.svg",   "Pickaxe"],
 	["res://assets/icons/hotbar/tool_scanner.svg",   "Ore Scanner"],
 	["res://assets/icons/hotbar/tool_flashlight.svg","Flashlight"],
+	["res://assets/icons/hotbar/tool_weapon.svg",    "Weapon"],
 ]
+# Index of the weapon slot inside STANDARD_SLOTS; greyed out when no weapon is
+# owned + equipped, lit up otherwise.
+const WEAPON_SLOT_INDEX: int = 3
+
+const _WeaponDefs: GDScript = preload("res://scripts/weapon_defs.gd")
 
 # Build slots are derived live from BuildController.get_quickbar() so
 # rebinding via the catalog UI updates the bar without a const change.
@@ -31,9 +37,16 @@ static var _slot_style_selected: StyleBoxFlat = null
 
 @onready var _slots_row: HBoxContainer = $Panel/Vbox/SlotsRow
 @onready var _stamina_bar: ProgressBar = $Panel/Vbox/StaminaBar
+@onready var _health_bar: ProgressBar = $Panel/Vbox/HealthBar
 
 var _slots: Array = []   # current slot Panel nodes (active set)
 var _stamina: Node = null
+var _health: Node = null
+var _miner: Node = null
+# Lazy reference to the screen-spanning damage flash overlay added to the HUD
+# CanvasLayer in main.tscn. We don't host it here because BottomHud's root is
+# anchored to a 120px-tall strip at the bottom and a child can't escape it.
+var _damage_flash: ColorRect = null
 
 const MODAL_GROUPS: Array[String] = ["machine_ui", "pause_menu", "inventory_overlay", "vendor_ui", "contract_ui", "boat_vendor_ui", "claim_vendor_ui", "item_shop_ui", "passive_tree_ui", "build_catalog_ui", "storage_crate_ui", "workbench_ui"]
 
@@ -57,6 +70,23 @@ func _ready() -> void:
 	if player != null and player.has_signal("tool_changed"):
 		player.tool_changed.connect(_on_player_tool_changed)
 		_highlight(player.get("current_tool"))
+	# Hook the player's Health for the new health bar.
+	_health = get_node_or_null("/root/Main/Player/Health")
+	if _health != null and _health.has_signal("health_changed"):
+		_health.health_changed.connect(_on_health_changed)
+		var mv: int = int(_health.call("max_value")) if _health.has_method("max_value") else 100
+		_health_bar.max_value = float(mv)
+		_health_bar.value = float(_health.get("current"))
+	# Hook the miner so we know when the equipped weapon changes (lights /
+	# greys the weapon slot icon).
+	_miner = get_tree().get_first_node_in_group("player_miner")
+	if _miner != null and _miner.has_signal("shop_inventory_changed"):
+		_miner.shop_inventory_changed.connect(_refresh_standard_slots)
+	# DamageFlash lives on the HUD layer (sibling). Resolved lazily so order
+	# of node creation in main.tscn doesn't matter.
+	_damage_flash = get_node_or_null("/root/Main/HUD/DamageFlash") as ColorRect
+	if _damage_flash != null:
+		_damage_flash.modulate.a = 0.0
 	set_process(true)
 
 func _on_player_tool_changed(new_tool: int) -> void:
@@ -76,6 +106,30 @@ func _process(_delta: float) -> void:
 func _on_stamina_changed(current: float, max_v: int) -> void:
 	_stamina_bar.max_value = float(max_v)
 	_stamina_bar.value = current
+
+func _on_health_changed(current: float, max_v: int) -> void:
+	if _health_bar == null:
+		return
+	_health_bar.max_value = float(max_v)
+	_health_bar.value = current
+
+# Brief red overlay pulse on damage. Player calls this through duck-typing.
+func flash_damage(_amount: float) -> void:
+	if _damage_flash == null:
+		return
+	_damage_flash.modulate.a = 0.55
+	var tween: Tween = create_tween()
+	tween.tween_property(_damage_flash, "modulate:a", 0.0, 0.45)
+
+# Re-render the standard hotbar so the weapon slot's enabled/disabled state
+# matches the current equipped_items dict.
+func _refresh_standard_slots() -> void:
+	if BuildController.active:
+		return
+	_populate(STANDARD_SLOTS)
+	var player: Node = get_node_or_null("/root/Main/Player")
+	var idx: int = player.get("current_tool") if player != null else 0
+	_highlight(idx)
 
 func _on_build_mode_changed(is_active: bool) -> void:
 	if is_active:
@@ -107,6 +161,28 @@ func _populate(spec: Array) -> void:
 		slot.tooltip_text = entry[1]
 		_slots_row.add_child(slot)
 		_slots.append(slot)
+	# Grey out the weapon slot when no weapon is equipped + show the equipped
+	# weapon's name in the tooltip when it is.
+	if spec == STANDARD_SLOTS and _slots.size() > WEAPON_SLOT_INDEX:
+		var weapon_slot: Panel = _slots[WEAPON_SLOT_INDEX]
+		var equipped_id: String = _equipped_weapon_id()
+		if equipped_id == "":
+			weapon_slot.modulate = Color(1, 1, 1, 0.35)
+			weapon_slot.tooltip_text = "Weapon (none equipped)"
+		else:
+			weapon_slot.modulate = Color(1, 1, 1, 1)
+			var def: Dictionary = _WeaponDefs.by_id(equipped_id)
+			weapon_slot.tooltip_text = "Weapon: %s" % String(def.get("name", equipped_id))
+
+func _equipped_weapon_id() -> String:
+	if _miner == null:
+		_miner = get_tree().get_first_node_in_group("player_miner")
+	if _miner == null:
+		return ""
+	var equipped: Dictionary = _miner.get("equipped_items")
+	if equipped == null:
+		return ""
+	return String(equipped.get("weapon", ""))
 
 func _highlight(index: int) -> void:
 	for i: int in _slots.size():

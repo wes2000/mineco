@@ -87,6 +87,13 @@ autoplay = true
 
 [node name="HUD" type="CanvasLayer" parent="." unique_id=911672643]
 
+[node name="DamageFlash" type="ColorRect" parent="HUD"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.85, 0.10, 0.10, 1)
+modulate = Color(1, 1, 1, 0)
+mouse_filter = 2
+
 [node name="MachineUI" parent="HUD" instance=ExtResource("24_mui")]
 
 [node name="BottomHud" parent="HUD" instance=ExtResource("28_bhud")]

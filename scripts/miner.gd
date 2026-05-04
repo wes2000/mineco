@@ -329,7 +329,7 @@ func apply_owned_modifiers() -> void:
 	# new buys, equip-swaps, and post-load restoration uniformly.
 	for owned_id: String in owned_items:
 		stats.call("remove_source", StringName("shop_" + owned_id))
-	for cat: String in [String(_ShopDefs.CAT_PICKAXE), String(_ShopDefs.CAT_SCANNER)]:
+	for cat: String in [String(_ShopDefs.CAT_PICKAXE), String(_ShopDefs.CAT_SCANNER), String(_ShopDefs.CAT_WEAPON)]:
 		stats.call("remove_source", StringName("equip_" + cat))
 	# Utility items: always-on, one source per item.
 	for owned_id: String in owned_items:

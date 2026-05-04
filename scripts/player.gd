@@ -28,6 +28,8 @@ var _pickup_base_radius: float = 1.5
 @onready var _shovel: Node3D = $Camera3D/Shovel
 @onready var _scanner_mesh: Node3D = $Camera3D/Scanner
 @onready var _flashlight_mesh: Node3D = $Camera3D/Flashlight
+@onready var _weapon: Node3D = $Camera3D/Weapon
+@onready var _health: Node = $Health
 
 # Set when in a boat; cleared on exit. While set, all the player walking +
 # tool input is suppressed and the boat handles W/S/A/D itself.
@@ -37,14 +39,19 @@ var _driving_boat: Node = null
 var _crouch_lerp: float = 0.0   # 0=standing, 1=fully crouched
 
 # Standard-mode tool selection. -1 = nothing equipped (no LMB action).
-# 0 = Pickaxe, 1 = Ore Scanner (NYI), 2 = Flashlight (NYI).
+# 0 = Pickaxe, 1 = Ore Scanner, 2 = Flashlight, 3 = Weapon (only if owned).
 const TOOL_NONE: int = -1
 const TOOL_PICKAXE: int = 0
 const TOOL_SCANNER: int = 1
 const TOOL_FLASHLIGHT: int = 2
+const TOOL_WEAPON: int = 3
 
 var current_tool: int = TOOL_PICKAXE
 signal tool_changed(new_tool: int)
+
+# Town respawn position. Player.tscn places us at (0, 30, 0); on death we
+# warp back here and the SpawnGate-style ground catch then drops us safely.
+const RESPAWN_POSITION: Vector3 = Vector3(0.0, 30.0, 0.0)
 
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 
@@ -53,6 +60,21 @@ func _ready() -> void:
 	BuildController.bind_player(self, _camera)
 	_pickup_area.body_entered.connect(_on_pickup)
 	_miner.material_pickup.connect(_on_material_pickup)
+	# Combat: be hittable by anything that respects the damageables layer +
+	# group so future enemies can damage the player through the same API.
+	add_to_group("damageables")
+	# Player CharacterBody3D originally only collided as layer 1 (default).
+	# Add bit 4 ("damageables", 1<<3 = 8) so weapon raycasts could find us
+	# (mostly cosmetic for v1 — the weapon excludes its owning body — but it
+	# means future enemy code can target Player via the same mask).
+	collision_layer |= 1 << 3
+	if _health != null:
+		_health.died.connect(_on_player_died)
+		_health.damaged.connect(_on_player_damaged)
+	# Re-sync the weapon mesh whenever the player buys / equips a different
+	# weapon at the shop, even if the weapon slot is currently active.
+	if _miner != null and _miner.has_signal("shop_inventory_changed"):
+		_miner.shop_inventory_changed.connect(_on_shop_inventory_changed)
 	# Use a per-instance capsule resource so crouch height changes don't bleed
 	# into other things sharing the same shape resource.
 	_collision.shape = _capsule_shape
@@ -83,11 +105,14 @@ func _emit_initial_tool() -> void:
 	tool_changed.emit(current_tool)
 
 func get_save_data() -> Dictionary:
-	return {
+	var d: Dictionary = {
 		"position": [global_position.x, global_position.y, global_position.z],
 		"rotation_y": rotation.y,
 		"current_tool": current_tool,
 	}
+	if _health != null and _health.has_method("get_save_data"):
+		d["health"] = _health.call("get_save_data")
+	return d
 
 func apply_save_data(data: Dictionary) -> void:
 	var pos: Array = data.get("position", [])
@@ -97,8 +122,16 @@ func apply_save_data(data: Dictionary) -> void:
 		rotation.y = float(data["rotation_y"])
 	if data.has("current_tool"):
 		_select_tool(int(data["current_tool"]))
+	if data.has("health") and _health != null and _health.has_method("apply_save_data"):
+		_health.call("apply_save_data", data["health"])
+	# Equipping a weapon during load needs the Weapon node to know its def, so
+	# push that through after Miner has restored equipped_items.
+	_sync_weapon_from_equipped()
 
 func _select_tool(t: int) -> void:
+	# Weapon slot only equips if the player actually owns + equipped one.
+	if t == TOOL_WEAPON and not _has_equipped_weapon():
+		return
 	# Pressing the same tool key again puts the tool away (toggle off).
 	if current_tool == t:
 		current_tool = TOOL_NONE
@@ -107,6 +140,28 @@ func _select_tool(t: int) -> void:
 	_apply_tool_visuals()
 	tool_changed.emit(current_tool)
 
+func _on_shop_inventory_changed() -> void:
+	_sync_weapon_from_equipped()
+	# If the weapon was unequipped while the slot was active, fall back to no
+	# tool so the empty mesh isn't held up.
+	if current_tool == TOOL_WEAPON and not _has_equipped_weapon():
+		current_tool = TOOL_NONE
+		_apply_tool_visuals()
+		tool_changed.emit(current_tool)
+
+func _has_equipped_weapon() -> bool:
+	var equipped: Dictionary = _miner.get("equipped_items") if _miner != null else {}
+	return equipped != null and equipped.has("weapon") and String(equipped["weapon"]) != ""
+
+func _sync_weapon_from_equipped() -> void:
+	if _weapon == null or not _weapon.has_method("set_weapon_id"):
+		return
+	if _miner == null:
+		return
+	var equipped: Dictionary = _miner.get("equipped_items")
+	var wid: String = String(equipped.get("weapon", "")) if equipped != null else ""
+	_weapon.call("set_weapon_id", wid)
+
 func _apply_tool_visuals() -> void:
 	if _shovel != null:
 		_shovel.visible = (current_tool == TOOL_PICKAXE)
@@ -114,6 +169,13 @@ func _apply_tool_visuals() -> void:
 		_scanner_mesh.visible = (current_tool == TOOL_SCANNER)
 	if _flashlight_mesh != null:
 		_flashlight_mesh.visible = (current_tool == TOOL_FLASHLIGHT)
+	if _weapon != null:
+		_weapon.visible = (current_tool == TOOL_WEAPON)
+		# Sync the displayed mesh to the equipped weapon id every time we draw
+		# the weapon — equipping a different one in the shop while the slot is
+		# active should swap immediately.
+		if current_tool == TOOL_WEAPON:
+			_sync_weapon_from_equipped()
 	# Also show/hide the scanner radar overlay + bind us as its player ref.
 	var overlay: Node = get_tree().get_first_node_in_group("scanner_overlay")
 	if overlay != null:
@@ -161,6 +223,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			_select_tool(TOOL_SCANNER)
 		elif event.is_action_pressed("build_slot_3"):
 			_select_tool(TOOL_FLASHLIGHT)
+		elif event.is_action_pressed("build_slot_4"):
+			# Weapon slot — only does anything if the player owns + equipped one.
+			_select_tool(TOOL_WEAPON)
 		elif event.is_action_pressed("build_rotate") and current_tool == TOOL_SCANNER:
 			# R cycles scanner target material when the scanner is out.
 			var overlay: Node = get_tree().get_first_node_in_group("scanner_overlay")
@@ -304,6 +369,37 @@ func _hit_to_building(n: Node) -> Building:
 			return n
 		n = n.get_parent()
 	return null
+
+func _process(_delta: float) -> void:
+	# Weapon attack — gated on standard mode + weapon equipped + owns one.
+	if BuildController.active or current_tool != TOOL_WEAPON:
+		return
+	if _weapon == null or not _weapon.has_method("try_attack"):
+		return
+	if Input.is_action_pressed("mine"):
+		_weapon.call("try_attack", _camera)
+
+# --- Damage / death --------------------------------------------------------
+
+func _on_player_damaged(amount: float, _src: Vector3, _cur: float, _max_v: int) -> void:
+	# Pulse a brief red overlay via the bottom HUD's optional helper. Kept
+	# untyped so Hud can decide how to render it.
+	var hud: Node = get_node_or_null("/root/Main/HUD/BottomHud")
+	if hud != null and hud.has_method("flash_damage"):
+		hud.call("flash_damage", amount)
+	var feed: Node = get_tree().get_first_node_in_group("pickup_feed")
+	if feed != null and feed.has_method("add_text_message"):
+		feed.call("add_text_message", "Took %d damage" % int(round(amount)))
+
+func _on_player_died(_src: Vector3) -> void:
+	# v1 respawn: warp to town spawn + restore full HP. No item loss.
+	global_position = RESPAWN_POSITION
+	velocity = Vector3.ZERO
+	if _health != null and _health.has_method("revive_full"):
+		_health.call("revive_full")
+	var feed: Node = get_tree().get_first_node_in_group("pickup_feed")
+	if feed != null and feed.has_method("add_text_message"):
+		feed.call("add_text_message", "You died — respawned in town")
 
 func _physics_process(delta: float) -> void:
 	# Sync collision-shape state to admin toggle so re-enabling noclip mid-frame is safe.
