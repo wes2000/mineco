@@ -137,6 +137,11 @@ func _scatter_underground_by_rank(terrain: VoxelTerrain) -> void:
 func _instantiate_deposit(prefab: PackedScene, pos: Vector3) -> void:
 	var deposit := prefab.instantiate() as OreDeposit
 	deposit.position = pos
+	# Deposit id is derived from the deterministic spawn position so SaveGame
+	# can match restored deposits across runs (the generator seed is fixed).
+	deposit.deposit_id = "ore_%d_%d_%d" % [
+		int(round(pos.x * 10.0)), int(round(pos.y * 10.0)), int(round(pos.z * 10.0))
+	]
 	add_child(deposit)
 
 # Scatter ore on each offshore claim island per its tier. Tiered counts come

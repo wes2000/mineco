@@ -26,6 +26,11 @@ const VISIBILITY_FADE_MARGIN: float = 24.0
 var _current_stage: int = 0
 var _stage_hp_left: int
 
+# Stable id assigned by OreGenerator from the deterministic spawn position.
+# Used by SaveGame to restore mid-mining state and remove fully-depleted
+# deposits after the OreGenerator's regenerated set is in the scene.
+var deposit_id: String = ""
+
 signal damaged(remaining_hp: int, stage: int)
 signal chunk_broken(material: OreType, ore_amount: int, stage: int)
 signal depleted(material: OreType)
@@ -69,3 +74,20 @@ func _ore_for_stage(s: int) -> int:
 	if s < ore_per_stage_array.size():
 		return ore_per_stage_array[s]
 	return ore_per_stage
+
+# --- Save / load -----------------------------------------------------------
+
+func get_save_data() -> Dictionary:
+	# Saved per non-depleted deposit. Depleted deposits are tracked by their
+	# absence from the saved dict.
+	return {"stage": _current_stage, "hp": _stage_hp_left}
+
+func apply_save_data(data: Dictionary) -> void:
+	_current_stage = int(data.get("stage", 0))
+	_stage_hp_left = int(data.get("hp", hp_per_stage))
+	if _current_stage >= stage_meshes.size():
+		queue_free()
+		return
+	if stage_meshes.size() > 0:
+		_mesh.mesh = stage_meshes[_current_stage]
+	_mesh.scale = Vector3.ONE * _scale_for_stage(_current_stage)

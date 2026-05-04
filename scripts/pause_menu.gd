@@ -83,6 +83,12 @@ func _placeholder_label(text: String) -> Label:
 	lbl.add_theme_font_size_override("font_size", 18)
 	return lbl
 
+func _save_game_node() -> Node:
+	# Resolved at runtime so the parser doesn't need the SaveGame autoload
+	# in its global cache (newly-added autoloads sometimes don't refresh
+	# until the editor restarts).
+	return get_node_or_null("/root/SaveGame")
+
 func _build_game_tab() -> void:
 	var v: VBoxContainer = VBoxContainer.new()
 	v.add_theme_constant_override("separation", 8)
@@ -96,35 +102,66 @@ func _build_game_tab() -> void:
 	save_btn.text = "Save Game"
 	save_btn.custom_minimum_size = Vector2(220, 36)
 	save_btn.pressed.connect(func() -> void:
-		if SaveGame != null:
-			SaveGame.save_now()
+		var sg: Node = _save_game_node()
+		if sg != null:
+			sg.call("save_now")
 	)
 	v.add_child(save_btn)
+	var sg_init: Node = _save_game_node()
 	var load_btn: Button = Button.new()
 	load_btn.text = "Load Game"
 	load_btn.custom_minimum_size = Vector2(220, 36)
-	load_btn.disabled = SaveGame == null or not SaveGame.has_save()
+	load_btn.disabled = sg_init == null or not bool(sg_init.call("has_save"))
 	load_btn.pressed.connect(func() -> void:
-		if SaveGame != null and SaveGame.has_save():
-			SaveGame.load_now()
+		var sg: Node = _save_game_node()
+		if sg != null and bool(sg.call("has_save")):
+			sg.call("load_now")
 			close()
 	)
 	v.add_child(load_btn)
+	# Two-click delete: first click arms the button + flips its text; second
+	# click within CONFIRM_WINDOW seconds actually deletes. A simple pattern
+	# that works without spawning a separate ConfirmationDialog.
 	var del_btn: Button = Button.new()
 	del_btn.text = "Delete Save"
 	del_btn.custom_minimum_size = Vector2(220, 36)
-	del_btn.disabled = SaveGame == null or not SaveGame.has_save()
+	del_btn.disabled = sg_init == null or not bool(sg_init.call("has_save"))
+	var del_state: Dictionary = {"armed": false, "timer": null}
+	const CONFIRM_WINDOW: float = 3.0
+	var disarm_del: Callable = func() -> void:
+		del_state["armed"] = false
+		del_btn.text = "Delete Save"
+		del_btn.modulate = Color.WHITE
+		del_state["timer"] = null
 	del_btn.pressed.connect(func() -> void:
-		if SaveGame != null:
-			SaveGame.delete_save()
-			load_btn.disabled = true
-			del_btn.disabled = true
+		var sg: Node = _save_game_node()
+		if sg == null or not bool(sg.call("has_save")):
+			return
+		if not del_state["armed"]:
+			del_state["armed"] = true
+			del_btn.text = "Click again to confirm"
+			del_btn.modulate = Color(1.0, 0.55, 0.55, 1)
+			var timer: SceneTreeTimer = get_tree().create_timer(CONFIRM_WINDOW)
+			del_state["timer"] = timer
+			timer.timeout.connect(func() -> void:
+				if del_state.get("timer") == timer:
+					disarm_del.call()
+			)
+			return
+		# Confirmed.
+		sg.call("delete_save")
+		load_btn.disabled = true
+		del_btn.disabled = true
+		disarm_del.call()
 	)
 	v.add_child(del_btn)
-	if SaveGame != null:
-		SaveGame.save_completed.connect(func() -> void:
-			load_btn.disabled = not SaveGame.has_save()
-			del_btn.disabled = not SaveGame.has_save()
+	if sg_init != null and sg_init.has_signal("save_completed"):
+		sg_init.connect("save_completed", func() -> void:
+			var sg: Node = _save_game_node()
+			var has: bool = sg != null and bool(sg.call("has_save"))
+			load_btn.disabled = not has
+			del_btn.disabled = not has
+			disarm_del.call()
 		)
 	$Panel/Vbox/Tabs/Game.add_child(v)
 

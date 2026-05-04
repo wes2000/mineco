@@ -23,6 +23,10 @@ var _voxel_tool: VoxelTool
 # land claim).
 var _last_ore_hit_pos: Vector3 = Vector3.ZERO
 
+# Append-only log of every voxel-terrain carve the player has made, so SaveGame
+# can replay them on load. Each entry is {pos: [x, y, z], radius: float}.
+var _carves: Array = []
+
 var stone: int = 0
 var iron: int = 0
 var gold: int = 0
@@ -132,6 +136,10 @@ func _on_hit_frame() -> void:
 		if _voxel_tool != null:
 			var r: float = brush_radius * (Admin.radius_multiplier if Admin.big_radius else 1.0)
 			_voxel_tool.do_sphere(hit.position, r)
+			_carves.append({
+				"pos": [hit.position.x, hit.position.y, hit.position.z],
+				"radius": r,
+			})
 		_dirt_audio.play()
 
 func _on_chunk_broken(material: int, amount: int, _stage: int) -> void:
@@ -190,6 +198,7 @@ func get_save_data() -> Dictionary:
 		},
 		"gold_currency": gold_currency,
 		"has_boat": has_boat,
+		"carves": _carves.duplicate(true),
 	}
 
 func apply_save_data(data: Dictionary) -> void:
@@ -205,9 +214,33 @@ func apply_save_data(data: Dictionary) -> void:
 	gold_bar = int(m.get("gold_bar", 0))
 	gold_currency = int(data.get("gold_currency", 0))
 	has_boat = bool(data.get("has_boat", false))
+	# Preserve the carve log itself so future saves include earlier carves.
+	# Replay is done lazily by SaveGame once nearby chunks are streamed in.
+	_carves = []
+	for c: Variant in data.get("carves", []):
+		if c is Dictionary:
+			_carves.append(c)
 	inventory_changed.emit(stone, iron, gold)
 	extended_inventory_changed.emit()
 	gold_currency_changed.emit(gold_currency)
+
+# Replays every saved carve onto the voxel terrain. Best-effort: chunks that
+# aren't yet loaded won't take, but the player will see the dug terrain
+# wherever chunks have streamed in by the time this is called.
+func replay_carves() -> void:
+	if _voxel_tool == null:
+		return
+	for c: Variant in _carves:
+		if not (c is Dictionary):
+			continue
+		var pos_arr: Array = c.get("pos", [])
+		if pos_arr.size() != 3:
+			continue
+		var radius: float = float(c.get("radius", brush_radius))
+		_voxel_tool.do_sphere(
+			Vector3(float(pos_arr[0]), float(pos_arr[1]), float(pos_arr[2])),
+			radius,
+		)
 
 func add_factory_material(material_id: int, amount: int) -> void:
 	# Used by FactoryDrop pickup. material_id is MaterialDefs.MaterialId enum value.

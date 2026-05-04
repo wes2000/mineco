@@ -114,6 +114,17 @@ func collect_state() -> Dictionary:
 	# Factory
 	if FactoryWorld != null and FactoryWorld.has_method("get_save_data"):
 		data["factory"] = FactoryWorld.get_save_data()
+	# Ore deposits (only the non-depleted ones; the absence of an id means
+	# that deposit was fully mined out before save).
+	var deposits: Dictionary = {}
+	for n: Node in get_tree().get_nodes_in_group("ore_deposits"):
+		if not (n is OreDeposit):
+			continue
+		var dep: OreDeposit = n
+		if dep.deposit_id == "":
+			continue
+		deposits[dep.deposit_id] = dep.get_save_data()
+	data["ore_deposits"] = deposits
 	return data
 
 func apply_state(data: Dictionary) -> void:
@@ -141,6 +152,29 @@ func apply_state(data: Dictionary) -> void:
 	var player: Node = _get_player()
 	if player != null and data.has("player") and player.has_method("apply_save_data"):
 		player.apply_save_data(data["player"])
+	# Ore deposit state — restore stage/hp on existing deposits and free any
+	# that were fully mined (their ids are absent from the saved dict).
+	if data.has("ore_deposits"):
+		_apply_ore_deposit_state(data["ore_deposits"])
+	# Replay terrain carves so the dug-out tunnels come back. Best-effort —
+	# chunks must be loaded; the autosave/load will trigger the player's
+	# nearby chunks first which covers the main case.
+	var miner_for_carves: Node = _get_miner()
+	if miner_for_carves != null and miner_for_carves.has_method("replay_carves"):
+		miner_for_carves.call("replay_carves")
+
+func _apply_ore_deposit_state(saved: Dictionary) -> void:
+	for n: Node in get_tree().get_nodes_in_group("ore_deposits"):
+		if not (n is OreDeposit):
+			continue
+		var dep: OreDeposit = n
+		if dep.deposit_id == "":
+			continue
+		if saved.has(dep.deposit_id):
+			dep.apply_save_data(saved[dep.deposit_id])
+		else:
+			# Not in save → was fully depleted before the save was written.
+			dep.queue_free()
 
 # --- Helpers ----------------------------------------------------------------
 
