@@ -243,6 +243,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		var co_ui: Node = get_tree().get_first_node_in_group("company_panel_ui")
 		if co_ui != null and co_ui.has_method("toggle"):
 			co_ui.call("toggle")
+	elif event.is_action_pressed("release_mouse"):
+		# Quick mouse-release toggle for editor inspector use without opening
+		# any UI / pausing the world. Press again to recapture.
+		if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		else:
+			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	elif not BuildController.active:
 		# Tool slots in standard mode (build mode owns these keys when active).
 		if event.is_action_pressed("build_slot_1"):

@@ -19,6 +19,7 @@ const STANDARD_KEYBINDS: Array = [
 	["M", "map (popup)"],
 	["P", "passive tree"],
 	["O", "company / rank"],
+	["F2", "release mouse (for editor)"],
 	["Esc", "menu / close"],
 	["B", "build mode"],
 ]
