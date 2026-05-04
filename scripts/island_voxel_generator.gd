@@ -8,53 +8,51 @@ class_name IslandVoxelGenerator
 # the claim system reads to know how rich an island is (1 = poor, 5 = elite).
 # Y stays inside the existing voxel terrain bounds AABB(-208 .. +208 on x/z).
 const CLAIM_ISLANDS: Array = [
-	# radius_x/radius_z + rotation give an oriented elliptical footprint, so
-	# islands aren't all round. noise_freq + noise_amp control how much the
-	# surface wrinkles inside that footprint (low_amp → smooth dome; high_amp
-	# → broken ridges & saddles). falloff_inner controls beach width: small =
-	# steep cliff, large = gentle slope. peak_count gives mountains a more
-	# pyramidal feel by exponentiating the falloff curve.
+	# Bigger footprints + much lower peaks so slopes are walkable. Concretely:
+	# height / ((1 - falloff_inner) * min(radius_x, radius_z)) is the avg
+	# slope on the long side; we keep it under ~0.55 (≈ 28°) so the player
+	# can walk up without skidding.
 	{
 		"id": "kelp_cay", "name": "Kelp Cay", "tier": 1,
-		"center": Vector2( 250.0, -130.0),
-		"radius_x": 32.0, "radius_z": 16.0, "rotation": 0.6,
-		"height": 9.0, "noise_freq": 2.4, "noise_amp": 0.55,
-		"falloff_inner": 0.35, "peak_pow": 1.0,
+		"center": Vector2( 260.0, -150.0),
+		"radius_x": 55.0, "radius_z": 30.0, "rotation": 0.6,
+		"height": 5.0, "noise_freq": 1.7, "noise_amp": 0.45,
+		"falloff_inner": 0.6, "peak_pow": 1.0,
 	},
 	{
 		"id": "tin_atoll", "name": "Tin Atoll", "tier": 1,
-		"center": Vector2(-220.0, -90.0),
-		"radius_x": 22.0, "radius_z": 26.0, "rotation": -0.3,
-		"height": 7.5, "noise_freq": 3.0, "noise_amp": 0.7,
-		"falloff_inner": 0.2, "peak_pow": 0.7,
+		"center": Vector2(-160.0, -160.0),
+		"radius_x": 42.0, "radius_z": 48.0, "rotation": -0.3,
+		"height": 4.5, "noise_freq": 1.9, "noise_amp": 0.55,
+		"falloff_inner": 0.55, "peak_pow": 0.95,
 	},
 	{
 		"id": "smelters_isle", "name": "Smelter's Isle", "tier": 2,
-		"center": Vector2( 270.0, 190.0),
-		"radius_x": 28.0, "radius_z": 28.0, "rotation": 0.0,
-		"height": 14.0, "noise_freq": 1.8, "noise_amp": 0.4,
-		"falloff_inner": 0.5, "peak_pow": 1.2,
+		"center": Vector2( 290.0, 200.0),
+		"radius_x": 55.0, "radius_z": 55.0, "rotation": 0.0,
+		"height": 7.0, "noise_freq": 1.5, "noise_amp": 0.4,
+		"falloff_inner": 0.65, "peak_pow": 1.0,
 	},
 	{
 		"id": "ironback", "name": "Ironback", "tier": 3,
-		"center": Vector2(-240.0, 220.0),
-		"radius_x": 38.0, "radius_z": 18.0, "rotation": 1.1,
-		"height": 17.0, "noise_freq": 2.2, "noise_amp": 0.5,
-		"falloff_inner": 0.4, "peak_pow": 1.5,
+		"center": Vector2(-260.0, 240.0),
+		"radius_x": 70.0, "radius_z": 32.0, "rotation": 1.1,
+		"height": 9.0, "noise_freq": 1.7, "noise_amp": 0.45,
+		"falloff_inner": 0.6, "peak_pow": 1.0,
 	},
 	{
 		"id": "veinmount", "name": "Veinmount", "tier": 4,
-		"center": Vector2( -40.0, -290.0),
-		"radius_x": 30.0, "radius_z": 30.0, "rotation": 0.0,
-		"height": 24.0, "noise_freq": 1.6, "noise_amp": 0.35,
-		"falloff_inner": 0.55, "peak_pow": 2.0,
+		"center": Vector2( 60.0, -300.0),
+		"radius_x": 55.0, "radius_z": 50.0, "rotation": 0.0,
+		"height": 11.0, "noise_freq": 1.4, "noise_amp": 0.4,
+		"falloff_inner": 0.62, "peak_pow": 1.05,
 	},
 	{
 		"id": "diadem_keep", "name": "Diadem Keep", "tier": 5,
-		"center": Vector2(-296.0, -30.0),
-		"radius_x": 40.0, "radius_z": 32.0, "rotation": -0.7,
-		"height": 28.0, "noise_freq": 2.0, "noise_amp": 0.5,
-		"falloff_inner": 0.45, "peak_pow": 1.8,
+		"center": Vector2(-280.0, -40.0),
+		"radius_x": 68.0, "radius_z": 60.0, "rotation": -0.7,
+		"height": 13.0, "noise_freq": 1.5, "noise_amp": 0.45,
+		"falloff_inner": 0.6, "peak_pow": 1.0,
 	},
 ]
 
