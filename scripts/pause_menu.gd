@@ -296,19 +296,39 @@ func _build_admin_tab() -> void:
 	give_label.text = "Give resources (+100):"
 	give_label.add_theme_color_override("font_color", Color(0.7, 0.75, 0.8, 1))
 	v.add_child(give_label)
-	var row: HBoxContainer = HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
-	v.add_child(row)
-	for entry: Array in [
-		["Stone", MaterialDefs.MaterialId.STONE],
-		["Iron Ore", MaterialDefs.MaterialId.IRON_ORE],
-		["Gold Ore", MaterialDefs.MaterialId.GOLD_ORE],
-	]:
-		var btn: Button = Button.new()
-		btn.text = entry[0]
-		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		btn.pressed.connect(_give.bind(entry[1]))
-		row.add_child(btn)
+	# Three rows so the full T1/T2/T3 ladder is reachable from the admin panel.
+	var give_rows: Array = [
+		["T1 (mined ore)", [
+			["Stone",     MaterialDefs.MaterialId.STONE],
+			["Iron Ore",  MaterialDefs.MaterialId.IRON_ORE],
+			["Gold Ore",  MaterialDefs.MaterialId.GOLD_ORE],
+		]],
+		["T2 (smelted)", [
+			["Brick",       MaterialDefs.MaterialId.BRICK],
+			["Iron Ingot",  MaterialDefs.MaterialId.IRON_INGOT],
+			["Gold Ingot",  MaterialDefs.MaterialId.GOLD_INGOT],
+		]],
+		["T3 (forged)", [
+			["Block",     MaterialDefs.MaterialId.BLOCK],
+			["Iron Bar",  MaterialDefs.MaterialId.IRON_BAR],
+			["Gold Bar",  MaterialDefs.MaterialId.GOLD_BAR],
+		]],
+	]
+	for tier_entry: Array in give_rows:
+		var tier_lbl: Label = Label.new()
+		tier_lbl.text = String(tier_entry[0])
+		tier_lbl.add_theme_font_size_override("font_size", 11)
+		tier_lbl.add_theme_color_override("font_color", Color(0.55, 0.6, 0.65, 1))
+		v.add_child(tier_lbl)
+		var row: HBoxContainer = HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		v.add_child(row)
+		for entry: Array in tier_entry[1]:
+			var btn: Button = Button.new()
+			btn.text = entry[0]
+			btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			btn.pressed.connect(_give.bind(entry[1]))
+			row.add_child(btn)
 
 func _make_slider_row(kind: String) -> HBoxContainer:
 	var hbox: HBoxContainer = HBoxContainer.new()
