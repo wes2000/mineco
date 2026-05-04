@@ -149,6 +149,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			menu.toggle()
 	elif event.is_action_pressed("machine_interact"):
 		_try_open_machine_ui()
+	elif event.is_action_pressed("passive_tree"):
+		var ui: Node = get_tree().get_first_node_in_group("passive_tree_ui")
+		if ui != null and ui.has_method("toggle"):
+			ui.call("toggle")
 	elif not BuildController.active:
 		# Tool slots in standard mode (build mode owns these keys when active).
 		if event.is_action_pressed("build_slot_1"):

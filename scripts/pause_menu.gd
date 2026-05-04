@@ -17,6 +17,7 @@ const STANDARD_KEYBINDS: Array = [
 	["E", "interact"],
 	["Tab", "inventory (hold)"],
 	["M", "map (popup)"],
+	["P", "passive tree"],
 	["Esc", "menu / close"],
 	["B", "build mode"],
 ]
@@ -155,6 +156,24 @@ func _build_game_tab() -> void:
 		disarm_del.call()
 	)
 	v.add_child(del_btn)
+	# Passive tree opener — sits below the save controls.
+	var sep_pt: HSeparator = HSeparator.new()
+	v.add_child(sep_pt)
+	var perks_hdr: Label = Label.new()
+	perks_hdr.text = "Progression"
+	perks_hdr.add_theme_font_size_override("font_size", 14)
+	perks_hdr.add_theme_color_override("font_color", Color(0.75, 0.55, 0.95, 1))
+	v.add_child(perks_hdr)
+	var perks_btn: Button = Button.new()
+	perks_btn.text = "Passive Tree  (P)"
+	perks_btn.custom_minimum_size = Vector2(220, 36)
+	perks_btn.pressed.connect(func() -> void:
+		var ui: Node = get_tree().get_first_node_in_group("passive_tree_ui")
+		if ui != null and ui.has_method("open"):
+			close()
+			ui.call("open")
+	)
+	v.add_child(perks_btn)
 	if sg_init != null and sg_init.has_signal("save_completed"):
 		sg_init.connect("save_completed", func() -> void:
 			var sg: Node = _save_game_node()

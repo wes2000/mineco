@@ -118,6 +118,10 @@ func collect_state() -> Dictionary:
 	var ps: Node = get_node_or_null("/root/PlayerStats")
 	if ps != null and ps.has_method("get_save_data"):
 		data["stats"] = ps.get_save_data()
+	# Passive tree perk ranks.
+	var pt: Node = get_node_or_null("/root/PassiveTree")
+	if pt != null and pt.has_method("get_save_data"):
+		data["passive_tree"] = pt.get_save_data()
 	# Ore deposits (only the non-depleted ones; the absence of an id means
 	# that deposit was fully mined out before save).
 	var deposits: Dictionary = {}
@@ -156,6 +160,11 @@ func apply_state(data: Dictionary) -> void:
 	var ps: Node = get_node_or_null("/root/PlayerStats")
 	if ps != null and data.has("stats") and ps.has_method("apply_save_data"):
 		ps.apply_save_data(data["stats"])
+	# Passive tree perk ranks. Older saves without this block leave the tree
+	# at all-zero ranks, so existing saves keep working.
+	var pt: Node = get_node_or_null("/root/PassiveTree")
+	if pt != null and data.has("passive_tree") and pt.has_method("apply_save_data"):
+		pt.apply_save_data(data["passive_tree"])
 	# Player position last — applying it before world_ready can be overwritten
 	# by the SpawnGate. By the time we run apply_state we're past world_ready.
 	var player: Node = _get_player()

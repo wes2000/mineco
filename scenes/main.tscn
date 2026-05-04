@@ -36,6 +36,7 @@
 [ext_resource type="PackedScene" path="res://scenes/contracts_overlay.tscn" id="36_cover"]
 [ext_resource type="PackedScene" path="res://scenes/claim_vendor_ui.tscn" id="40_claimui"]
 [ext_resource type="PackedScene" path="res://scenes/item_shop_ui.tscn" id="41_shopui"]
+[ext_resource type="PackedScene" path="res://scenes/passive_tree_ui.tscn" id="42_perksui"]
 
 [sub_resource type="VoxelMesherTransvoxel" id="Mesher_1"]
 
@@ -108,6 +109,8 @@ autoplay = true
 [node name="ClaimVendorUI" parent="HUD" instance=ExtResource("40_claimui")]
 
 [node name="ItemShopUI" parent="HUD" instance=ExtResource("41_shopui")]
+
+[node name="PassiveTreeUI" parent="HUD" instance=ExtResource("42_perksui")]
 
 [node name="PauseMenu" parent="HUD" instance=ExtResource("26_menu")]
 
