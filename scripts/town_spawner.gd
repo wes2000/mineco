@@ -32,6 +32,7 @@ const NPC_SHIRT_COLORS: Array[Color] = [
 const VENDOR_INDEX: int = 0
 const CONTRACT_VENDOR_INDEX: int = 1
 const CLAIM_VENDOR_INDEX: int = 2
+const ITEM_SHOP_INDEX: int = 3
 
 # Sink the hut bottom slightly into the terrain so that voxel surface
 # irregularities don't leave visible gaps under the box.
@@ -70,6 +71,8 @@ func _spawn() -> void:
 			npc.is_contract_vendor = true
 		elif i == CLAIM_VENDOR_INDEX:
 			npc.is_claim_vendor = true
+		elif i == ITEM_SHOP_INDEX:
+			npc.is_item_shop = true
 		# Position MUST be set before add_child — Npc._ready captures _spawn_pos
 		# from global_position. If we set position after add_child, _spawn_pos
 		# stays at (0, 0, 0) and the y-fallthrough self-heal then teleports
@@ -99,6 +102,12 @@ func _spawn() -> void:
 				shirt_mat.albedo_color = Color(0.20, 0.55, 0.30, 1)
 				shirt_mat.emission_enabled = true
 				shirt_mat.emission = Color(0.55, 0.85, 0.30, 1)
+				shirt_mat.emission_energy_multiplier = 0.45
+			elif i == ITEM_SHOP_INDEX:
+				# Item shop: warm copper / orange — reads as "blacksmith".
+				shirt_mat.albedo_color = Color(0.60, 0.30, 0.18, 1)
+				shirt_mat.emission_enabled = true
+				shirt_mat.emission = Color(0.95, 0.55, 0.20, 1)
 				shirt_mat.emission_energy_multiplier = 0.45
 			else:
 				shirt_mat.albedo_color = NPC_SHIRT_COLORS[i % NPC_SHIRT_COLORS.size()]

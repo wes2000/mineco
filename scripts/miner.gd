@@ -1,5 +1,10 @@
 extends Node3D
 
+# Preload via script reference so the parser doesn't need ShopItemDefs in
+# its global class_name cache (newly-added class_names don't always refresh
+# until the editor restarts).
+const _ShopDefs: GDScript = preload("res://scripts/shop_item_defs.gd")
+
 @export var reach: float = 4.0
 @export var brush_radius: float = 0.8
 # Path to the Shovel under the player's Camera3D.
@@ -44,6 +49,14 @@ var gold_currency: int = 0
 
 # Vehicles / unlocks
 var has_boat: bool = false
+
+# Item shop state (definitions in scripts/shop_item_defs.gd).
+# owned_items: list of item ids the player has ever bought.
+# equipped_items: per-equip-category id (e.g. {"pickaxe": "pickaxe_iron"}).
+var owned_items: Array[String] = []
+var equipped_items: Dictionary = {}
+
+signal shop_inventory_changed   # owned/equipped changed — UI listens to refresh
 
 signal inventory_changed(s: int, i: int, g: int)
 signal extended_inventory_changed
@@ -202,6 +215,8 @@ func get_save_data() -> Dictionary:
 		"gold_currency": gold_currency,
 		"has_boat": has_boat,
 		"carves": _carves.duplicate(true),
+		"owned_items": owned_items.duplicate(),
+		"equipped_items": equipped_items.duplicate(),
 	}
 
 func apply_save_data(data: Dictionary) -> void:
@@ -223,9 +238,18 @@ func apply_save_data(data: Dictionary) -> void:
 	for c: Variant in data.get("carves", []):
 		if c is Dictionary:
 			_carves.append(c)
+	# Shop inventory.
+	owned_items = []
+	for v: Variant in data.get("owned_items", []):
+		owned_items.append(String(v))
+	equipped_items = {}
+	for k: Variant in data.get("equipped_items", {}).keys():
+		equipped_items[String(k)] = String(data["equipped_items"][k])
+	apply_owned_modifiers()
 	inventory_changed.emit(stone, iron, gold)
 	extended_inventory_changed.emit()
 	gold_currency_changed.emit(gold_currency)
+	shop_inventory_changed.emit()
 
 # Replays every saved carve onto the voxel terrain. Best-effort: chunks that
 # aren't yet loaded won't take, but the player will see the dug terrain
@@ -244,6 +268,94 @@ func replay_carves() -> void:
 			Vector3(float(pos_arr[0]), float(pos_arr[1]), float(pos_arr[2])),
 			radius,
 		)
+
+# --- Item shop API ---------------------------------------------------------
+
+func owns_item(item_id: String) -> bool:
+	return owned_items.has(item_id)
+
+func is_equipped(item_id: String) -> bool:
+	for k: String in equipped_items.keys():
+		if String(equipped_items[k]) == item_id:
+			return true
+	return false
+
+# True when the player has the gold and prerequisites for this item AND
+# doesn't already own it. Equip-category items still pass; buying one adds
+# it to owned and (if nothing equipped yet in that slot) auto-equips.
+func can_buy_item(item: Dictionary) -> bool:
+	if item.is_empty() or owns_item(String(item.id)):
+		return false
+	if gold_currency < int(item.price):
+		return false
+	return _ShopDefs.meets_requirements(item, owned_items)
+
+func buy_item(item_id: String) -> bool:
+	var item: Dictionary = _ShopDefs.by_id(item_id)
+	if not can_buy_item(item):
+		return false
+	add_gold_currency(-int(item.price))
+	owned_items.append(item_id)
+	# Auto-equip on first purchase of an equip-slot category so the player
+	# immediately feels the bonus without an extra click.
+	var cat: StringName = item.category
+	if _ShopDefs.is_equip_category(cat) and not equipped_items.has(String(cat)):
+		equip_item(item_id)
+		return true   # equip_item already emitted + applied modifiers
+	apply_owned_modifiers()
+	shop_inventory_changed.emit()
+	return true
+
+func equip_item(item_id: String) -> bool:
+	var item: Dictionary = _ShopDefs.by_id(item_id)
+	if item.is_empty() or not owns_item(item_id):
+		return false
+	if not _ShopDefs.is_equip_category(item.category):
+		return false
+	equipped_items[String(item.category)] = item_id
+	apply_owned_modifiers()
+	shop_inventory_changed.emit()
+	return true
+
+# Re-registers every shop modifier source on PlayerStats. Cheap and idempotent
+# (remove_source for any source name that doesn't exist is a no-op). Called
+# after buy/equip/load and from _ready so a fresh player still re-applies
+# whatever was loaded by SaveGame.apply_state.
+func apply_owned_modifiers() -> void:
+	var stats: Node = get_node_or_null("/root/PlayerStats")
+	if stats == null:
+		return
+	# Tear down everything we own, then re-add. Lets the same call handle
+	# new buys, equip-swaps, and post-load restoration uniformly.
+	for owned_id: String in owned_items:
+		stats.call("remove_source", StringName("shop_" + owned_id))
+	for cat: String in [String(_ShopDefs.CAT_PICKAXE), String(_ShopDefs.CAT_SCANNER)]:
+		stats.call("remove_source", StringName("equip_" + cat))
+	# Utility items: always-on, one source per item.
+	for owned_id: String in owned_items:
+		var item: Dictionary = _ShopDefs.by_id(owned_id)
+		if item.is_empty():
+			continue
+		if _ShopDefs.is_equip_category(item.category):
+			continue
+		var src: StringName = StringName("shop_" + owned_id)
+		for m: Dictionary in item.modifiers:
+			stats.call("add_modifier", src,
+				StringName(String(m.stat)),
+				StringName(String(m.op)),
+				float(m.value))
+	# Equipped items: one source per category slot.
+	for cat: Variant in equipped_items.keys():
+		var equipped_id: String = String(equipped_items[cat])
+		var item: Dictionary = _ShopDefs.by_id(equipped_id)
+		if item.is_empty():
+			continue
+		var src: StringName = StringName("equip_" + String(cat))
+		for m: Dictionary in item.modifiers:
+			stats.call("add_modifier", src,
+				StringName(String(m.stat)),
+				StringName(String(m.op)),
+				float(m.value))
 
 func add_factory_material(material_id: int, amount: int) -> void:
 	# Used by FactoryDrop pickup. material_id is MaterialDefs.MaterialId enum value.

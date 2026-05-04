@@ -21,6 +21,10 @@ const CROUCH_LERP_SPEED: float = 8.0   # 1/seconds — controls how fast crouch 
 @onready var _miner: Node = $Miner
 @onready var _stamina: Node = $Stamina
 @onready var _pickup_area: Area3D = $PickupArea
+@onready var _pickup_shape: CollisionShape3D = $PickupArea/CollisionShape3D
+# Captured at _ready so PICKUP_RADIUS_BONUS adds to the original sphere
+# rather than to whatever the previous perk left it at.
+var _pickup_base_radius: float = 1.5
 @onready var _shovel: Node3D = $Camera3D/Shovel
 @onready var _scanner_mesh: Node3D = $Camera3D/Scanner
 @onready var _flashlight_mesh: Node3D = $Camera3D/Flashlight
@@ -52,8 +56,27 @@ func _ready() -> void:
 	# Use a per-instance capsule resource so crouch height changes don't bleed
 	# into other things sharing the same shape resource.
 	_collision.shape = _capsule_shape
+	# Same precaution for the pickup sphere — give us our own copy so resizing
+	# from a perk doesn't leak across instances, then capture its base radius.
+	if _pickup_shape != null and _pickup_shape.shape is SphereShape3D:
+		var dup: SphereShape3D = (_pickup_shape.shape as SphereShape3D).duplicate() as SphereShape3D
+		_pickup_shape.shape = dup
+		_pickup_base_radius = dup.radius
+	_apply_pickup_radius()
+	var stats: Node = get_node_or_null("/root/PlayerStats")
+	if stats != null and stats.has_signal("stats_changed"):
+		stats.stats_changed.connect(_apply_pickup_radius)
 	# Defer the initial tool sync so listeners (BottomHud, miner) hear the value.
 	call_deferred("_emit_initial_tool")
+
+func _apply_pickup_radius() -> void:
+	if _pickup_shape == null or not (_pickup_shape.shape is SphereShape3D):
+		return
+	var bonus: float = 0.0
+	var stats: Node = get_node_or_null("/root/PlayerStats")
+	if stats != null:
+		bonus = float(stats.call("get_stat", &"pickup_radius_bonus"))
+	(_pickup_shape.shape as SphereShape3D).radius = max(0.1, _pickup_base_radius + bonus)
 
 func _emit_initial_tool() -> void:
 	_apply_tool_visuals()
@@ -168,6 +191,13 @@ func _try_open_machine_ui() -> void:
 		var clu: Node = get_tree().get_first_node_in_group("claim_vendor_ui")
 		if clu != null and clu.has_method("open"):
 			clu.call("open", claim_vendor.claim_board)
+			return
+	# 1b3) Item shop NPC within 4m? Open the item shop.
+	var item_shop: Npc = _find_nearest_in_group("item_shop_npcs", 4.0)
+	if item_shop != null:
+		var su: Node = get_tree().get_first_node_in_group("item_shop_ui")
+		if su != null and su.has_method("open"):
+			su.call("open")
 			return
 	# 1c) Boat vendor NPC within 4m? Open the boat vendor window.
 	var boat_vendor: Npc = _find_nearest_in_group("boat_vendor_npcs", 4.0)

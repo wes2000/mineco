@@ -12,6 +12,7 @@ extends CharacterBody3D
 @export var is_contract_vendor: bool = false
 @export var is_boat_vendor: bool = false
 @export var is_claim_vendor: bool = false
+@export var is_item_shop: bool = false
 
 # Set on _ready when is_contract_vendor — the per-vendor contract state.
 var contract_board: ContractBoard = null
@@ -61,6 +62,8 @@ func _ready() -> void:
 		claim_board = board_script.new()
 		claim_board.name = "ClaimBoard"
 		add_child(claim_board)
+	if is_item_shop:
+		add_to_group("item_shop_npcs")
 	_apply_visibility_range_recursive(self)
 	_begin_walk()
 
