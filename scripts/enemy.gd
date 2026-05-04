@@ -37,6 +37,11 @@ var _player_cached: Node3D = null
 var _player_health_cached: Node = null
 var _attack_cooldown_until_msec: int = 0
 var _is_dead: bool = false
+# Per-enemy material clones + their original albedo, so the hit-flash can
+# tint each enemy independently and tween back without leaking to other
+# instances (the scene file shares one BodyMat / HeadMat sub-resource).
+var _flash_materials: Array[StandardMaterial3D] = []
+var _flash_base_colors: Array[Color] = []
 
 func _ready() -> void:
 	_spawn_pos = global_position
@@ -51,7 +56,26 @@ func _ready() -> void:
 			_health.died.connect(_on_died)
 		if _health.has_signal("damaged"):
 			_health.damaged.connect(_on_damaged)
+	_capture_flash_materials()
 	_apply_visibility_range_recursive(self)
+
+func _capture_flash_materials() -> void:
+	# Walk MeshRoot, duplicate every StandardMaterial3D material_override so
+	# the hit-flash can mutate albedo without leaking across enemy instances
+	# (scene-level material sub-resources are shared otherwise). Cache each
+	# original albedo so the tween can return to the right base color.
+	if _mesh_root == null:
+		return
+	for child: Node in _mesh_root.get_children():
+		if not (child is MeshInstance3D):
+			continue
+		var mi: MeshInstance3D = child
+		if not (mi.material_override is StandardMaterial3D):
+			continue
+		var dup: StandardMaterial3D = (mi.material_override as StandardMaterial3D).duplicate() as StandardMaterial3D
+		mi.material_override = dup
+		_flash_materials.append(dup)
+		_flash_base_colors.append(dup.albedo_color)
 
 func configure(opts: Dictionary) -> void:
 	# Called by IslandEncounters before _ready (we set vars; _ready then reads
@@ -179,11 +203,18 @@ func _apply_visibility_range_recursive(node: Node) -> void:
 		_apply_visibility_range_recursive(c)
 
 func _on_damaged(_amount: float, _source_pos: Vector3, _current: float, _max_v: int) -> void:
-	# Hit-flash via mesh modulate — lightweight, no shader change required.
-	if _mesh_root != null:
+	# Hit-flash via per-material albedo tween. Node3D has no `modulate`
+	# (CanvasItem/Control only), so we tint each MeshInstance3D's duplicated
+	# material directly and tween it back to the captured base color.
+	if _flash_materials.is_empty():
+		return
+	for i: int in _flash_materials.size():
+		var mat: StandardMaterial3D = _flash_materials[i]
+		var base: Color = _flash_base_colors[i]
+		# Pop to a hot pink-red flash, then tween back to the original albedo.
+		mat.albedo_color = Color(1.0, 0.45, 0.45, base.a)
 		var tween: Tween = create_tween()
-		_mesh_root.modulate = Color(1.6, 0.7, 0.7, 1.0)
-		tween.tween_property(_mesh_root, "modulate", Color(1, 1, 1, 1), 0.18)
+		tween.tween_property(mat, "albedo_color", base, 0.18)
 
 func _on_died(_source_pos: Vector3) -> void:
 	if _is_dead:
