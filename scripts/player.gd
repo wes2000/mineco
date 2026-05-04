@@ -116,8 +116,10 @@ func get_save_data() -> Dictionary:
 
 func apply_save_data(data: Dictionary) -> void:
 	var pos: Array = data.get("position", [])
+	var teleported: bool = false
 	if pos.size() == 3:
 		global_position = Vector3(float(pos[0]), float(pos[1]), float(pos[2]))
+		teleported = true
 	if data.has("rotation_y"):
 		rotation.y = float(data["rotation_y"])
 	if data.has("current_tool"):
@@ -127,6 +129,13 @@ func apply_save_data(data: Dictionary) -> void:
 	# Equipping a weapon during load needs the Weapon node to know its def, so
 	# push that through after Miner has restored equipped_items.
 	_sync_weapon_from_equipped()
+	# If the saved position is on a far island, the chunks under it haven't
+	# streamed in yet — without re-engaging SpawnGate the player would fall
+	# through the void waiting for the mesh.
+	if teleported:
+		var gate: Node = get_tree().get_first_node_in_group("spawn_gate")
+		if gate != null and gate.has_method("suspend_until_ground"):
+			gate.call("suspend_until_ground")
 
 func _select_tool(t: int) -> void:
 	# Weapon slot only equips if the player actually owns + equipped one.

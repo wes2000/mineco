@@ -108,8 +108,12 @@ func _input(event: InputEvent) -> void:
 		accept_event()
 
 func _populate() -> void:
-	# Tear down existing tabs first; rebuild from scratch.
+	# Tear down existing tabs first. remove_child BEFORE queue_free so the
+	# child names ("Factory" / "Structure" / "Utility") free up synchronously —
+	# otherwise Godot disambiguates the new tabs to "@ScrollContainer@1596"
+	# because the deferred-freed old tabs still hold the names this frame.
 	for child: Node in _tabs.get_children():
+		_tabs.remove_child(child)
 		child.queue_free()
 	for entry: Array in CATEGORIES:
 		var cat: StringName = entry[0]
