@@ -103,9 +103,24 @@ func _make_row(item: Dictionary) -> PanelContainer:
 	var equipped: bool = _miner != null and bool(_miner.call("is_equipped", String(item.id)))
 	var pc: PanelContainer = PanelContainer.new()
 	pc.add_theme_stylebox_override("panel", _row_owned_style if owned else _row_style)
+	# Outer hbox: icon column on the left, info column on the right.
+	var outer: HBoxContainer = HBoxContainer.new()
+	outer.add_theme_constant_override("separation", 10)
+	pc.add_child(outer)
+	# Icon
+	var icon_tex: Texture2D = _ShopDefs.icon_for(item)
+	if icon_tex != null:
+		var ic: TextureRect = TextureRect.new()
+		ic.texture = icon_tex
+		ic.custom_minimum_size = Vector2(36, 36)
+		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		ic.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		outer.add_child(ic)
 	var v: VBoxContainer = VBoxContainer.new()
 	v.add_theme_constant_override("separation", 2)
-	pc.add_child(v)
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	outer.add_child(v)
 	# Title row: name + status / equipped badge
 	var title_row: HBoxContainer = HBoxContainer.new()
 	title_row.add_theme_constant_override("separation", 8)

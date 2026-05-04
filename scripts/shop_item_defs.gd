@@ -26,18 +26,21 @@ const ITEMS: Array = [
 	{
 		"id": "pickaxe_copper", "name": "Copper Pickaxe",
 		"category": CAT_PICKAXE, "price": 250, "requires": [],
+		"icon": "res://assets/icons/shop/pickaxe_copper.svg",
 		"modifiers": [{"stat": "mining_damage_mult", "op": "mul", "value": 1.15}],
 		"description": "+15% mining damage.",
 	},
 	{
 		"id": "pickaxe_iron", "name": "Iron Pickaxe",
 		"category": CAT_PICKAXE, "price": 900, "requires": ["pickaxe_copper"],
+		"icon": "res://assets/icons/shop/pickaxe_iron.svg",
 		"modifiers": [{"stat": "mining_damage_mult", "op": "mul", "value": 1.35}],
 		"description": "+35% mining damage.",
 	},
 	{
 		"id": "pickaxe_gold_tipped", "name": "Gold-Tipped Pickaxe",
 		"category": CAT_PICKAXE, "price": 2500, "requires": ["pickaxe_iron"],
+		"icon": "res://assets/icons/shop/pickaxe_gold_tipped.svg",
 		"modifiers": [
 			{"stat": "mining_damage_mult", "op": "mul", "value": 1.6},
 			{"stat": "stamina_regen_mult", "op": "mul", "value": 1.1},
@@ -47,6 +50,7 @@ const ITEMS: Array = [
 	{
 		"id": "pickaxe_deepcore", "name": "Deepcore Pickaxe",
 		"category": CAT_PICKAXE, "price": 8000, "requires": ["pickaxe_gold_tipped"],
+		"icon": "res://assets/icons/shop/pickaxe_deepcore.svg",
 		"modifiers": [
 			{"stat": "mining_damage_mult", "op": "mul", "value": 2.0},
 			{"stat": "dig_radius_mult", "op": "mul", "value": 1.15},
@@ -57,12 +61,14 @@ const ITEMS: Array = [
 	{
 		"id": "scanner_tuned", "name": "Tuned Scanner",
 		"category": CAT_SCANNER, "price": 500, "requires": [],
+		"icon": "res://assets/icons/shop/scanner_tuned.svg",
 		"modifiers": [{"stat": "scanner_range_mult", "op": "mul", "value": 1.25}],
 		"description": "+25% radar range.",
 	},
 	{
 		"id": "scanner_fast_sweep", "name": "Fast Sweep Scanner",
 		"category": CAT_SCANNER, "price": 1200, "requires": ["scanner_tuned"],
+		"icon": "res://assets/icons/shop/scanner_fast_sweep.svg",
 		"modifiers": [
 			{"stat": "scanner_range_mult", "op": "mul", "value": 1.25},
 			{"stat": "scanner_ping_speed_mult", "op": "mul", "value": 1.35},
@@ -72,6 +78,7 @@ const ITEMS: Array = [
 	{
 		"id": "scanner_material_lock", "name": "Material Lock Scanner",
 		"category": CAT_SCANNER, "price": 3500, "requires": ["scanner_fast_sweep"],
+		"icon": "res://assets/icons/shop/scanner_material_lock.svg",
 		"modifiers": [
 			{"stat": "scanner_range_mult", "op": "mul", "value": 1.5},
 			{"stat": "scanner_ping_speed_mult", "op": "mul", "value": 1.5},
@@ -82,22 +89,37 @@ const ITEMS: Array = [
 	{
 		"id": "boots_work", "name": "Work Boots",
 		"category": CAT_UTILITY, "price": 700, "requires": [],
+		"icon": "res://assets/icons/shop/boots_work.svg",
 		"modifiers": [{"stat": "sprint_speed_mult", "op": "mul", "value": 1.08}],
 		"description": "+8% sprint speed.",
 	},
 	{
 		"id": "survey_pack", "name": "Survey Pack",
 		"category": CAT_UTILITY, "price": 1000, "requires": [],
+		"icon": "res://assets/icons/shop/survey_pack.svg",
 		"modifiers": [{"stat": "pickup_radius_bonus", "op": "add", "value": 2.0}],
 		"description": "+2m pickup radius.",
 	},
 	{
 		"id": "boat_rudder_kit", "name": "Boat Rudder Kit",
 		"category": CAT_UTILITY, "price": 1500, "requires": [],
+		"icon": "res://assets/icons/shop/boat_rudder_kit.svg",
 		"modifiers": [{"stat": "boat_speed_mult", "op": "mul", "value": 1.2}],
 		"description": "+20% boat top speed.",
 	},
 ]
+
+static var _icon_cache: Dictionary = {}
+
+static func icon_for(item: Dictionary) -> Texture2D:
+	var path: String = String(item.get("icon", ""))
+	if path == "":
+		return null
+	if _icon_cache.has(path):
+		return _icon_cache[path]
+	var tex: Texture2D = load(path) as Texture2D
+	_icon_cache[path] = tex
+	return tex
 
 static func by_id(item_id: String) -> Dictionary:
 	for d: Dictionary in ITEMS:

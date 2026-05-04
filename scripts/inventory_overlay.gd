@@ -1,9 +1,14 @@
 extends Control
-## Inventory popup shown while Tab is held. Centered translucent panel with
-## a 3×3 slot grid (T1/T2/T3 × Stone/Iron/Gold). Mouse stays captured —
-## the player can keep moving and looking around while peeking at inventory.
+## Inventory popup shown while Tab is held. Centered translucent panel —
+## three sections stacked: the 3×3 material grid (T1/T2/T3 × Stone/Iron/Gold),
+## currently-equipped shop items, and a live readout of the most player-
+## visible PlayerStats values. Mouse stays captured so the player can keep
+## moving while peeking.
+
+const _ShopDefs: GDScript = preload("res://scripts/shop_item_defs.gd")
 
 const SLOT_SIZE: Vector2 = Vector2(36, 36)
+const EQUIP_SLOT_SIZE: Vector2 = Vector2(40, 40)
 
 const ITEM_COLORS: Dictionary = {
 	0: Color(0.6, 0.6, 0.6), 1: Color(0.7, 0.35, 0.25), 2: Color(0.4, 0.4, 0.4),
@@ -39,6 +44,28 @@ static func _icon_for(material_id: int) -> Texture2D:
 
 var _panel: Panel = null
 var _slots: Dictionary = {}   # material_id -> Panel
+var _equipped_row: HBoxContainer = null
+var _stats_grid: GridContainer = null
+
+# Stats shown in the character panel. Each entry: (PlayerStats key, label,
+# format hint). format hint: "mult" → shows "+12%" deviation from 1.0,
+# "bonus" → shows "+N" raw add, "max_with_base" → uses cached base from
+# Stamina (special-cased below).
+const STATS_DISPLAY: Array = [
+	[&"mining_damage_mult",      "Mining damage",   "mult"],
+	[&"mining_swing_speed_mult", "Swing speed",     "mult"],
+	[&"dig_radius_mult",         "Dig radius",      "mult"],
+	[&"sprint_speed_mult",       "Sprint speed",    "mult"],
+	[&"stamina_max_bonus",       "Stamina bonus",   "bonus"],
+	[&"stamina_regen_mult",      "Stamina regen",   "mult"],
+	[&"scanner_range_mult",      "Scanner range",   "mult"],
+	[&"scanner_ping_speed_mult", "Scanner ping",    "mult"],
+	[&"sell_value_mult",         "Sell value",      "mult"],
+	[&"contract_reward_mult",    "Contract reward", "mult"],
+	[&"factory_speed_mult",      "Factory speed",   "mult"],
+	[&"boat_speed_mult",         "Boat speed",      "mult"],
+	[&"pickup_radius_bonus",     "Pickup radius",   "bonus"],
+]
 
 func _ready() -> void:
 	visible = false
@@ -60,6 +87,11 @@ func _show_overlay() -> void:
 			miner.inventory_changed.connect(_on_inv_changed)
 		if miner.has_signal("extended_inventory_changed") and not miner.extended_inventory_changed.is_connected(_refresh):
 			miner.extended_inventory_changed.connect(_refresh)
+		if miner.has_signal("shop_inventory_changed") and not miner.shop_inventory_changed.is_connected(_refresh):
+			miner.shop_inventory_changed.connect(_refresh)
+	var stats: Node = get_node_or_null("/root/PlayerStats")
+	if stats != null and stats.has_signal("stats_changed") and not stats.stats_changed.is_connected(_refresh):
+		stats.stats_changed.connect(_refresh)
 
 func _hide_overlay() -> void:
 	visible = false
@@ -69,6 +101,11 @@ func _hide_overlay() -> void:
 			miner.inventory_changed.disconnect(_on_inv_changed)
 		if miner.has_signal("extended_inventory_changed") and miner.extended_inventory_changed.is_connected(_refresh):
 			miner.extended_inventory_changed.disconnect(_refresh)
+		if miner.has_signal("shop_inventory_changed") and miner.shop_inventory_changed.is_connected(_refresh):
+			miner.shop_inventory_changed.disconnect(_refresh)
+	var stats: Node = get_node_or_null("/root/PlayerStats")
+	if stats != null and stats.has_signal("stats_changed") and stats.stats_changed.is_connected(_refresh):
+		stats.stats_changed.disconnect(_refresh)
 
 func _on_inv_changed(_s: int, _i: int, _g: int) -> void:
 	_refresh()
@@ -85,6 +122,119 @@ func _refresh() -> void:
 		if lbl != null:
 			lbl.text = str(count)
 			lbl.modulate = Color(1, 1, 1, 1) if count > 0 else Color(0.55, 0.6, 0.65, 1)
+	_refresh_equipped(miner)
+	_refresh_stats()
+
+func _refresh_equipped(miner: Node) -> void:
+	if _equipped_row == null:
+		return
+	for c: Node in _equipped_row.get_children():
+		c.queue_free()
+	# Equip-slot items first (one per category), then any owned utility.
+	var ordered_ids: Array[String] = []
+	for cat: Variant in miner.get("equipped_items").keys():
+		ordered_ids.append(String(miner.get("equipped_items")[cat]))
+	for owned_id: String in miner.get("owned_items"):
+		var d: Dictionary = _ShopDefs.by_id(owned_id)
+		if d.is_empty():
+			continue
+		if not _ShopDefs.is_equip_category(d.category) and not ordered_ids.has(owned_id):
+			ordered_ids.append(owned_id)
+	if ordered_ids.is_empty():
+		var none: Label = Label.new()
+		none.text = "No items yet — visit the item shop in town."
+		none.add_theme_font_size_override("font_size", 11)
+		none.add_theme_color_override("font_color", Color(0.55, 0.6, 0.65, 1))
+		_equipped_row.add_child(none)
+		return
+	for owned_id: String in ordered_ids:
+		var item: Dictionary = _ShopDefs.by_id(owned_id)
+		if item.is_empty():
+			continue
+		_equipped_row.add_child(_make_equipped_chip(item))
+
+func _make_equipped_chip(item: Dictionary) -> VBoxContainer:
+	var col: VBoxContainer = VBoxContainer.new()
+	col.add_theme_constant_override("separation", 2)
+	var slot: Panel = Panel.new()
+	slot.custom_minimum_size = EQUIP_SLOT_SIZE
+	var fill: ColorRect = ColorRect.new()
+	fill.anchor_right = 1.0
+	fill.anchor_bottom = 1.0
+	fill.offset_left = 3
+	fill.offset_top = 3
+	fill.offset_right = -3
+	fill.offset_bottom = -3
+	fill.color = Color(0.13, 0.18, 0.14, 1)
+	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	slot.add_child(fill)
+	var tex: Texture2D = _ShopDefs.icon_for(item)
+	if tex != null:
+		var ic: TextureRect = TextureRect.new()
+		ic.texture = tex
+		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		ic.anchor_right = 1.0
+		ic.anchor_bottom = 1.0
+		ic.offset_left = 4
+		ic.offset_top = 4
+		ic.offset_right = -4
+		ic.offset_bottom = -4
+		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		slot.add_child(ic)
+	col.add_child(slot)
+	var name_lbl: Label = Label.new()
+	name_lbl.text = String(item.name)
+	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_lbl.custom_minimum_size = Vector2(EQUIP_SLOT_SIZE.x + 24, 0)
+	name_lbl.add_theme_font_size_override("font_size", 10)
+	name_lbl.add_theme_color_override("font_color", Color(0.75, 0.80, 0.85, 1))
+	col.add_child(name_lbl)
+	return col
+
+func _refresh_stats() -> void:
+	if _stats_grid == null:
+		return
+	for c: Node in _stats_grid.get_children():
+		c.queue_free()
+	var stats: Node = get_node_or_null("/root/PlayerStats")
+	for entry: Array in STATS_DISPLAY:
+		var key: StringName = entry[0]
+		var label_text: String = entry[1]
+		var hint: String = entry[2]
+		var value: float = float(stats.call("get_stat", key)) if stats != null else 0.0
+		var lbl: Label = Label.new()
+		lbl.text = label_text
+		lbl.add_theme_font_size_override("font_size", 12)
+		lbl.add_theme_color_override("font_color", Color(0.75, 0.80, 0.85, 1))
+		_stats_grid.add_child(lbl)
+		var val_lbl: Label = Label.new()
+		val_lbl.text = _format_stat(value, hint)
+		val_lbl.add_theme_font_size_override("font_size", 12)
+		val_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		val_lbl.add_theme_color_override("font_color", _stat_color(value, hint))
+		_stats_grid.add_child(val_lbl)
+
+func _format_stat(value: float, hint: String) -> String:
+	if hint == "mult":
+		var pct: float = (value - 1.0) * 100.0
+		if abs(pct) < 0.05:
+			return "—"
+		return "%+.0f%%" % pct
+	# bonus
+	if abs(value) < 0.05:
+		return "—"
+	return "%+0.1f" % value
+
+func _stat_color(value: float, hint: String) -> Color:
+	var neutral: Color = Color(0.55, 0.6, 0.65, 1)
+	if hint == "mult":
+		if abs(value - 1.0) < 0.0005:
+			return neutral
+		return Color(0.55, 0.95, 0.55, 1) if value > 1.0 else Color(0.95, 0.55, 0.55, 1)
+	if abs(value) < 0.0005:
+		return neutral
+	return Color(0.55, 0.95, 0.55, 1) if value > 0.0 else Color(0.95, 0.55, 0.55, 1)
 
 func _build_panel() -> void:
 	var panel_style: StyleBoxFlat = StyleBoxFlat.new()
@@ -104,10 +254,10 @@ func _build_panel() -> void:
 	_panel.anchor_top = 0.5
 	_panel.anchor_right = 0.5
 	_panel.anchor_bottom = 0.5
-	_panel.offset_left = -180
-	_panel.offset_top = -180
-	_panel.offset_right = 180
-	_panel.offset_bottom = 180
+	_panel.offset_left = -240
+	_panel.offset_top = -260
+	_panel.offset_right = 240
+	_panel.offset_bottom = 260
 	_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
 	_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -156,6 +306,27 @@ func _build_panel() -> void:
 			name_lbl.add_theme_color_override("font_color", Color(0.75, 0.80, 0.85, 1))
 			entry.add_child(name_lbl)
 			hbox.add_child(entry)
+	# Equipped section
+	var eq_header: Label = Label.new()
+	eq_header.text = "EQUIPPED"
+	eq_header.add_theme_font_size_override("font_size", 13)
+	eq_header.add_theme_color_override("font_color", Color(0.55, 0.85, 0.55, 1))
+	v.add_child(eq_header)
+	_equipped_row = HBoxContainer.new()
+	_equipped_row.add_theme_constant_override("separation", 10)
+	_equipped_row.alignment = BoxContainer.ALIGNMENT_BEGIN
+	v.add_child(_equipped_row)
+	# Stats section
+	var st_header: Label = Label.new()
+	st_header.text = "STATS"
+	st_header.add_theme_font_size_override("font_size", 13)
+	st_header.add_theme_color_override("font_color", Color(0.55, 0.7, 0.85, 1))
+	v.add_child(st_header)
+	_stats_grid = GridContainer.new()
+	_stats_grid.columns = 4   # label, value, label, value
+	_stats_grid.add_theme_constant_override("h_separation", 16)
+	_stats_grid.add_theme_constant_override("v_separation", 2)
+	v.add_child(_stats_grid)
 
 func _make_slot(material_id: int) -> Panel:
 	var panel: Panel = Panel.new()

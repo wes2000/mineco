@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://do0kvcisdf33u"]
 
 [ext_resource type="Script" uid="uid://bx5glefp52htq" path="res://scripts/shovel.gd" id="1_081d1"]
-[ext_resource type="PackedScene" uid="uid://dst7wvfameuv6" path="res://assets/models/shovel.glb" id="2_g60nu"]
+[ext_resource type="PackedScene" path="res://assets/models/pickaxe.obj" id="2_g60nu"]
 
 [sub_resource type="Animation" id="Animation_isc0p"]
 loop_mode = 1
