@@ -136,6 +136,12 @@ func collect_state() -> Dictionary:
 			continue
 		deposits[dep.deposit_id] = dep.get_save_data()
 	data["ore_deposits"] = deposits
+	# Per-island enemy encounter state (cleared / kill counts / reward
+	# claimed). Owned by the IslandEncounters node in main.tscn — older
+	# saves without this block leave every island freshly populated.
+	var island_enc: Node = get_tree().get_first_node_in_group("island_encounters")
+	if island_enc != null and island_enc.has_method("get_save_data"):
+		data["island_encounters"] = island_enc.get_save_data()
 	return data
 
 func apply_state(data: Dictionary) -> void:
@@ -180,6 +186,13 @@ func apply_state(data: Dictionary) -> void:
 	# that were fully mined (their ids are absent from the saved dict).
 	if data.has("ore_deposits"):
 		_apply_ore_deposit_state(data["ore_deposits"])
+	# Per-island enemy encounter state. Forwarded immediately even if the
+	# encounters node hasn't spawned yet — it stashes the data until its
+	# world_ready hook fires and uses it to skip cleared islands.
+	if data.has("island_encounters"):
+		var island_enc: Node = get_tree().get_first_node_in_group("island_encounters")
+		if island_enc != null and island_enc.has_method("apply_save_data"):
+			island_enc.call("apply_save_data", data["island_encounters"])
 	# Replay terrain carves so the dug-out tunnels come back. Best-effort —
 	# chunks must be loaded; the autosave/load will trigger the player's
 	# nearby chunks first which covers the main case.

@@ -25,6 +25,7 @@
 [ext_resource type="PackedScene" path="res://scenes/bottom_hud.tscn" id="28_bhud"]
 [ext_resource type="Script" path="res://scripts/bird_spawner.gd" id="29_birds"]
 [ext_resource type="Script" path="res://scripts/town_spawner.gd" id="31_town"]
+[ext_resource type="Script" path="res://scripts/island_encounters.gd" id="46_islenc"]
 [ext_resource type="PackedScene" path="res://scenes/pickup_feed.tscn" id="30_feed"]
 [ext_resource type="PackedScene" path="res://scenes/minimap_widget.tscn" id="32_gold"]
 [ext_resource type="PackedScene" path="res://scenes/map_popup.tscn" id="37_map"]
@@ -149,6 +150,11 @@ iron_large_scn = ExtResource("18_p5")
 gold_small_scn = ExtResource("19_p6")
 gold_large_scn = ExtResource("20_p7")
 surface_rock_scn = ExtResource("21_p8")
+voxel_terrain_path = NodePath("../VoxelTerrain")
+
+[node name="IslandEncounters" type="Node" parent="."]
+script = ExtResource("46_islenc")
+spawn_gate_path = NodePath("../SpawnGate")
 voxel_terrain_path = NodePath("../VoxelTerrain")
 
 [connection signal="world_ready" from="SpawnGate" to="OreGenerator" method="_on_world_ready"]
