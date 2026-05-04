@@ -71,7 +71,7 @@ func tick(_tick_index: int) -> void:
 	hopper[selected_material] -= 1
 	hopper_changed.emit(selected_material, hopper[selected_material])
 	item_emitted.emit(selected_material)
-	_cycle_remaining_ticks = MaterialDefs.LOADER_EMIT_TICKS[selected_material]
+	_cycle_remaining_ticks = scaled_cycle_ticks(MaterialDefs.LOADER_EMIT_TICKS[selected_material])
 	status = Status.WORKING
 
 func _drain_output_to_link() -> void:

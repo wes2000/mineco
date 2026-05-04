@@ -176,6 +176,11 @@ func _do_sell(material_id: int, requested: int) -> void:
 	var sold: int = _miner.remove_material(material_id, requested)
 	if sold <= 0:
 		return
-	var earned: int = sold * PRICES.get(material_id, 0)
+	var price: int = int(PRICES.get(material_id, 0))
+	var stats: Node = get_node_or_null("/root/PlayerStats")
+	var sell_mul: float = 1.0
+	if stats != null:
+		sell_mul = float(stats.call("get_stat", &"sell_value_mult"))
+	var earned: int = int(round(float(sold * price) * sell_mul))
 	_miner.add_gold_currency(earned)
 	# inventory_changed -> _refresh runs automatically via signal

@@ -114,6 +114,10 @@ func collect_state() -> Dictionary:
 	# Factory
 	if FactoryWorld != null and FactoryWorld.has_method("get_save_data"):
 		data["factory"] = FactoryWorld.get_save_data()
+	# Progression stats (perks, equipment modifiers, etc).
+	var ps: Node = get_node_or_null("/root/PlayerStats")
+	if ps != null and ps.has_method("get_save_data"):
+		data["stats"] = ps.get_save_data()
 	# Ore deposits (only the non-depleted ones; the absence of an id means
 	# that deposit was fully mined out before save).
 	var deposits: Dictionary = {}
@@ -147,6 +151,11 @@ func apply_state(data: Dictionary) -> void:
 		MapData.apply_save_data(data["map"])
 	if FactoryWorld != null and data.has("factory") and FactoryWorld.has_method("apply_save_data"):
 		FactoryWorld.apply_save_data(data["factory"])
+	# Stats applied early so any system that re-reads them (Stamina recomputes
+	# its effective max) sees the right values when their state restores.
+	var ps: Node = get_node_or_null("/root/PlayerStats")
+	if ps != null and data.has("stats") and ps.has_method("apply_save_data"):
+		ps.apply_save_data(data["stats"])
 	# Player position last — applying it before world_ready can be overwritten
 	# by the SpawnGate. By the time we run apply_state we're past world_ready.
 	var player: Node = _get_player()

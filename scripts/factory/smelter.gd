@@ -77,7 +77,7 @@ func tick(_tick_index: int) -> void:
 	# Step 4: start a cycle if we don't have one running
 	if _cycle_remaining_ticks <= 0 and _active_input_material == -1:
 		_active_input_material = processing_buffer[0]
-		_cycle_total_ticks = MaterialDefs.SMELTER_TICKS[_active_input_material]
+		_cycle_total_ticks = scaled_cycle_ticks(MaterialDefs.SMELTER_TICKS[_active_input_material])
 		_cycle_remaining_ticks = _cycle_total_ticks
 	# Step 5: advance the cycle
 	if _cycle_remaining_ticks > 0:

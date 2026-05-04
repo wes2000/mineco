@@ -76,7 +76,12 @@ func turn_in(idx: int, miner: Node) -> bool:
 	var c: Dictionary = active[idx]
 	for entry: Array in c.items:
 		miner.remove_material(entry[0], entry[1])
-	miner.add_gold_currency(c.reward_gold)
+	# Scale reward by the contract reward multiplier (perks, vendor goodwill).
+	var stats: Node = get_node_or_null("/root/PlayerStats")
+	var reward_mul: float = 1.0
+	if stats != null:
+		reward_mul = float(stats.call("get_stat", &"contract_reward_mult"))
+	miner.add_gold_currency(int(round(float(c.reward_gold) * reward_mul)))
 	active.remove_at(idx)
 	_gain_xp(c.xp)
 	# Generate one fresh available contract to refill the slot freed by turn-in.

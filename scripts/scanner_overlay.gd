@@ -5,8 +5,10 @@ extends Control
 ## sweep completion, plays a ping, and shows the distance to the nearest
 ## node + the current target material name.
 
-const PING_INTERVAL: float = 1.5         # seconds per radar sweep
-const RADAR_RANGE_M: float = 80.0        # max distance the radar represents
+const PING_INTERVAL: float = 1.5         # base seconds per radar sweep
+const RADAR_RANGE_M: float = 80.0        # base max distance the radar represents
+# Effective values are derived from PlayerStats each frame so a perk that
+# bumps SCANNER_RANGE_MULT extends the radar without per-instance setup.
 const TARGET_MATERIALS: Array = [
 	[OreDeposit.OreType.STONE, "Stone Ore",  Color(0.85, 0.85, 0.9)],
 	[OreDeposit.OreType.IRON,  "Iron Ore",   Color(0.85, 0.65, 0.5)],
@@ -60,7 +62,12 @@ func _process(delta: float) -> void:
 	if not visible:
 		return
 	_prev_sweep_angle = _sweep_angle
-	_sweep_angle = fmod(_sweep_angle + delta * (TAU / PING_INTERVAL), TAU)
+	# Faster ping = the sweep arm completes its rotation in less time.
+	var ping_speed_mul: float = 1.0
+	var stats: Node = get_node_or_null("/root/PlayerStats")
+	if stats != null:
+		ping_speed_mul = float(stats.call("get_stat", &"scanner_ping_speed_mult"))
+	_sweep_angle = fmod(_sweep_angle + delta * ping_speed_mul * (TAU / PING_INTERVAL), TAU)
 	_radar.queue_redraw()
 	# Each frame, see where the actual nearest matching node IS right now;
 	# if the sweep arm just crossed that bearing this frame, "ping" it —
@@ -89,6 +96,8 @@ func _find_current_nearest() -> Dictionary:
 		return {}
 	var ore_type: int = TARGET_MATERIALS[_current_index][0]
 	var origin: Vector3 = _player.global_position
+	var max_range: float = _effective_range()
+	var max_range_sq: float = max_range * max_range
 	var best_d_sq: float = INF
 	var best_pos: Vector3 = Vector3.ZERO
 	for n: Node in get_tree().get_nodes_in_group("ore_deposits"):
@@ -98,12 +107,20 @@ func _find_current_nearest() -> Dictionary:
 		if od.material != ore_type:
 			continue
 		var d_sq: float = od.global_position.distance_squared_to(origin)
+		if d_sq > max_range_sq:
+			continue
 		if d_sq < best_d_sq:
 			best_d_sq = d_sq
 			best_pos = od.global_position
 	if best_d_sq == INF:
 		return {}
 	return {"pos": best_pos, "dist": sqrt(best_d_sq)}
+
+func _effective_range() -> float:
+	var stats: Node = get_node_or_null("/root/PlayerStats")
+	if stats == null:
+		return RADAR_RANGE_M
+	return RADAR_RANGE_M * float(stats.call("get_stat", &"scanner_range_mult"))
 
 func _clear_known_target() -> void:
 	_has_known_target = false
@@ -172,7 +189,7 @@ func _draw_radar() -> void:
 	if _has_known_target:
 		var ang: float = _world_to_radar_bearing(_known_world_pos)
 		if not is_nan(ang):
-			var d_norm: float = clamp(_known_distance / RADAR_RANGE_M, 0.05, 1.0)
+			var d_norm: float = clamp(_known_distance / _effective_range(), 0.05, 1.0)
 			var p: Vector2 = center + Vector2(cos(ang - PI / 2), sin(ang - PI / 2)) * radius * d_norm
 			# Pulse the marker subtly with the sweep cycle
 			var pulse: float = 4.5 + sin(_sweep_angle * 2.0) * 1.2

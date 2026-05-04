@@ -25,13 +25,22 @@ func try_swing(stamina) -> bool:
 	_swinging = true
 	swing_started.emit()
 	var speed: float = Admin.speed_multiplier if Admin.fast_speed else 1.0
+	var stats: Node = get_node_or_null("/root/PlayerStats")
+	if stats != null:
+		speed *= float(stats.call("get_stat", &"mining_swing_speed_mult"))
 	_anim.play("swing", -1, speed)
 	return true
 
 func get_effective_damage() -> int:
+	var dmg: float = float(damage)
+	# Admin cheat overrides everything (kept for testing parity); otherwise
+	# scale by the player's mining_damage_mult progression stat.
 	if Admin.fast_damage:
-		return int(damage * Admin.damage_multiplier)
-	return damage
+		return int(dmg * Admin.damage_multiplier)
+	var stats: Node = get_node_or_null("/root/PlayerStats")
+	if stats != null:
+		dmg *= float(stats.call("get_stat", &"mining_damage_mult"))
+	return max(1, int(round(dmg)))
 
 func _on_animation_finished(_name: String) -> void:
 	_swinging = false

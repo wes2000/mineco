@@ -9,21 +9,50 @@ class_name Stamina
 var current: float
 var _regen_locked_until: float = 0.0
 var _empty_lockout: bool = false
+# Cached effective max — base + STAMINA_MAX_BONUS. Recomputed on stats_changed.
+var _effective_max: int = 0
 
 signal stamina_changed(current: float, max_value: int)
 
 func _ready() -> void:
-	current = float(max_value)
-	stamina_changed.emit(current, max_value)
+	_recompute_effective_max()
+	current = float(_effective_max)
+	var stats: Node = get_node_or_null("/root/PlayerStats")
+	if stats != null and stats.has_signal("stats_changed"):
+		stats.stats_changed.connect(_on_stats_changed)
+	stamina_changed.emit(current, _effective_max)
+
+func _on_stats_changed() -> void:
+	var prev_max: int = _effective_max
+	_recompute_effective_max()
+	# Top up by the bonus delta so granting +50 stamina mid-game actually
+	# fills it; clamp the other way if a perk was removed.
+	var delta: int = _effective_max - prev_max
+	if delta > 0:
+		current = min(float(_effective_max), current + float(delta))
+	else:
+		current = min(current, float(_effective_max))
+	stamina_changed.emit(current, _effective_max)
+
+func _recompute_effective_max() -> void:
+	var bonus: float = 0.0
+	var stats: Node = get_node_or_null("/root/PlayerStats")
+	if stats != null:
+		bonus = float(stats.call("get_stat", &"stamina_max_bonus"))
+	_effective_max = max(1, int(round(float(max_value) + bonus)))
 
 func _process(delta: float) -> void:
 	var now: float = Time.get_ticks_msec() / 1000.0
-	if now < _regen_locked_until or current >= float(max_value):
+	if now < _regen_locked_until or current >= float(_effective_max):
 		return
-	current = min(float(max_value), current + regen_per_second * delta)
+	var regen: float = regen_per_second
+	var stats: Node = get_node_or_null("/root/PlayerStats")
+	if stats != null:
+		regen *= float(stats.call("get_stat", &"stamina_regen_mult"))
+	current = min(float(_effective_max), current + regen * delta)
 	if _empty_lockout and current >= float(min_resume_threshold):
 		_empty_lockout = false
-	stamina_changed.emit(current, max_value)
+	stamina_changed.emit(current, _effective_max)
 
 func try_consume(amount: int) -> bool:
 	if Admin.no_stamina: return true

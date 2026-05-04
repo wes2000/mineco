@@ -208,6 +208,20 @@ func tick(_tick_index: int) -> void:
 func port_accept_item(_item: FactoryItem, _port: Port) -> bool:
 	return false
 
+# --- Tick scaling ----------------------------------------------------------
+
+# Scales a base cycle length by the factory_speed_mult progression stat,
+# clamped to >= 1 tick so cycles always complete. Subclasses call this
+# wherever they reset _cycle_remaining_ticks.
+func scaled_cycle_ticks(base_ticks: int) -> int:
+	var stats: Node = get_node_or_null("/root/PlayerStats")
+	if stats == null:
+		return base_ticks
+	var mul: float = float(stats.call("get_stat", &"factory_speed_mult"))
+	if mul <= 0.001:
+		return base_ticks
+	return max(1, int(round(float(base_ticks) / mul)))
+
 # --- Save / load -----------------------------------------------------------
 
 # Subclasses MUST call super().get_save_data() and merge so the placement

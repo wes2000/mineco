@@ -297,7 +297,11 @@ func _walk(delta: float) -> void:
 	elif moving and Input.is_key_pressed(KEY_SHIFT):
 		if _stamina != null and _stamina.has_method("try_drain"):
 			if _stamina.try_drain(SPRINT_DRAIN_PER_SEC, delta):
-				speed = SPEED * SPRINT_MULTIPLIER
+				var sprint_mul: float = SPRINT_MULTIPLIER
+				var stats: Node = get_node_or_null("/root/PlayerStats")
+				if stats != null:
+					sprint_mul *= float(stats.call("get_stat", &"sprint_speed_mult"))
+				speed = SPEED * sprint_mul
 
 	if moving:
 		velocity.x = direction.x * speed

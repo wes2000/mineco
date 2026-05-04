@@ -76,7 +76,7 @@ func tick(_tick_index: int) -> void:
 		return
 	if _cycle_remaining_ticks <= 0 and _active_input_material == -1:
 		_active_input_material = processing_buffer[0]
-		_cycle_total_ticks = MaterialDefs.FORGE_TICKS[_active_input_material]
+		_cycle_total_ticks = scaled_cycle_ticks(MaterialDefs.FORGE_TICKS[_active_input_material])
 		_cycle_remaining_ticks = _cycle_total_ticks
 	if _cycle_remaining_ticks > 0:
 		_cycle_remaining_ticks -= 1

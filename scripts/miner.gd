@@ -135,6 +135,9 @@ func _on_hit_frame() -> void:
 		# Plain voxel terrain — carve dirt for traversal, no inventory credit.
 		if _voxel_tool != null:
 			var r: float = brush_radius * (Admin.radius_multiplier if Admin.big_radius else 1.0)
+			var stats: Node = get_node_or_null("/root/PlayerStats")
+			if stats != null:
+				r *= float(stats.call("get_stat", &"dig_radius_mult"))
 			_voxel_tool.do_sphere(hit.position, r)
 			_carves.append({
 				"pos": [hit.position.x, hit.position.y, hit.position.z],

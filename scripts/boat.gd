@@ -64,10 +64,21 @@ func _physics_process(delta: float) -> void:
 		throttle += 1.0
 	if Input.is_action_pressed("move_back"):
 		throttle -= 1.0
+	# Scale top speed and acceleration uniformly by the boat_speed_mult
+	# progression stat. Drag and reverse are also scaled so feel stays
+	# proportional.
+	var stats: Node = get_node_or_null("/root/PlayerStats")
+	var spd_mul: float = 1.0
+	if stats != null:
+		spd_mul = float(stats.call("get_stat", &"boat_speed_mult"))
+	var max_speed: float = MAX_SPEED * spd_mul
+	var max_reverse: float = MAX_REVERSE * spd_mul
+	var accel: float = ACCEL * spd_mul
+	var reverse_accel: float = REVERSE_ACCEL * spd_mul
 	if throttle > 0.0:
-		current_speed = min(current_speed + ACCEL * delta * throttle, MAX_SPEED)
+		current_speed = min(current_speed + accel * delta * throttle, max_speed)
 	elif throttle < 0.0:
-		current_speed = max(current_speed + REVERSE_ACCEL * delta * throttle, -MAX_REVERSE)
+		current_speed = max(current_speed + reverse_accel * delta * throttle, -max_reverse)
 	else:
 		# Natural drag toward zero
 		if current_speed > 0.0:
