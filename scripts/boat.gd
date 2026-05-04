@@ -97,3 +97,7 @@ func _physics_process(delta: float) -> void:
 	# Teleport player to helm (player physics is suspended).
 	if _player != null and _helm != null:
 		_player.global_position = _helm.global_position
+	# Player._physics_process is suspended while driving, so the fog-of-war
+	# reveal stops too. Drive it from here using the boat's position.
+	if MapData != null:
+		MapData.mark_explored(global_position)

@@ -165,15 +165,19 @@ func _scatter_ring_deposits(isle: Dictionary, prefab_pool: Array, count: int) ->
 		return 0
 	var placed: int = 0
 	var attempts: int = 0
-	# Keep deposits inside ~85% of the island radius so they're under solid
-	# voxel rather than poking out of the beach edge.
-	var max_r: float = isle.radius * 0.85
-	while placed < count and attempts < count * 12:
+	# Sample inside a circle of the island's max radius, then reject points
+	# outside the rotated ellipse OR with too little surface height. Keeps
+	# deposits comfortably under solid terrain for elliptical / asymmetric
+	# islands, not just round ones.
+	var max_r: float = IslandVoxelGenerator.island_max_radius(isle) * 0.85
+	while placed < count and attempts < count * 16:
 		attempts += 1
 		var theta: float = _rng.randf() * TAU
 		var r: float = sqrt(_rng.randf()) * max_r
 		var x: float = isle.center.x + cos(theta) * r
 		var z: float = isle.center.y + sin(theta) * r
+		if not IslandVoxelGenerator.point_inside_island(isle, x, z):
+			continue
 		var surface_y: float = _island_generator._height(x, z)
 		# Need at least ~3m of solid above the deposit so the player has to dig.
 		if surface_y < 3.0:

@@ -8,12 +8,54 @@ class_name IslandVoxelGenerator
 # the claim system reads to know how rich an island is (1 = poor, 5 = elite).
 # Y stays inside the existing voxel terrain bounds AABB(-208 .. +208 on x/z).
 const CLAIM_ISLANDS: Array = [
-	{"id": "kelp_cay",     "name": "Kelp Cay",       "tier": 1, "center": Vector2( 250.0, -130.0), "radius": 24.0, "height": 11.0},
-	{"id": "tin_atoll",    "name": "Tin Atoll",      "tier": 1, "center": Vector2(-220.0,  -90.0), "radius": 24.0, "height": 11.0},
-	{"id": "smelters_isle","name": "Smelter's Isle", "tier": 2, "center": Vector2( 270.0,  190.0), "radius": 28.0, "height": 14.0},
-	{"id": "ironback",     "name": "Ironback",       "tier": 3, "center": Vector2(-240.0,  220.0), "radius": 30.0, "height": 16.0},
-	{"id": "veinmount",    "name": "Veinmount",      "tier": 4, "center": Vector2( -40.0, -290.0), "radius": 32.0, "height": 19.0},
-	{"id": "diadem_keep",  "name": "Diadem Keep",    "tier": 5, "center": Vector2(-296.0,  -30.0), "radius": 36.0, "height": 22.0},
+	# radius_x/radius_z + rotation give an oriented elliptical footprint, so
+	# islands aren't all round. noise_freq + noise_amp control how much the
+	# surface wrinkles inside that footprint (low_amp → smooth dome; high_amp
+	# → broken ridges & saddles). falloff_inner controls beach width: small =
+	# steep cliff, large = gentle slope. peak_count gives mountains a more
+	# pyramidal feel by exponentiating the falloff curve.
+	{
+		"id": "kelp_cay", "name": "Kelp Cay", "tier": 1,
+		"center": Vector2( 250.0, -130.0),
+		"radius_x": 32.0, "radius_z": 16.0, "rotation": 0.6,
+		"height": 9.0, "noise_freq": 2.4, "noise_amp": 0.55,
+		"falloff_inner": 0.35, "peak_pow": 1.0,
+	},
+	{
+		"id": "tin_atoll", "name": "Tin Atoll", "tier": 1,
+		"center": Vector2(-220.0, -90.0),
+		"radius_x": 22.0, "radius_z": 26.0, "rotation": -0.3,
+		"height": 7.5, "noise_freq": 3.0, "noise_amp": 0.7,
+		"falloff_inner": 0.2, "peak_pow": 0.7,
+	},
+	{
+		"id": "smelters_isle", "name": "Smelter's Isle", "tier": 2,
+		"center": Vector2( 270.0, 190.0),
+		"radius_x": 28.0, "radius_z": 28.0, "rotation": 0.0,
+		"height": 14.0, "noise_freq": 1.8, "noise_amp": 0.4,
+		"falloff_inner": 0.5, "peak_pow": 1.2,
+	},
+	{
+		"id": "ironback", "name": "Ironback", "tier": 3,
+		"center": Vector2(-240.0, 220.0),
+		"radius_x": 38.0, "radius_z": 18.0, "rotation": 1.1,
+		"height": 17.0, "noise_freq": 2.2, "noise_amp": 0.5,
+		"falloff_inner": 0.4, "peak_pow": 1.5,
+	},
+	{
+		"id": "veinmount", "name": "Veinmount", "tier": 4,
+		"center": Vector2( -40.0, -290.0),
+		"radius_x": 30.0, "radius_z": 30.0, "rotation": 0.0,
+		"height": 24.0, "noise_freq": 1.6, "noise_amp": 0.35,
+		"falloff_inner": 0.55, "peak_pow": 2.0,
+	},
+	{
+		"id": "diadem_keep", "name": "Diadem Keep", "tier": 5,
+		"center": Vector2(-296.0, -30.0),
+		"radius_x": 40.0, "radius_z": 32.0, "rotation": -0.7,
+		"height": 28.0, "noise_freq": 2.0, "noise_amp": 0.5,
+		"falloff_inner": 0.45, "peak_pow": 1.8,
+	},
 ]
 
 # --- Tunables (editable on the .tres in inspector) ---
@@ -50,6 +92,26 @@ func _init() -> void:
 	_noise.fractal_lacunarity = noise_lacunarity
 	_noise.fractal_gain = noise_gain
 
+# --- Static helpers for callers reading CLAIM_ISLANDS ---
+
+# Conservative bounding radius — actual footprint is the rotated ellipse
+# defined by radius_x / radius_z, but a containing circle of this size is
+# enough for "is this point inside the island" checks (mining lock,
+# scatter rejection).
+static func island_max_radius(isle: Dictionary) -> float:
+	return max(float(isle.radius_x), float(isle.radius_z))
+
+# True if (x, z) sits inside the island's elliptical footprint.
+static func point_inside_island(isle: Dictionary, x: float, z: float) -> bool:
+	var dx: float = x - float(isle.center.x)
+	var dz: float = z - float(isle.center.y)
+	var rot: float = float(isle.rotation)
+	var lx: float = dx * cos(rot) - dz * sin(rot)
+	var lz: float = dx * sin(rot) + dz * cos(rot)
+	var nx: float = lx / float(isle.radius_x)
+	var nz: float = lz / float(isle.radius_z)
+	return (nx * nx + nz * nz) < 1.0
+
 # --- Math helpers ---
 
 func _radial_falloff(world_x: float, world_z: float) -> float:
@@ -66,18 +128,36 @@ func _height(world_x: float, world_z: float) -> float:
 	# every island contribution so an offshore island always rises above any
 	# negative seabed value the main-island falloff produced out here.
 	for isle: Dictionary in CLAIM_ISLANDS:
-		var dx: float = world_x - isle.center.x
-		var dz: float = world_z - isle.center.y
-		var d: float = sqrt(dx * dx + dz * dz)
-		if d >= isle.radius:
+		# Rotate the sampling point into the island's local frame so the
+		# elliptical footprint can be oriented per island.
+		var dx: float = world_x - float(isle.center.x)
+		var dz: float = world_z - float(isle.center.y)
+		var rot: float = float(isle.rotation)
+		var cs: float = cos(rot)
+		var sn: float = sin(rot)
+		var lx: float = dx * cs - dz * sn
+		var lz: float = dx * sn + dz * cs
+		# Normalized radius in the ellipse — t=0 at center, t=1 at edge.
+		var nx: float = lx / float(isle.radius_x)
+		var nz: float = lz / float(isle.radius_z)
+		var t: float = sqrt(nx * nx + nz * nz)
+		if t >= 1.0:
 			continue
-		# Smoothstep falloff to a soft beach + center noise variation.
-		var t: float = d / isle.radius
-		var fall: float = 1.0 - smoothstep(0.55, 1.0, t)
-		# Tiny per-island noise (sampled with an offset so it doesn't echo the main noise).
-		var local_n: float = _noise.get_noise_2d(world_x * 1.7 + 5000.0, world_z * 1.7 - 3000.0)
-		local_n = (local_n + 1.0) * 0.5
-		var island_h: float = (0.55 + 0.45 * local_n) * isle.height * fall - 0.5
+		# Falloff from center to edge. falloff_inner controls beach width.
+		var fall: float = 1.0 - smoothstep(float(isle.falloff_inner), 1.0, t)
+		# peak_pow > 1 sharpens the centre (mountain feel); < 1 broadens it.
+		fall = pow(fall, float(isle.peak_pow))
+		# Two-octave noise for surface variation, scaled per island.
+		var nf: float = float(isle.noise_freq)
+		var n1: float = _noise.get_noise_2d(world_x * nf + float(isle.center.x) * 0.7 + 5000.0,
+			world_z * nf + float(isle.center.y) * 0.7 - 3000.0)
+		var n2: float = _noise.get_noise_2d(world_x * nf * 2.5 - 1234.0,
+			world_z * nf * 2.5 + 8765.0)
+		var noise01: float = ((n1 + 1.0) * 0.5) * 0.7 + ((n2 + 1.0) * 0.5) * 0.3
+		# Mix smooth dome with the noise — high noise_amp = irregular silhouette.
+		var amp: float = float(isle.noise_amp)
+		var shape: float = (1.0 - amp) + amp * noise01 * 1.6
+		var island_h: float = float(isle.height) * fall * shape - 0.5
 		if island_h > h:
 			h = island_h
 	return h

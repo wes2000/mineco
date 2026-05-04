@@ -162,9 +162,7 @@ func _is_locked_claim_deposit(world_pos: Vector3) -> bool:
 		if board != null and board.has_owned():
 			owned_id = String(board.owned_island().id)
 	for isle: Dictionary in IslandVoxelGenerator.CLAIM_ISLANDS:
-		var dx: float = world_pos.x - float(isle.center.x)
-		var dz: float = world_pos.z - float(isle.center.y)
-		if sqrt(dx * dx + dz * dz) <= float(isle.radius):
+		if IslandVoxelGenerator.point_inside_island(isle, world_pos.x, world_pos.z):
 			return String(isle.id) != owned_id
 	return false
 
@@ -179,9 +177,7 @@ func _credit_owned_claim(ore_type: int, amount: int) -> void:
 	if board == null or not board.has_owned():
 		return
 	var isle: Dictionary = board.owned_island()
-	var dx: float = _last_ore_hit_pos.x - float(isle.center.x)
-	var dz: float = _last_ore_hit_pos.z - float(isle.center.y)
-	if sqrt(dx * dx + dz * dz) > float(isle.radius):
+	if not IslandVoxelGenerator.point_inside_island(isle, _last_ore_hit_pos.x, _last_ore_hit_pos.z):
 		return
 	board.credit_mining(ore_type, amount)
 
