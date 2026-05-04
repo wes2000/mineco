@@ -254,10 +254,10 @@ func _build_panel() -> void:
 	_panel.anchor_top = 0.5
 	_panel.anchor_right = 0.5
 	_panel.anchor_bottom = 0.5
-	_panel.offset_left = -240
-	_panel.offset_top = -260
-	_panel.offset_right = 240
-	_panel.offset_bottom = 260
+	_panel.offset_left = -280
+	_panel.offset_top = -240
+	_panel.offset_right = 280
+	_panel.offset_bottom = 240
 	_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
 	_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -323,8 +323,10 @@ func _build_panel() -> void:
 	st_header.add_theme_color_override("font_color", Color(0.55, 0.7, 0.85, 1))
 	v.add_child(st_header)
 	_stats_grid = GridContainer.new()
-	_stats_grid.columns = 4   # label, value, label, value
-	_stats_grid.add_theme_constant_override("h_separation", 16)
+	# 6 columns = 3 label/value pairs per row, so the 13 stats fit in 5 rows
+	# rather than 7 and don't push the panel past the bottom of the screen.
+	_stats_grid.columns = 6
+	_stats_grid.add_theme_constant_override("h_separation", 12)
 	_stats_grid.add_theme_constant_override("v_separation", 2)
 	v.add_child(_stats_grid)
 
