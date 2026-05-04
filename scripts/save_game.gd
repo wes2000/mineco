@@ -130,6 +130,11 @@ func collect_state() -> Dictionary:
 	var unlocks: Node = get_node_or_null("/root/Unlocks")
 	if unlocks != null and unlocks.has_method("get_save_data"):
 		data["unlocks"] = unlocks.get_save_data()
+	# Company rank + lifetime stats. Older saves without this block load with
+	# rank 1 / zeroed counters which is the fresh-game default.
+	var company: Node = get_node_or_null("/root/CompanyProgress")
+	if company != null and company.has_method("get_save_data"):
+		data["company"] = company.get_save_data()
 	# Ore deposits (only the non-depleted ones; the absence of an id means
 	# that deposit was fully mined out before save).
 	var deposits: Dictionary = {}
@@ -152,6 +157,13 @@ func collect_state() -> Dictionary:
 func apply_state(data: Dictionary) -> void:
 	# Order: simple-state owners first, then factory (which adds nodes to the
 	# scene), then position the player so spawn-gate logic doesn't fight us.
+	# Tell CompanyProgress to flush its gold-delta baseline BEFORE the miner's
+	# apply_save fires gold_currency_changed — otherwise the loaded balance
+	# would be misread as fresh income. Full company-state restore happens
+	# later (after PlayerStats reloads its modifier sources).
+	var company_pre: Node = get_node_or_null("/root/CompanyProgress")
+	if company_pre != null and company_pre.has_method("set"):
+		company_pre.set("_gold_baseline_set", false)
 	var miner: Node = _get_miner()
 	if miner != null and data.has("miner") and miner.has_method("apply_save_data"):
 		miner.apply_save_data(data["miner"])
@@ -187,6 +199,14 @@ func apply_state(data: Dictionary) -> void:
 	var unlocks: Node = get_node_or_null("/root/Unlocks")
 	if unlocks != null and data.has("unlocks") and unlocks.has_method("apply_save_data"):
 		unlocks.apply_save_data(data["unlocks"])
+	# Company rank + lifetime stats. apply re-stamps the rank-modifier sources
+	# on PlayerStats internally so the bonuses come back without double-stack.
+	# Runs after PlayerStats reloads its sources so the rank_N entries from
+	# the save take precedence and our explicit re-stamp here is the
+	# idempotent fallback for older saves that didn't carry them.
+	var company: Node = get_node_or_null("/root/CompanyProgress")
+	if company != null and data.has("company") and company.has_method("apply_save_data"):
+		company.apply_save_data(data["company"])
 	# Player position last — applying it before world_ready can be overwritten
 	# by the SpawnGate. By the time we run apply_state we're past world_ready.
 	var player: Node = _get_player()

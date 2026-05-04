@@ -38,6 +38,7 @@
 [ext_resource type="PackedScene" path="res://scenes/claim_vendor_ui.tscn" id="40_claimui"]
 [ext_resource type="PackedScene" path="res://scenes/item_shop_ui.tscn" id="41_shopui"]
 [ext_resource type="PackedScene" path="res://scenes/passive_tree_ui.tscn" id="42_perksui"]
+[ext_resource type="PackedScene" path="res://scenes/company_panel_ui.tscn" id="47_companyui"]
 [ext_resource type="PackedScene" path="res://scenes/build_catalog_ui.tscn" id="43_catalogui"]
 [ext_resource type="PackedScene" path="res://scenes/storage_crate_ui.tscn" id="44_crateui"]
 [ext_resource type="PackedScene" path="res://scenes/workbench_ui.tscn" id="45_workbenchui"]
@@ -122,6 +123,8 @@ mouse_filter = 2
 [node name="ItemShopUI" parent="HUD" instance=ExtResource("41_shopui")]
 
 [node name="PassiveTreeUI" parent="HUD" instance=ExtResource("42_perksui")]
+
+[node name="CompanyPanelUI" parent="HUD" instance=ExtResource("47_companyui")]
 
 [node name="BuildCatalogUI" parent="HUD" instance=ExtResource("43_catalogui")]
 

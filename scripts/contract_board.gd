@@ -89,6 +89,10 @@ const ALLOWED_BY_LEVEL: Dictionary = {
 }
 
 signal changed   # fires after any state mutation so UIs can refresh
+# Fired at the end of a successful turn_in so meta-progression layers
+# (CompanyProgress) can credit lifetime stats + XP without the contract board
+# needing to know who's listening.
+signal contract_completed(reward_gold: int, xp: int)
 
 var level: int = 1
 var xp: int = 0
@@ -169,11 +173,16 @@ func turn_in(idx: int, miner: Node) -> bool:
 	if chance > 0.0 and randf() < chance:
 		_award_random_blueprint()
 	active.remove_at(idx)
-	_gain_xp(c.xp)
+	var awarded_gold: int = int(round(float(c.reward_gold) * reward_mul))
+	var awarded_xp: int = int(c.xp)
+	_gain_xp(awarded_xp)
 	# Generate one fresh available contract to refill the slot freed by turn-in.
 	while available.size() < AVAILABLE_MAX:
 		available.append(_generate())
 	changed.emit()
+	# Notify meta-progression after all internal state has settled so any
+	# downstream listener sees a consistent board.
+	contract_completed.emit(awarded_gold, awarded_xp)
 	return true
 
 func get_save_data() -> Dictionary:

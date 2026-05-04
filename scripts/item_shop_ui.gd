@@ -67,6 +67,11 @@ func open() -> void:
 	var unlocks: Node = get_node_or_null("/root/Unlocks")
 	if unlocks != null and unlocks.has_signal("unlocked") and not unlocks.unlocked.is_connected(_on_unlocked):
 		unlocks.unlocked.connect(_on_unlocked)
+	# Same idea for rank-ups — a promotion mid-shopping should immediately
+	# enable rank-gated rows.
+	var company: Node = get_node_or_null("/root/CompanyProgress")
+	if company != null and company.has_signal("rank_up") and not company.rank_up.is_connected(_on_rank_up):
+		company.rank_up.connect(_on_rank_up)
 	_refresh()
 
 func close() -> void:
@@ -80,9 +85,15 @@ func close() -> void:
 	var unlocks: Node = get_node_or_null("/root/Unlocks")
 	if unlocks != null and unlocks.has_signal("unlocked") and unlocks.unlocked.is_connected(_on_unlocked):
 		unlocks.unlocked.disconnect(_on_unlocked)
+	var company: Node = get_node_or_null("/root/CompanyProgress")
+	if company != null and company.has_signal("rank_up") and company.rank_up.is_connected(_on_rank_up):
+		company.rank_up.disconnect(_on_rank_up)
 	_miner = null
 
 func _on_unlocked(_blueprint_id: String) -> void:
+	_refresh()
+
+func _on_rank_up(_new_rank: int, _name: String) -> void:
 	_refresh()
 
 func _on_gold_changed(_amount: int) -> void:
@@ -172,8 +183,15 @@ func _make_row(item: Dictionary) -> PanelContainer:
 			var bp_id: String = _ShopDefs.required_blueprint(item)
 			var unlocks: Node = get_node_or_null("/root/Unlocks")
 			var bp_locked: bool = bp_id != "" and (unlocks == null or not bool(unlocks.call("has", bp_id)))
+			# Rank gate is the most-meaningful late-game lock so it wins over
+			# the generic prerequisite list when both fail.
+			var req_rank: int = _ShopDefs.required_rank(item)
+			var company: Node = get_node_or_null("/root/CompanyProgress")
+			var rank_locked: bool = req_rank > 0 and (company == null or int(company.get("rank")) < req_rank)
 			if bp_locked:
 				info_lbl.text = "%d g  ·  needs %s" % [int(item.price), _BlueprintDefs.name_for(bp_id)]
+			elif rank_locked:
+				info_lbl.text = "%d g  ·  needs Mine Co. rank %d" % [int(item.price), req_rank]
 			else:
 				info_lbl.text = "%d g  ·  requires %s" % [int(item.price), _requires_text(item)]
 			info_lbl.add_theme_color_override("font_color", Color(0.65, 0.6, 0.6, 1))

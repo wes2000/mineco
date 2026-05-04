@@ -215,6 +215,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		var ui: Node = get_tree().get_first_node_in_group("passive_tree_ui")
 		if ui != null and ui.has_method("toggle"):
 			ui.call("toggle")
+	elif event.is_action_pressed("company_panel"):
+		var co_ui: Node = get_tree().get_first_node_in_group("company_panel_ui")
+		if co_ui != null and co_ui.has_method("toggle"):
+			co_ui.call("toggle")
 	elif not BuildController.active:
 		# Tool slots in standard mode (build mode owns these keys when active).
 		if event.is_action_pressed("build_slot_1"):

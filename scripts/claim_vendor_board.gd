@@ -9,6 +9,10 @@ extends Node
 ## and tracks per-claim mining progress for the owned one.
 
 signal changed   # fires after any state mutation so UIs can refresh
+# Fired when the player releases a claim. mined_pct is the 0..1 extraction
+# fraction that drives the vendor XP — meta-progression layers
+# (CompanyProgress) use it to decide whether the claim counts as "cleared".
+signal claim_released(island_id: String, mined_pct: float)
 
 var level: int = 1
 var xp: int = 0
@@ -137,11 +141,39 @@ func release() -> int:
 	if not has_owned():
 		return 0
 	var awarded: int = release_xp_preview()
+	# Capture mined_pct + island id BEFORE we wipe owned state, so the
+	# downstream `claim_released` signal carries meaningful values.
+	var released_id: String = owned_id
+	var released_pct: float = _mined_fraction()
 	owned_id = ""
 	owned_mined = {}
 	_gain_xp(awarded)
 	changed.emit()
+	claim_released.emit(released_id, released_pct)
 	return awarded
+
+# Internal mirror of the math in release_xp_preview, returning just the 0..1
+# fraction of estimated ore extracted before release. Used by claim_released
+# so listeners can decide whether the release counts as a "cleared" claim
+# without re-deriving the math.
+func _mined_fraction() -> float:
+	if not has_owned():
+		return 0.0
+	var isle: Dictionary = owned_island()
+	var info: Dictionary = ClaimDef.tier(isle.tier)
+	var per: Dictionary = ClaimDef.APPROX_ORE_PER_DEPOSIT
+	var deps: Dictionary = info.deposits
+	var total_units: float = (
+		float(deps.stone) * per.stone +
+		float(deps.iron)  * per.iron +
+		float(deps.gold)  * per.gold
+	)
+	if total_units <= 0.0:
+		return 0.0
+	var mined_units: float = 0.0
+	for ore_type: int in owned_mined.keys():
+		mined_units += float(owned_mined[ore_type])
+	return clampf(mined_units / total_units, 0.0, 1.0)
 
 func get_save_data() -> Dictionary:
 	# owned_mined keys are OreType ints; JSON keys must be strings — convert

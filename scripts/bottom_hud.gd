@@ -48,7 +48,7 @@ var _miner: Node = null
 # anchored to a 120px-tall strip at the bottom and a child can't escape it.
 var _damage_flash: ColorRect = null
 
-const MODAL_GROUPS: Array[String] = ["machine_ui", "pause_menu", "inventory_overlay", "vendor_ui", "contract_ui", "boat_vendor_ui", "claim_vendor_ui", "item_shop_ui", "passive_tree_ui", "build_catalog_ui", "storage_crate_ui", "workbench_ui"]
+const MODAL_GROUPS: Array[String] = ["machine_ui", "pause_menu", "inventory_overlay", "vendor_ui", "contract_ui", "boat_vendor_ui", "claim_vendor_ui", "item_shop_ui", "passive_tree_ui", "build_catalog_ui", "storage_crate_ui", "workbench_ui", "company_panel_ui"]
 
 func _ready() -> void:
 	_init_styles()

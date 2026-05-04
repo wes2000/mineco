@@ -29,6 +29,13 @@ const SPAWN_Y_BUMP: float = 1.2
 @export var voxel_terrain_path: NodePath
 @export var spawn_delay_after_world_ready: float = 0.5
 
+# Fan-out signals for meta-progression (CompanyProgress). Per-enemy kills feed
+# the lifetime "enemies_defeated" counter; island clears feed lifetime island
+# stats. Existing in-script bookkeeping (kill counts, bounty payout) is
+# unchanged — these signals are purely additive.
+signal enemy_defeated()
+signal island_cleared(island_id: String, reward_gold: int)
+
 var _island_generator: IslandVoxelGenerator = null
 # Per-island state. Keyed by island id → {enemies_spawned, enemies_killed,
 # cleared, reward_claimed}. `cleared` true means we already granted the
@@ -142,6 +149,9 @@ func _spawn_one(island_id: String, pos: Vector3, stats: Dictionary) -> void:
 	_live_enemies[enemy] = island_id
 
 func _on_enemy_killed(island_id: String) -> void:
+	# Always notify per-enemy listeners even for an enemy whose island isn't
+	# tracked here (defensive — _state is initialized in _spawn_all).
+	enemy_defeated.emit()
 	if not _state.has(island_id):
 		return
 	var s: Dictionary = _state[island_id]
@@ -179,6 +189,9 @@ func _mark_cleared(island_id: String, s: Dictionary) -> void:
 		feed.call("add_text_message", "%s cleared — +%d g" % [name, gold])
 	s["reward_claimed"] = true
 	print("IslandEncounters: %s cleared, +%d gold" % [name, gold])
+	# Fan-out for meta-progression. Emitted last so listeners see the cleared
+	# state already reflected in _state.
+	island_cleared.emit(island_id, gold)
 
 # --- Save / load ------------------------------------------------------------
 

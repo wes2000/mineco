@@ -59,6 +59,7 @@ const ITEMS: Array = [
 		"id": "pickaxe_deepcore", "name": "Deepcore Pickaxe",
 		"category": CAT_PICKAXE, "price": 8000, "requires": ["pickaxe_gold_tipped"],
 		"requires_blueprint": "deepcore_pickaxe_blueprint",
+		"requires_rank": 4,
 		"icon": "res://assets/icons/shop/pickaxe_deepcore.svg",
 		"modifiers": [
 			{"stat": "mining_damage_mult", "op": "mul", "value": 2.0},
@@ -89,6 +90,7 @@ const ITEMS: Array = [
 	{
 		"id": "scanner_material_lock", "name": "Material Lock Scanner",
 		"category": CAT_SCANNER, "price": 3500, "requires": ["scanner_fast_sweep"],
+		"requires_rank": 3,
 		"icon": "res://assets/icons/shop/scanner_material_lock.svg",
 		"modifiers": [
 			{"stat": "scanner_range_mult", "op": "mul", "value": 1.5},
@@ -196,8 +198,21 @@ static func meets_requirements(item: Dictionary, owned_ids: Array) -> bool:
 			var unlocks: Node = loop.root.get_node_or_null("Unlocks")
 			if unlocks != null and not bool(unlocks.call("has", bp)):
 				return false
+	# Optional Mine Co. rank gate. Treated like a soft prerequisite — items
+	# without the field load fine on saves predating brief 10.
+	var req_rank: int = int(item.get("requires_rank", 0))
+	if req_rank > 0:
+		var loop2: SceneTree = Engine.get_main_loop() as SceneTree
+		if loop2 != null:
+			var company: Node = loop2.root.get_node_or_null("CompanyProgress")
+			if company != null and int(company.get("rank")) < req_rank:
+				return false
 	return true
 
 # Convenience: blueprint id this item requires, or "" if none.
 static func required_blueprint(item: Dictionary) -> String:
 	return String(item.get("requires_blueprint", ""))
+
+# Convenience: rank required for this item, or 0 if none.
+static func required_rank(item: Dictionary) -> int:
+	return int(item.get("requires_rank", 0))

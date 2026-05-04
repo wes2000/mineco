@@ -8,6 +8,10 @@ const TICK_DT: float = 1.0 / TICK_HZ
 signal tick_emitted(tick_index: int)
 signal cell_registered(cell: Vector3i, owner: Node3D)
 signal cell_unregistered(cell: Vector3i)
+# Re-emitted once per item that any registered Building produces. CompanyProgress
+# subscribes to count "factory_items_produced" + grant Company XP, instead of
+# making each system that wants to listen wire to every Building individually.
+signal factory_item_produced(material_id: int)
 
 # Cell registry: building footprint cells -> Building instance.
 # Belts no longer occupy cells — they're spline-based BeltLink Node3Ds tracked
@@ -141,8 +145,17 @@ func _place_internal(kind: StringName, origin_cell: Vector3i, rotation_steps: in
 		var raw_cost: Dictionary = def.get("cost", {})
 		if raw_cost.size() > 0:
 			_BuildPieceDefs.charge(miner, raw_cost)
+	# Forward this building's item-emitted events into the world-level
+	# `factory_item_produced` re-emit so listeners (CompanyProgress, etc.)
+	# don't have to walk every Building on placement / load.
+	if bld.has_signal("item_emitted"):
+		if not bld.item_emitted.is_connected(_on_building_item_emitted):
+			bld.item_emitted.connect(_on_building_item_emitted)
 	_auto_flatten(cells_to_register, origin_cell.y)
 	return true
+
+func _on_building_item_emitted(material_id: int) -> void:
+	factory_item_produced.emit(material_id)
 
 # Monotonic per-session id source; saved alongside each building so links
 # can resolve source/dest after a restart.

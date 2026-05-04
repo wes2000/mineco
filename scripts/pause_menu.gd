@@ -18,6 +18,7 @@ const STANDARD_KEYBINDS: Array = [
 	["Tab", "inventory (hold)"],
 	["M", "map (popup)"],
 	["P", "passive tree"],
+	["O", "company / rank"],
 	["Esc", "menu / close"],
 	["B", "build mode"],
 ]
@@ -174,6 +175,16 @@ func _build_game_tab() -> void:
 			ui.call("open")
 	)
 	v.add_child(perks_btn)
+	var company_btn: Button = Button.new()
+	company_btn.text = "Company  (O)"
+	company_btn.custom_minimum_size = Vector2(220, 36)
+	company_btn.pressed.connect(func() -> void:
+		var co_ui: Node = get_tree().get_first_node_in_group("company_panel_ui")
+		if co_ui != null and co_ui.has_method("open"):
+			close()
+			co_ui.call("open")
+	)
+	v.add_child(company_btn)
 	if sg_init != null and sg_init.has_signal("save_completed"):
 		sg_init.connect("save_completed", func() -> void:
 			var sg: Node = _save_game_node()
