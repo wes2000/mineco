@@ -6,6 +6,7 @@ extends Control
 
 # Preload to avoid the parser needing ShopItemDefs in its class_name cache.
 const _ShopDefs: GDScript = preload("res://scripts/shop_item_defs.gd")
+const _BlueprintDefs: GDScript = preload("res://scripts/blueprint_defs.gd")
 
 const CATEGORY_ORDER: Array[StringName] = [
 	&"pickaxe", &"scanner", &"weapon", &"utility",
@@ -61,6 +62,11 @@ func open() -> void:
 			_miner.gold_currency_changed.connect(_on_gold_changed)
 		if _miner.has_signal("shop_inventory_changed") and not _miner.shop_inventory_changed.is_connected(_refresh):
 			_miner.shop_inventory_changed.connect(_refresh)
+	# Listen for blueprint unlocks while the shop is open so a turn-in that
+	# drops a blueprint flips the relevant row from Locked to Buy live.
+	var unlocks: Node = get_node_or_null("/root/Unlocks")
+	if unlocks != null and unlocks.has_signal("unlocked") and not unlocks.unlocked.is_connected(_on_unlocked):
+		unlocks.unlocked.connect(_on_unlocked)
 	_refresh()
 
 func close() -> void:
@@ -71,7 +77,13 @@ func close() -> void:
 			_miner.gold_currency_changed.disconnect(_on_gold_changed)
 		if _miner.has_signal("shop_inventory_changed") and _miner.shop_inventory_changed.is_connected(_refresh):
 			_miner.shop_inventory_changed.disconnect(_refresh)
+	var unlocks: Node = get_node_or_null("/root/Unlocks")
+	if unlocks != null and unlocks.has_signal("unlocked") and unlocks.unlocked.is_connected(_on_unlocked):
+		unlocks.unlocked.disconnect(_on_unlocked)
 	_miner = null
+
+func _on_unlocked(_blueprint_id: String) -> void:
+	_refresh()
 
 func _on_gold_changed(_amount: int) -> void:
 	_refresh()
@@ -154,8 +166,16 @@ func _make_row(item: Dictionary) -> PanelContainer:
 		info_lbl.text = "%d g" % int(item.price)
 		info_lbl.add_theme_color_override("font_color", Color(1, 0.85, 0.45, 1))
 		# Locked-by-prereq hint, since it's the most common reason a button is disabled.
+		# Blueprint gate is checked first so its message wins over the
+		# generic "requires <other items>" string when both apply.
 		if _miner != null and not _ShopDefs.meets_requirements(item, _miner.owned_items):
-			info_lbl.text = "%d g  ·  requires %s" % [int(item.price), _requires_text(item)]
+			var bp_id: String = _ShopDefs.required_blueprint(item)
+			var unlocks: Node = get_node_or_null("/root/Unlocks")
+			var bp_locked: bool = bp_id != "" and (unlocks == null or not bool(unlocks.call("has", bp_id)))
+			if bp_locked:
+				info_lbl.text = "%d g  ·  needs %s" % [int(item.price), _BlueprintDefs.name_for(bp_id)]
+			else:
+				info_lbl.text = "%d g  ·  requires %s" % [int(item.price), _requires_text(item)]
 			info_lbl.add_theme_color_override("font_color", Color(0.65, 0.6, 0.6, 1))
 	else:
 		info_lbl.text = "Owned"

@@ -26,6 +26,7 @@ MapData="*res://scripts/map_data.gd"
 SaveGame="*res://scripts/save_game.gd"
 PlayerStats="*res://scripts/player_stats.gd"
 PassiveTree="*res://scripts/passive_tree.gd"
+Unlocks="*res://scripts/unlocks.gd"
 
 [editor_plugins]
 

@@ -125,6 +125,11 @@ func collect_state() -> Dictionary:
 	var pt: Node = get_node_or_null("/root/PassiveTree")
 	if pt != null and pt.has_method("get_save_data"):
 		data["passive_tree"] = pt.get_save_data()
+	# Blueprint unlocks (additive — older saves without this block load with
+	# the unlock set empty, which is the default state for a fresh game).
+	var unlocks: Node = get_node_or_null("/root/Unlocks")
+	if unlocks != null and unlocks.has_method("get_save_data"):
+		data["unlocks"] = unlocks.get_save_data()
 	# Ore deposits (only the non-depleted ones; the absence of an id means
 	# that deposit was fully mined out before save).
 	var deposits: Dictionary = {}
@@ -177,6 +182,11 @@ func apply_state(data: Dictionary) -> void:
 	var pt: Node = get_node_or_null("/root/PassiveTree")
 	if pt != null and data.has("passive_tree") and pt.has_method("apply_save_data"):
 		pt.apply_save_data(data["passive_tree"])
+	# Blueprint unlocks. Absent block = empty unlock set; perfectly fine for
+	# saves predating brief 08.
+	var unlocks: Node = get_node_or_null("/root/Unlocks")
+	if unlocks != null and data.has("unlocks") and unlocks.has_method("apply_save_data"):
+		unlocks.apply_save_data(data["unlocks"])
 	# Player position last — applying it before world_ready can be overwritten
 	# by the SpawnGate. By the time we run apply_state we're past world_ready.
 	var player: Node = _get_player()

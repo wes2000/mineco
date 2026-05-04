@@ -1,13 +1,16 @@
 class_name ShopItemDefs
 extends RefCounted
 ## Static catalog for the gold-shop items. Each item is a Dictionary with:
-##   id (String)            stable key, also used to namespace its modifier source
-##   name (String)          shown in the UI
-##   category (StringName)  CAT_PICKAXE / CAT_SCANNER / CAT_UTILITY
-##   price (int)            gold cost
-##   requires (Array)       list of item ids the player must own first
-##   modifiers (Array)      [{stat: String, op: String, value: float}]
-##   description (String)   short blurb for the shop row
+##   id (String)              stable key, also used to namespace its modifier source
+##   name (String)            shown in the UI
+##   category (StringName)    CAT_PICKAXE / CAT_SCANNER / CAT_UTILITY
+##   price (int)              gold cost
+##   requires (Array)         list of item ids the player must own first
+##   requires_blueprint (String, optional)
+##                            blueprint id that must be unlocked before purchase.
+##                            Empty / missing means unconditional.
+##   modifiers (Array)        [{stat: String, op: String, value: float}]
+##   description (String)     short blurb for the shop row
 ##
 ## Pickaxes and scanners are EQUIP-SLOT categories: only one can be active at
 ## a time, and equipping registers under source &"equip_pickaxe" /
@@ -37,6 +40,7 @@ const ITEMS: Array = [
 	{
 		"id": "pickaxe_iron", "name": "Iron Pickaxe",
 		"category": CAT_PICKAXE, "price": 900, "requires": ["pickaxe_copper"],
+		"requires_blueprint": "iron_pickaxe_blueprint",
 		"icon": "res://assets/icons/shop/pickaxe_iron.svg",
 		"modifiers": [{"stat": "mining_damage_mult", "op": "mul", "value": 1.35}],
 		"description": "+35% mining damage.",
@@ -54,6 +58,7 @@ const ITEMS: Array = [
 	{
 		"id": "pickaxe_deepcore", "name": "Deepcore Pickaxe",
 		"category": CAT_PICKAXE, "price": 8000, "requires": ["pickaxe_gold_tipped"],
+		"requires_blueprint": "deepcore_pickaxe_blueprint",
 		"icon": "res://assets/icons/shop/pickaxe_deepcore.svg",
 		"modifiers": [
 			{"stat": "mining_damage_mult", "op": "mul", "value": 2.0},
@@ -65,6 +70,7 @@ const ITEMS: Array = [
 	{
 		"id": "scanner_tuned", "name": "Tuned Scanner",
 		"category": CAT_SCANNER, "price": 500, "requires": [],
+		"requires_blueprint": "tuned_scanner_blueprint",
 		"icon": "res://assets/icons/shop/scanner_tuned.svg",
 		"modifiers": [{"stat": "scanner_range_mult", "op": "mul", "value": 1.25}],
 		"description": "+25% radar range.",
@@ -72,6 +78,7 @@ const ITEMS: Array = [
 	{
 		"id": "scanner_fast_sweep", "name": "Fast Sweep Scanner",
 		"category": CAT_SCANNER, "price": 1200, "requires": ["scanner_tuned"],
+		"requires_blueprint": "fast_smelter_blueprint",
 		"icon": "res://assets/icons/shop/scanner_fast_sweep.svg",
 		"modifiers": [
 			{"stat": "scanner_range_mult", "op": "mul", "value": 1.25},
@@ -174,9 +181,23 @@ static func category_name(cat: StringName) -> String:
 	if cat == CAT_WEAPON: return "Weapons"
 	return String(cat)
 
-# True if the item's prerequisites are all satisfied by `owned_ids`.
+# True if the item's prerequisites are all satisfied by `owned_ids` AND the
+# blueprint gate (if any) is unlocked. The blueprint check goes through the
+# Unlocks autoload so a fresh-launched scene without it (e.g. unit tests)
+# still treats absence as "unlocked" rather than crashing.
 static func meets_requirements(item: Dictionary, owned_ids: Array) -> bool:
 	for req: Variant in item.get("requires", []):
 		if not owned_ids.has(String(req)):
 			return false
+	var bp: String = String(item.get("requires_blueprint", ""))
+	if bp != "":
+		var loop: SceneTree = Engine.get_main_loop() as SceneTree
+		if loop != null:
+			var unlocks: Node = loop.root.get_node_or_null("Unlocks")
+			if unlocks != null and not bool(unlocks.call("has", bp)):
+				return false
 	return true
+
+# Convenience: blueprint id this item requires, or "" if none.
+static func required_blueprint(item: Dictionary) -> String:
+	return String(item.get("requires_blueprint", ""))

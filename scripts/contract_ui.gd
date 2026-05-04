@@ -33,6 +33,17 @@ static func _icon_for(mid: int) -> Texture2D:
 	_icon_cache[mid] = tex
 	return tex
 
+const MODIFIER_LABELS: Dictionary = {
+	"rush_order": "RUSH",
+	"bulk_order": "BULK",
+	"refined_goods": "REFINED",
+}
+const MODIFIER_COLORS: Dictionary = {
+	"rush_order": Color(0.95, 0.35, 0.30, 1),     # red
+	"bulk_order": Color(0.45, 0.65, 0.95, 1),     # blue
+	"refined_goods": Color(1.0, 0.80, 0.30, 1),   # gold
+}
+
 @onready var _close_btn: Button = $Panel/Vbox/HeaderRow/CloseBtn
 @onready var _level_label: Label = $Panel/Vbox/LevelRow/LevelLabel
 @onready var _xp_bar: ProgressBar = $Panel/Vbox/LevelRow/XPBar
@@ -47,12 +58,50 @@ var _miner: Node = null
 var _card_style: StyleBoxFlat = null
 var _card_active_style: StyleBoxFlat = null
 
+# Per-active-contract countdown labels keyed by active-list index. Refreshed
+# in _process so rush orders tick down without rebuilding the whole panel
+# each frame.
+var _countdown_labels: Dictionary = {}
+
 func _ready() -> void:
 	visible = false
 	add_to_group("contract_ui")
 	_close_btn.pressed.connect(close)
 	_card_style = _make_card_style(Color(0.13, 0.15, 0.18, 0.7), Color(0.22, 0.25, 0.30, 1))
 	_card_active_style = _make_card_style(Color(0.13, 0.20, 0.30, 0.8), Color(0.40, 0.65, 0.95, 1))
+	set_process(true)
+
+func _process(_delta: float) -> void:
+	# Tick rush-order countdowns. Cheap — only walks the up-to-2 active
+	# contracts. _refresh() rebuilds these labels and _countdown_labels
+	# is wiped, so freed labels don't end up here.
+	if not visible or _board == null or _countdown_labels.is_empty():
+		return
+	var now: float = Time.get_unix_time_from_system()
+	for idx_v: Variant in _countdown_labels.keys():
+		var idx: int = int(idx_v)
+		if idx < 0 or idx >= _board.active.size():
+			continue
+		var lbl: Label = _countdown_labels[idx_v]
+		if lbl == null or not is_instance_valid(lbl):
+			continue
+		var c: Dictionary = _board.active[idx]
+		var exp_at: float = float(c.get("expires_at", 0.0))
+		if exp_at <= 0.0:
+			continue
+		var remaining: float = max(0.0, exp_at - now)
+		lbl.text = "expires in %s" % _format_mmss(remaining)
+		# Tint red when getting tight (<60s).
+		if remaining < 60.0:
+			lbl.add_theme_color_override("font_color", Color(1, 0.45, 0.40, 1))
+		else:
+			lbl.add_theme_color_override("font_color", Color(0.95, 0.65, 0.55, 1))
+
+func _format_mmss(seconds: float) -> String:
+	var s: int = int(round(seconds))
+	var m: int = s / 60
+	var r: int = s % 60
+	return "%02d:%02d" % [m, r]
 
 func _make_card_style(bg: Color, border: Color) -> StyleBoxFlat:
 	var s: StyleBoxFlat = StyleBoxFlat.new()
@@ -112,6 +161,7 @@ func _input(event: InputEvent) -> void:
 func _refresh() -> void:
 	if _board == null:
 		return
+	_countdown_labels.clear()
 	_level_label.text = "LEVEL %d" % _board.level
 	_xp_bar.max_value = float(_board.xp_to_next())
 	_xp_bar.value = float(_board.xp)
@@ -147,9 +197,17 @@ func _section_header(text: String) -> Label:
 func _make_card(contract: Dictionary, idx: int, is_active: bool) -> PanelContainer:
 	var pc: PanelContainer = PanelContainer.new()
 	pc.add_theme_stylebox_override("panel", _card_active_style if is_active else _card_style)
+	# Outer vertical: optional modifier-badge row on top, then the existing
+	# items / actions hbox below it.
+	var outer: VBoxContainer = VBoxContainer.new()
+	outer.add_theme_constant_override("separation", 4)
+	pc.add_child(outer)
+	var modifier: String = String(contract.get("modifier", ""))
+	if MODIFIER_LABELS.has(modifier):
+		outer.add_child(_make_modifier_row(modifier, contract, is_active, idx))
 	var hbox: HBoxContainer = HBoxContainer.new()
 	hbox.add_theme_constant_override("separation", 10)
-	pc.add_child(hbox)
+	outer.add_child(hbox)
 	# Items column (icons stacked horizontally + their progress text)
 	var items_col: VBoxContainer = VBoxContainer.new()
 	items_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -169,6 +227,16 @@ func _make_card(contract: Dictionary, idx: int, is_active: bool) -> PanelContain
 	reward_lbl.add_theme_color_override("font_color", Color(1, 0.85, 0.45, 1))
 	reward_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	actions_col.add_child(reward_lbl)
+	# Blueprint-chance hint (only when > 0). Shown as a small line under the
+	# reward so it doesn't compete visually with the gold + xp number.
+	var chance: float = float(contract.get("blueprint_chance", 0.0))
+	if chance > 0.0:
+		var bp_lbl: Label = Label.new()
+		bp_lbl.text = "%d%% blueprint" % int(round(chance * 100.0))
+		bp_lbl.add_theme_font_size_override("font_size", 10)
+		bp_lbl.add_theme_color_override("font_color", Color(0.75, 0.85, 1.0, 1))
+		bp_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		actions_col.add_child(bp_lbl)
 	var btn: Button = Button.new()
 	if is_active:
 		btn.text = "Turn in"
@@ -180,6 +248,34 @@ func _make_card(contract: Dictionary, idx: int, is_active: bool) -> PanelContain
 		btn.pressed.connect(_on_activate.bind(idx))
 	actions_col.add_child(btn)
 	return pc
+
+# Modifier badge + (for active rush orders) live countdown. Badge text comes
+# from MODIFIER_LABELS and color from MODIFIER_COLORS — defaults handle any
+# unknown modifier defensively.
+func _make_modifier_row(modifier: String, contract: Dictionary, is_active: bool, idx: int) -> HBoxContainer:
+	var row: HBoxContainer = HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	var badge: Label = Label.new()
+	badge.text = String(MODIFIER_LABELS.get(modifier, modifier.to_upper()))
+	badge.add_theme_font_size_override("font_size", 11)
+	var col: Color = MODIFIER_COLORS.get(modifier, Color(0.7, 0.7, 0.7, 1))
+	badge.add_theme_color_override("font_color", col)
+	badge.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
+	badge.add_theme_constant_override("outline_size", 4)
+	row.add_child(badge)
+	# Countdown only meaningful for active rush orders (expires_at stamped).
+	if is_active and modifier == "rush_order":
+		var exp_at: float = float(contract.get("expires_at", 0.0))
+		var count_lbl: Label = Label.new()
+		count_lbl.add_theme_font_size_override("font_size", 11)
+		count_lbl.add_theme_color_override("font_color", Color(0.95, 0.65, 0.55, 1))
+		count_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		count_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		var initial_remaining: float = max(0.0, exp_at - Time.get_unix_time_from_system())
+		count_lbl.text = "expires in %s" % _format_mmss(initial_remaining)
+		row.add_child(count_lbl)
+		_countdown_labels[idx] = count_lbl
+	return row
 
 func _make_item_row(material_id: int, needed: int, show_progress: bool) -> HBoxContainer:
 	var row: HBoxContainer = HBoxContainer.new()
