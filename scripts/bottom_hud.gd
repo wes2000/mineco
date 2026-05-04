@@ -38,6 +38,9 @@ static var _slot_style_selected: StyleBoxFlat = null
 @onready var _slots_row: HBoxContainer = $Panel/Vbox/SlotsRow
 @onready var _stamina_bar: ProgressBar = $Panel/Vbox/StaminaBar
 @onready var _health_bar: ProgressBar = $Panel/Vbox/HealthBar
+# Hint label that surfaces the build catalog while in build mode. Created in
+# code so the existing bottom_hud.tscn doesn't need a structural edit.
+var _build_hint: Label = null
 
 var _slots: Array = []   # current slot Panel nodes (active set)
 var _stamina: Node = null
@@ -56,6 +59,18 @@ func _ready() -> void:
 	BuildController.selection_changed.connect(_on_build_selection)
 	if BuildController.has_signal("quickbar_changed"):
 		BuildController.quickbar_changed.connect(_on_quickbar_changed)
+	# Build-mode catalog hint, sits above the slot row. Hidden until build mode.
+	_build_hint = Label.new()
+	_build_hint.text = "Press G for build catalog (foundations, walls, storage, …)"
+	_build_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_build_hint.add_theme_font_size_override("font_size", 11)
+	_build_hint.add_theme_color_override("font_color", Color(0.95, 0.85, 0.45, 1))
+	_build_hint.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	_build_hint.add_theme_constant_override("outline_size", 4)
+	_build_hint.visible = false
+	_build_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	$Panel/Vbox.add_child(_build_hint)
+	$Panel/Vbox.move_child(_build_hint, 0)
 	_populate(STANDARD_SLOTS)
 	_highlight(0)
 	# Hook stamina (looks for /root/Main/Player/Stamina)
@@ -132,6 +147,8 @@ func _refresh_standard_slots() -> void:
 	_highlight(idx)
 
 func _on_build_mode_changed(is_active: bool) -> void:
+	if _build_hint != null:
+		_build_hint.visible = is_active
 	if is_active:
 		_populate(_build_slots())
 		_highlight(BuildController.current_slot)

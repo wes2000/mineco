@@ -23,15 +23,16 @@ const STANDARD_KEYBINDS: Array = [
 	["B", "build mode"],
 ]
 const BUILD_KEYBINDS: Array = [
-	["1", "Loader"],
-	["2", "Smelter"],
-	["3", "Forge"],
-	["4", "Belt link"],
-	["5", "Merger"],
-	["6", "Splitter"],
+	["1 - 6", "select hotbar slot"],
+	["G", "open build catalog"],
+	["", "  (foundations, walls, roofs,"],
+	["", "  storage, workbench, lamp,"],
+	["", "  beacon, crusher, ...)"],
+	["", "  click an item, then press"],
+	["", "  1-6 to bind it to a slot"],
 	["LMB", "place / link"],
 	["R / wheel", "rotate ghost"],
-	["X + LMB", "remove"],
+	["X + LMB", "remove (refunds materials)"],
 	["B / Esc", "exit build mode"],
 ]
 
