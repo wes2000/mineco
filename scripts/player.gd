@@ -59,6 +59,22 @@ func _emit_initial_tool() -> void:
 	_apply_tool_visuals()
 	tool_changed.emit(current_tool)
 
+func get_save_data() -> Dictionary:
+	return {
+		"position": [global_position.x, global_position.y, global_position.z],
+		"rotation_y": rotation.y,
+		"current_tool": current_tool,
+	}
+
+func apply_save_data(data: Dictionary) -> void:
+	var pos: Array = data.get("position", [])
+	if pos.size() == 3:
+		global_position = Vector3(float(pos[0]), float(pos[1]), float(pos[2]))
+	if data.has("rotation_y"):
+		rotation.y = float(data["rotation_y"])
+	if data.has("current_tool"):
+		_select_tool(int(data["current_tool"]))
+
 func _select_tool(t: int) -> void:
 	# Pressing the same tool key again puts the tool away (toggle off).
 	if current_tool == t:

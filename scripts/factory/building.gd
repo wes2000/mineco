@@ -13,6 +13,9 @@ signal status_changed(new_status: int)
 @export var idle_bob_freq_hz: float = 4.0
 
 var origin_cell: Vector3i        # set on placement; "front-left" cell of the footprint
+# Stable id used by SaveGame to resolve cross-building belt links across
+# save → load. Assigned by FactoryWorld on placement and on restore.
+var save_id: String = ""
 var status: int = Status.IDLE :
 	set(v):
 		if status != v:
@@ -204,3 +207,33 @@ func tick(_tick_index: int) -> void:
 # Return true to consume, false to leave on the link.
 func port_accept_item(_item: FactoryItem, _port: Port) -> bool:
 	return false
+
+# --- Save / load -----------------------------------------------------------
+
+# Subclasses MUST call super().get_save_data() and merge so the placement
+# slug (kind / origin_cell / rotation_steps / save_id / queues) survives.
+func get_save_data() -> Dictionary:
+	return {
+		"save_id": save_id,
+		"input_queue": input_queue.duplicate(),
+		"output_queue": output_queue.duplicate(),
+		"processing_buffer": processing_buffer.duplicate(),
+	}
+
+func apply_save_data(data: Dictionary) -> void:
+	if data.has("save_id"):
+		save_id = String(data["save_id"])
+	input_queue = _coerce_int_array(data.get("input_queue", []))
+	output_queue = _coerce_int_array(data.get("output_queue", []))
+	processing_buffer = _coerce_int_array(data.get("processing_buffer", []))
+	queue_changed.emit(QUEUE_KIND_INPUT, input_queue.size())
+	queue_changed.emit(QUEUE_KIND_OUTPUT, output_queue.size())
+	processing_changed.emit(processing_buffer.size())
+
+static func _coerce_int_array(raw: Variant) -> Array[int]:
+	var out: Array[int] = []
+	if not (raw is Array):
+		return out
+	for v: Variant in raw:
+		out.append(int(v))
+	return out

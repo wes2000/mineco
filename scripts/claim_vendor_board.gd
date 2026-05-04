@@ -143,6 +143,28 @@ func release() -> int:
 	changed.emit()
 	return awarded
 
+func get_save_data() -> Dictionary:
+	# owned_mined keys are OreType ints; JSON keys must be strings — convert
+	# both ways. Same trick the engine already does for inventory dicts.
+	var mined_str: Dictionary = {}
+	for k: int in owned_mined.keys():
+		mined_str[str(k)] = int(owned_mined[k])
+	return {
+		"level": level,
+		"xp": xp,
+		"owned_id": owned_id,
+		"owned_mined": mined_str,
+	}
+
+func apply_save_data(data: Dictionary) -> void:
+	level = int(data.get("level", 1))
+	xp = int(data.get("xp", 0))
+	owned_id = String(data.get("owned_id", ""))
+	owned_mined = {}
+	for k: Variant in data.get("owned_mined", {}).keys():
+		owned_mined[int(String(k))] = int(data["owned_mined"][k])
+	changed.emit()
+
 func _gain_xp(amount: int) -> void:
 	if amount <= 0:
 		return

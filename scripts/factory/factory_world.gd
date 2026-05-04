@@ -78,6 +78,7 @@ func place(kind: StringName, origin_cell: Vector3i, rotation_steps: int) -> bool
 	var bld: Building = node as Building
 	bld.origin_cell = origin_cell
 	bld.rotation_steps = rotation_steps
+	bld.save_id = _next_save_id()
 	bld.position = Vector3(origin_cell.x, origin_cell.y, origin_cell.z)
 	bld.rotation = Vector3(0, -PI / 2 * rotation_steps, 0)
 	get_tree().current_scene.add_child(bld)
@@ -91,6 +92,22 @@ func place(kind: StringName, origin_cell: Vector3i, rotation_steps: int) -> bool
 			return false
 	_auto_flatten(cells_to_register, origin_cell.y)
 	return true
+
+# Monotonic per-session id source; saved alongside each building so links
+# can resolve source/dest after a restart.
+var _save_id_counter: int = 0
+
+func _next_save_id() -> String:
+	_save_id_counter += 1
+	return "b%d" % _save_id_counter
+
+func _building_kind(bld: Building) -> StringName:
+	if bld is Loader: return &"loader"
+	if bld is Smelter: return &"smelter"
+	if bld is Forge: return &"forge"
+	if bld is Splitter: return &"splitter"
+	if bld is Merger: return &"merger"
+	return &""
 
 func remove(cell: Vector3i) -> void:
 	var owner: Node3D = get_cell_owner(cell)
@@ -195,3 +212,115 @@ func _tick_buildings() -> void:
 		if owner is Building and not seen.has(owner):
 			seen[owner] = true
 			(owner as Building).tick(_tick_index)
+
+# --- Save / load -----------------------------------------------------------
+
+func get_save_data() -> Dictionary:
+	# Buildings: kind + origin_cell + rotation_steps + per-class state.
+	# Links: save_id endpoints + port indices. We intentionally drop
+	# in-flight belt items in v1 (the brief calls this out as acceptable);
+	# they re-fill from the loaders next tick.
+	var buildings: Array = []
+	var seen: Dictionary = {}
+	for c: Vector3i in _cells:
+		var n: Node3D = _cells[c]
+		if not (n is Building) or seen.has(n):
+			continue
+		seen[n] = true
+		var bld: Building = n as Building
+		var entry: Dictionary = bld.get_save_data()
+		entry["kind"] = String(_building_kind(bld))
+		entry["origin_cell"] = [bld.origin_cell.x, bld.origin_cell.y, bld.origin_cell.z]
+		entry["rotation_steps"] = bld.rotation_steps
+		buildings.append(entry)
+	var links: Array = []
+	for link: BeltLink in _links:
+		if link.source_port == null or link.dest_port == null:
+			continue
+		var src_bld: Building = link.source_port.owner_building as Building
+		var dst_bld: Building = link.dest_port.owner_building as Building
+		if src_bld == null or dst_bld == null:
+			continue
+		links.append({
+			"source_id": src_bld.save_id,
+			"source_port": src_bld.ports.find(link.source_port),
+			"dest_id": dst_bld.save_id,
+			"dest_port": dst_bld.ports.find(link.dest_port),
+		})
+	return {"buildings": buildings, "links": links}
+
+func apply_save_data(data: Dictionary) -> void:
+	# Rip out anything currently placed first so a load doesn't double up.
+	_clear_all_placements()
+	# Re-place buildings, restoring their save_id so links resolve.
+	var by_id: Dictionary = {}
+	for entry: Variant in data.get("buildings", []):
+		if not (entry is Dictionary):
+			continue
+		var d: Dictionary = entry
+		var kind: StringName = StringName(String(d.get("kind", "")))
+		if kind == &"":
+			continue
+		var oc_arr: Array = d.get("origin_cell", [])
+		if oc_arr.size() != 3:
+			continue
+		var origin: Vector3i = Vector3i(int(oc_arr[0]), int(oc_arr[1]), int(oc_arr[2]))
+		var rot_steps: int = int(d.get("rotation_steps", 0))
+		# Use the same placement path as build mode so footprints & flattening
+		# stay consistent. Then back-fill state on the resulting building.
+		if not place(kind, origin, rot_steps):
+			continue
+		var bld: Building = get_cell_owner(origin) as Building
+		if bld == null:
+			continue
+		# Override the auto-assigned save_id with the saved one so links
+		# resolve, and bump the counter past it to avoid collisions on new placements.
+		var saved_id: String = String(d.get("save_id", ""))
+		if saved_id != "":
+			bld.save_id = saved_id
+			_save_id_counter = max(_save_id_counter, _parse_id_number(saved_id))
+		bld.apply_save_data(d)
+		by_id[bld.save_id] = bld
+	# Recreate links.
+	for entry: Variant in data.get("links", []):
+		if not (entry is Dictionary):
+			continue
+		var d: Dictionary = entry
+		var src: Building = by_id.get(String(d.get("source_id", "")), null) as Building
+		var dst: Building = by_id.get(String(d.get("dest_id", "")), null) as Building
+		if src == null or dst == null:
+			continue
+		var sp_idx: int = int(d.get("source_port", -1))
+		var dp_idx: int = int(d.get("dest_port", -1))
+		if sp_idx < 0 or sp_idx >= src.ports.size():
+			continue
+		if dp_idx < 0 or dp_idx >= dst.ports.size():
+			continue
+		create_link(src.ports[sp_idx], dst.ports[dp_idx])
+
+func _clear_all_placements() -> void:
+	# Tear down all links first so port.attached_link doesn't dangle.
+	for link: BeltLink in _links.duplicate():
+		_links.erase(link)
+		link.teardown()
+	_links.clear()
+	# Then the buildings. Iterate via a snapshot of unique owners since
+	# unregister_cell mutates _cells.
+	var to_free: Array = []
+	var seen: Dictionary = {}
+	for c: Vector3i in _cells:
+		var n: Node3D = _cells[c]
+		if n is Building and not seen.has(n):
+			seen[n] = true
+			to_free.append(n)
+	for n: Variant in to_free:
+		var bld: Building = n as Building
+		for c: Vector3i in bld.get_footprint_cells():
+			unregister_cell(c)
+		bld.queue_free()
+
+func _parse_id_number(id: String) -> int:
+	# "b42" → 42; anything malformed → 0.
+	if id.length() < 2:
+		return 0
+	return int(id.substr(1))

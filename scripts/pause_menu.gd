@@ -84,7 +84,49 @@ func _placeholder_label(text: String) -> Label:
 	return lbl
 
 func _build_game_tab() -> void:
-	$Panel/Vbox/Tabs/Game.add_child(_placeholder_label("Coming soon"))
+	var v: VBoxContainer = VBoxContainer.new()
+	v.add_theme_constant_override("separation", 8)
+	v.alignment = BoxContainer.ALIGNMENT_BEGIN
+	var hdr: Label = Label.new()
+	hdr.text = "Save & Load"
+	hdr.add_theme_font_size_override("font_size", 14)
+	hdr.add_theme_color_override("font_color", Color(0.55, 0.7, 0.85, 1))
+	v.add_child(hdr)
+	var save_btn: Button = Button.new()
+	save_btn.text = "Save Game"
+	save_btn.custom_minimum_size = Vector2(220, 36)
+	save_btn.pressed.connect(func() -> void:
+		if SaveGame != null:
+			SaveGame.save_now()
+	)
+	v.add_child(save_btn)
+	var load_btn: Button = Button.new()
+	load_btn.text = "Load Game"
+	load_btn.custom_minimum_size = Vector2(220, 36)
+	load_btn.disabled = SaveGame == null or not SaveGame.has_save()
+	load_btn.pressed.connect(func() -> void:
+		if SaveGame != null and SaveGame.has_save():
+			SaveGame.load_now()
+			close()
+	)
+	v.add_child(load_btn)
+	var del_btn: Button = Button.new()
+	del_btn.text = "Delete Save"
+	del_btn.custom_minimum_size = Vector2(220, 36)
+	del_btn.disabled = SaveGame == null or not SaveGame.has_save()
+	del_btn.pressed.connect(func() -> void:
+		if SaveGame != null:
+			SaveGame.delete_save()
+			load_btn.disabled = true
+			del_btn.disabled = true
+	)
+	v.add_child(del_btn)
+	if SaveGame != null:
+		SaveGame.save_completed.connect(func() -> void:
+			load_btn.disabled = not SaveGame.has_save()
+			del_btn.disabled = not SaveGame.has_save()
+		)
+	$Panel/Vbox/Tabs/Game.add_child(v)
 
 func _build_audio_tab() -> void:
 	$Panel/Vbox/Tabs/Audio.add_child(_placeholder_label("Coming soon"))

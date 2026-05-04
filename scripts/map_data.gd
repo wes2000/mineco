@@ -91,6 +91,39 @@ func mark_explored(world_pos: Vector3) -> void:
 
 # --- Internal ---
 
+func get_save_data() -> Dictionary:
+	# PackedByteArray + Image bytes both go base64 so JSON stays small and
+	# round-trips the binary cleanly. The image colors are recomputed from
+	# the explored bytes on load — only the explored mask is the source of
+	# truth, the colors are derived next time the player passes through.
+	# But we save the rendered colors too, so the map looks identical
+	# without re-sampling the world (some cells may not be re-explorable
+	# if the chunks aren't loaded right after restart).
+	return {
+		"grid_size": GRID_SIZE,
+		"explored_b64": Marshalls.raw_to_base64(_explored),
+		"image_b64": Marshalls.raw_to_base64(image.get_data()),
+		"explored_cell_count": _explored_cell_count,
+	}
+
+func apply_save_data(data: Dictionary) -> void:
+	# Reject if grid dimensions changed since the save was written — the
+	# byte layout would no longer line up. The map just stays empty in
+	# that case; the player re-walks to reveal.
+	if int(data.get("grid_size", 0)) != GRID_SIZE:
+		push_warning("MapData.apply_save_data: grid size changed, ignoring saved fog")
+		return
+	var ex_bytes: PackedByteArray = Marshalls.base64_to_raw(String(data.get("explored_b64", "")))
+	if ex_bytes.size() == GRID_SIZE * GRID_SIZE:
+		_explored = ex_bytes
+	_explored_cell_count = int(data.get("explored_cell_count", 0))
+	var img_bytes: PackedByteArray = Marshalls.base64_to_raw(String(data.get("image_b64", "")))
+	var expected_size: int = GRID_SIZE * GRID_SIZE * 3   # FORMAT_RGB8
+	if img_bytes.size() == expected_size:
+		image.set_data(GRID_SIZE, GRID_SIZE, false, Image.FORMAT_RGB8, img_bytes)
+		texture.update(image)
+		map_updated.emit()
+
 func _color_for_height(y: float) -> Color:
 	if y < 0.5:
 		return COLOR_WATER

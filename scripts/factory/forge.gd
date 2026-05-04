@@ -32,6 +32,21 @@ func get_cycle_remaining_ticks() -> int:
 func get_cycle_total_ticks() -> int:
 	return _cycle_total_ticks
 
+func get_save_data() -> Dictionary:
+	var d: Dictionary = super.get_save_data()
+	d["recipe_input"] = recipe_input
+	d["cycle_remaining_ticks"] = _cycle_remaining_ticks
+	d["cycle_total_ticks"] = _cycle_total_ticks
+	d["active_input_material"] = _active_input_material
+	return d
+
+func apply_save_data(data: Dictionary) -> void:
+	super.apply_save_data(data)
+	recipe_input = int(data.get("recipe_input", MaterialDefs.MaterialId.BRICK))
+	_cycle_remaining_ticks = int(data.get("cycle_remaining_ticks", 0))
+	_cycle_total_ticks = int(data.get("cycle_total_ticks", 0))
+	_active_input_material = int(data.get("active_input_material", -1))
+
 func port_accept_item(item: FactoryItem, _port: Port) -> bool:
 	if not input_queue_can_accept():
 		return false

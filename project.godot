@@ -23,6 +23,7 @@ Admin="*res://scripts/admin.gd"
 FactoryWorld="*res://scripts/factory/factory_world.gd"
 BuildController="*res://scripts/factory/build_controller.gd"
 MapData="*res://scripts/map_data.gd"
+SaveGame="*res://scripts/save_game.gd"
 
 [editor_plugins]
 

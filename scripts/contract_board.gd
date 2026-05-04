@@ -88,6 +88,46 @@ func turn_in(idx: int, miner: Node) -> bool:
 	changed.emit()
 	return true
 
+func get_save_data() -> Dictionary:
+	return {
+		"level": level,
+		"xp": xp,
+		"available": available.duplicate(true),
+		"active": active.duplicate(true),
+	}
+
+func apply_save_data(data: Dictionary) -> void:
+	level = int(data.get("level", 1))
+	xp = int(data.get("xp", 0))
+	# Contracts are pure dictionaries with int / array fields, so duplicating
+	# is enough — JSON round-trip turns the items arrays back into Array.
+	available = []
+	for c: Variant in data.get("available", []):
+		available.append(_normalize_contract(c))
+	active = []
+	for c: Variant in data.get("active", []):
+		active.append(_normalize_contract(c))
+	# Backfill if save came from a state with fewer slots than AVAILABLE_MAX.
+	while available.size() < AVAILABLE_MAX:
+		available.append(_generate())
+	changed.emit()
+
+func _normalize_contract(raw: Variant) -> Dictionary:
+	# JSON parse returns Array (untyped) for items, plus int/float numbers.
+	# Coerce back to the shape contract_board hands out elsewhere.
+	if not (raw is Dictionary):
+		return _generate()
+	var d: Dictionary = raw
+	var items: Array = []
+	for entry: Variant in d.get("items", []):
+		if entry is Array and entry.size() == 2:
+			items.append([int(entry[0]), int(entry[1])])
+	return {
+		"items": items,
+		"reward_gold": int(d.get("reward_gold", 0)),
+		"xp": int(d.get("xp", 0)),
+	}
+
 func _gain_xp(amount: int) -> void:
 	xp += amount
 	while xp >= xp_to_next():

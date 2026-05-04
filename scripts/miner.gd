@@ -181,6 +181,34 @@ func _credit_owned_claim(ore_type: int, amount: int) -> void:
 		return
 	board.credit_mining(ore_type, amount)
 
+func get_save_data() -> Dictionary:
+	return {
+		"materials": {
+			"stone": stone, "brick": brick, "block": block,
+			"iron": iron, "iron_ingot": iron_ingot, "iron_bar": iron_bar,
+			"gold": gold, "gold_ingot": gold_ingot, "gold_bar": gold_bar,
+		},
+		"gold_currency": gold_currency,
+		"has_boat": has_boat,
+	}
+
+func apply_save_data(data: Dictionary) -> void:
+	var m: Dictionary = data.get("materials", {})
+	stone = int(m.get("stone", 0))
+	brick = int(m.get("brick", 0))
+	block = int(m.get("block", 0))
+	iron = int(m.get("iron", 0))
+	iron_ingot = int(m.get("iron_ingot", 0))
+	iron_bar = int(m.get("iron_bar", 0))
+	gold = int(m.get("gold", 0))
+	gold_ingot = int(m.get("gold_ingot", 0))
+	gold_bar = int(m.get("gold_bar", 0))
+	gold_currency = int(data.get("gold_currency", 0))
+	has_boat = bool(data.get("has_boat", false))
+	inventory_changed.emit(stone, iron, gold)
+	extended_inventory_changed.emit()
+	gold_currency_changed.emit(gold_currency)
+
 func add_factory_material(material_id: int, amount: int) -> void:
 	# Used by FactoryDrop pickup. material_id is MaterialDefs.MaterialId enum value.
 	match material_id:

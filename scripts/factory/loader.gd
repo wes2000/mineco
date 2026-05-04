@@ -23,6 +23,29 @@ func _ready() -> void:
 	ports.append(p)
 	super._ready()
 
+func get_save_data() -> Dictionary:
+	var d: Dictionary = super.get_save_data()
+	# JSON keys are strings — store hopper material ids as string keys.
+	var hopper_str: Dictionary = {}
+	for k: int in hopper.keys():
+		hopper_str[str(k)] = int(hopper[k])
+	d["hopper"] = hopper_str
+	d["selected_material"] = selected_material
+	d["cycle_remaining_ticks"] = _cycle_remaining_ticks
+	return d
+
+func apply_save_data(data: Dictionary) -> void:
+	super.apply_save_data(data)
+	hopper = {}
+	for mid: int in MaterialDefs.TIER_1_MATERIALS:
+		hopper[mid] = 0
+	for k: Variant in data.get("hopper", {}).keys():
+		var mid: int = int(String(k))
+		hopper[mid] = int(data["hopper"][k])
+		hopper_changed.emit(mid, hopper[mid])
+	selected_material = int(data.get("selected_material", MaterialDefs.MaterialId.STONE))
+	_cycle_remaining_ticks = int(data.get("cycle_remaining_ticks", 0))
+
 func deposit(material_id: int, amount: int) -> int:
 	var current: int = hopper.get(material_id, 0)
 	var new_amount: int = min(current + amount, HOPPER_CAP)
