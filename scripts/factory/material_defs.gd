@@ -35,6 +35,13 @@ const FORGE_TICKS: Dictionary = {
 	MaterialId.GOLD_INGOT: 160,
 }
 
+# Crusher cycle (ticks). T1 -> same T1 with a bonus chance.
+const CRUSHER_TICKS: Dictionary = {
+	MaterialId.STONE: 20,
+	MaterialId.IRON_ORE: 40,
+	MaterialId.GOLD_ORE: 80,
+}
+
 # Recipe maps
 const SMELT_RECIPE: Dictionary = {
 	MaterialId.STONE: MaterialId.BRICK,

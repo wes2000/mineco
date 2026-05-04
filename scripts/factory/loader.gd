@@ -3,9 +3,12 @@ extends Building
 ## Player-fed hopper that produces selected material into its output queue,
 ## then drains the output queue onto the attached belt link as space allows.
 
-const HOPPER_CAP: int = 999
+const HOPPER_CAP: int = 999   # base / Mk1; per-instance cap reads upgrade_level
 
 signal hopper_changed(material_id: int, new_count: int)
+
+func effective_hopper_cap() -> int:
+	return _MachineUpgradeDefs.loader_hopper_cap_for(upgrade_level)
 
 var hopper: Dictionary = {}     # material_id -> int
 var selected_material: int = MaterialDefs.MaterialId.STONE
@@ -48,7 +51,7 @@ func apply_save_data(data: Dictionary) -> void:
 
 func deposit(material_id: int, amount: int) -> int:
 	var current: int = hopper.get(material_id, 0)
-	var new_amount: int = min(current + amount, HOPPER_CAP)
+	var new_amount: int = min(current + amount, effective_hopper_cap())
 	var accepted: int = new_amount - current
 	hopper[material_id] = new_amount
 	hopper_changed.emit(material_id, new_amount)
@@ -71,7 +74,7 @@ func tick(_tick_index: int) -> void:
 	hopper[selected_material] -= 1
 	hopper_changed.emit(selected_material, hopper[selected_material])
 	item_emitted.emit(selected_material)
-	_cycle_remaining_ticks = scaled_cycle_ticks(MaterialDefs.LOADER_EMIT_TICKS[selected_material])
+	_cycle_remaining_ticks = apply_upgrade_to_cycle(MaterialDefs.LOADER_EMIT_TICKS[selected_material])
 	status = Status.WORKING
 
 func _drain_output_to_link() -> void:

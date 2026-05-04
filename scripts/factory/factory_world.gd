@@ -22,6 +22,7 @@ const KIND_TO_SCENE: Dictionary = {
 	&"loader": "res://scenes/factory/loader.tscn",
 	&"smelter": "res://scenes/factory/smelter.tscn",
 	&"forge": "res://scenes/factory/forge.tscn",
+	&"crusher": "res://scenes/factory/crusher.tscn",
 	&"splitter": "res://scenes/factory/splitter.tscn",
 	&"merger": "res://scenes/factory/merger.tscn",
 	# Structures + utility (brief 05). All extend Structure, so per-instance
@@ -42,6 +43,7 @@ const KIND_TO_SCENE: Dictionary = {
 const _BuildPieceDefs: GDScript = preload("res://scripts/factory/build_piece_defs.gd")
 const _Structure: GDScript = preload("res://scripts/factory/structure.gd")
 const _StorageCrate: GDScript = preload("res://scripts/factory/storage_crate.gd")
+const _Crusher: GDScript = preload("res://scripts/factory/crusher.gd")
 
 func _ready() -> void:
 	item_pool = ItemPool.new()
@@ -95,6 +97,14 @@ func _place_internal(kind: StringName, origin_cell: Vector3i, rotation_steps: in
 	# spawn-and-free a node every click.
 	var def: Dictionary = _BuildPieceDefs.by_id(kind)
 	var miner: Node = get_tree().get_first_node_in_group("player_miner")
+	# Blueprint gate — if charging materials (i.e. a fresh placement, not
+	# a save-load restore), enforce the unlock requirement.
+	if charge_materials and not def.is_empty() and _BuildPieceDefs.is_locked(def):
+		var feed_lk: Node = get_tree().get_first_node_in_group("pickup_feed")
+		if feed_lk != null and feed_lk.has_method("add_text_message"):
+			var bp: String = String(def.get("requires_blueprint", ""))
+			feed_lk.call("add_text_message", "Locked: needs %s" % bp)
+		return false
 	if charge_materials and not def.is_empty():
 		var raw_cost: Dictionary = def.get("cost", {})
 		if raw_cost.size() > 0 and not _BuildPieceDefs.can_afford(miner, raw_cost):
@@ -146,6 +156,7 @@ func _building_kind(bld: Building) -> StringName:
 	if bld is Loader: return &"loader"
 	if bld is Smelter: return &"smelter"
 	if bld is Forge: return &"forge"
+	if bld != null and bld.get_script() == _Crusher: return &"crusher"
 	if bld is Splitter: return &"splitter"
 	if bld is Merger: return &"merger"
 	# Structure / utility pieces all extend Structure; the `kind` exported on

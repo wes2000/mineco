@@ -5,15 +5,16 @@ extends RefCounted
 ## scenes, footprints, and material costs without scattering data across files.
 ##
 ## Each entry:
-##   id            StringName  — same key used by FactoryWorld.KIND_TO_SCENE
-##   name          String      — HUD / catalog label
-##   category      StringName  — &"factory" / &"structure" / &"utility"
-##   scene         String      — res:// path (or "" for the BELT pseudo-tool)
-##   icon          String      — res:// icon path (may be "")
-##   footprint     Vector2i    — cells in (X, Z); (0, 0) for belt
-##   cost          Dictionary  — { MaterialDefs.MaterialId : int }
-##   refund_pct    float       — fraction of cost returned on `remove`
-##   description   String      — single-line tooltip
+##   id                 StringName  — same key used by FactoryWorld.KIND_TO_SCENE
+##   name               String      — HUD / catalog label
+##   category           StringName  — &"factory" / &"structure" / &"utility"
+##   scene              String      — res:// path (or "" for the BELT pseudo-tool)
+##   icon               String      — res:// icon path (may be "")
+##   footprint          Vector2i    — cells in (X, Z); (0, 0) for belt
+##   cost               Dictionary  — { MaterialDefs.MaterialId : int }
+##   refund_pct         float       — fraction of cost returned on `remove`
+##   description        String      — single-line tooltip
+##   requires_blueprint String      — Unlocks id; empty = always available
 ##
 ## Costs honor PlayerStats.BUILD_COST_MULT — see `effective_cost`.
 
@@ -83,6 +84,18 @@ const PIECES: Array = [
 		"cost": {},
 		"refund_pct": 0.5,
 		"description": "Combines three input belts into one.",
+	},
+	{
+		"id": &"crusher",
+		"name": "Crusher",
+		"category": CAT_FACTORY,
+		"scene": "res://scenes/factory/crusher.tscn",
+		"icon": "res://assets/icons/hotbar/build_smelter.svg",
+		"footprint": Vector2i(2, 2),
+		"cost": {_MD.MaterialId.IRON_INGOT: 4, _MD.MaterialId.STONE: 6},
+		"refund_pct": 0.5,
+		"description": "Cycles ore back out with a chance for a bonus unit.",
+		"requires_blueprint": "crusher_blueprint",
 	},
 	{
 		"id": &"splitter",
@@ -213,6 +226,17 @@ static func by_category(cat: StringName) -> Array:
 		if entry.category == cat:
 			out.append(entry)
 	return out
+
+# Returns true if the piece is gated behind a blueprint that the player
+# hasn't unlocked yet. Pieces with no requires_blueprint always return false.
+static func is_locked(entry: Dictionary) -> bool:
+	var bp: String = String(entry.get("requires_blueprint", ""))
+	if bp == "":
+		return false
+	var unlocks: Node = Engine.get_main_loop().root.get_node_or_null("/root/Unlocks") as Node
+	if unlocks == null:
+		return true
+	return not bool(unlocks.call("has", bp))
 
 # Returns the cost dict scaled by PlayerStats.BUILD_COST_MULT, with each entry
 # rounded up to at least 1 if the original was > 0. Caller passes the raw cost

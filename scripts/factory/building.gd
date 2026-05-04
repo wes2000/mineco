@@ -43,6 +43,17 @@ var output_queue: Array[int] = []
 # cycling; remaining items are queued for subsequent cycles.
 var processing_buffer: Array[int] = []
 
+# Upgrade level (Mk1 = 0, Mk2 = 1, Mk3 = 2). Persisted via base get/apply
+# save data. Subclasses read this through helpers below to scale their
+# cycle ticks and capacities. See scripts/factory/machine_upgrade_defs.gd.
+var upgrade_level: int = 0
+
+signal upgrade_level_changed(new_level: int)
+
+# Pulled in via preload so consumers don't depend on global class_name
+# resolution for the upgrade defs.
+const _MachineUpgradeDefs: GDScript = preload("res://scripts/factory/machine_upgrade_defs.gd")
+
 var _bob_origin_y: float = 0.0
 var _body_mesh: MeshInstance3D = null
 var _output_port_visual: MeshInstance3D = null
@@ -189,8 +200,12 @@ func take_all_from_queue(kind: int) -> Array[int]:
 
 # --- Processing buffer / cycle introspection (subclasses override) ---
 
+# Override on subclasses that scale the cap with upgrade level (Smelter/Forge).
+func processing_buffer_cap() -> int:
+	return PROCESSING_BUFFER_MAX
+
 func processing_buffer_can_accept() -> bool:
-	return processing_buffer.size() < PROCESSING_BUFFER_MAX
+	return processing_buffer.size() < processing_buffer_cap()
 
 func get_cycle_remaining_ticks() -> int:
 	return 0
@@ -222,6 +237,16 @@ func scaled_cycle_ticks(base_ticks: int) -> int:
 		return base_ticks
 	return max(1, int(round(float(base_ticks) / mul)))
 
+# Combines factory_speed_mult with the per-machine upgrade level discount.
+# Loader / Smelter / Forge / Crusher use this instead of scaled_cycle_ticks
+# so their cycles get faster with both progression stats AND placed-machine
+# upgrades. Floored at MIN_TICKS to keep things sane when both stack.
+func apply_upgrade_to_cycle(base_ticks: int) -> int:
+	var sped: int = scaled_cycle_ticks(base_ticks)
+	var disc: float = _MachineUpgradeDefs.cycle_discount_for(upgrade_level)
+	var out: int = int(round(float(sped) * disc))
+	return max(_MachineUpgradeDefs.MIN_TICKS, out)
+
 # --- Save / load -----------------------------------------------------------
 
 # Subclasses MUST call super().get_save_data() and merge so the placement
@@ -232,6 +257,7 @@ func get_save_data() -> Dictionary:
 		"input_queue": input_queue.duplicate(),
 		"output_queue": output_queue.duplicate(),
 		"processing_buffer": processing_buffer.duplicate(),
+		"upgrade_level": upgrade_level,
 	}
 
 func apply_save_data(data: Dictionary) -> void:
@@ -240,9 +266,21 @@ func apply_save_data(data: Dictionary) -> void:
 	input_queue = _coerce_int_array(data.get("input_queue", []))
 	output_queue = _coerce_int_array(data.get("output_queue", []))
 	processing_buffer = _coerce_int_array(data.get("processing_buffer", []))
+	upgrade_level = int(data.get("upgrade_level", 0))
 	queue_changed.emit(QUEUE_KIND_INPUT, input_queue.size())
 	queue_changed.emit(QUEUE_KIND_OUTPUT, output_queue.size())
 	processing_changed.emit(processing_buffer.size())
+	upgrade_level_changed.emit(upgrade_level)
+
+# Bumps the per-machine upgrade tier. Returns true if the level changed.
+# Cost charging happens in MachineUI; this just mutates state + emits.
+func set_upgrade_level(new_level: int) -> bool:
+	new_level = clampi(new_level, 0, _MachineUpgradeDefs.MAX_LEVEL)
+	if new_level == upgrade_level:
+		return false
+	upgrade_level = new_level
+	upgrade_level_changed.emit(upgrade_level)
+	return true
 
 static func _coerce_int_array(raw: Variant) -> Array[int]:
 	var out: Array[int] = []

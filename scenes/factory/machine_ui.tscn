@@ -228,5 +228,29 @@ theme_override_constants/separation = 4
 [node name="TakeBtn" type="Button" parent="Panel/Vbox/QueuesRow/OutputCol/V"]
 text = "Take output"
 
+[node name="UpgradeRow" type="PanelContainer" parent="Panel/Vbox"]
+theme_override_styles/panel = SubResource("DepositRowStyle")
+
+[node name="H" type="HBoxContainer" parent="Panel/Vbox/UpgradeRow"]
+theme_override_constants/separation = 8
+
+[node name="Label" type="Label" parent="Panel/Vbox/UpgradeRow/H"]
+text = "TIER"
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.7, 0.75, 0.8, 1)
+
+[node name="LevelLabel" type="Label" parent="Panel/Vbox/UpgradeRow/H"]
+text = "Mk1"
+theme_override_font_sizes/font_size = 14
+
+[node name="CostLabel" type="Label" parent="Panel/Vbox/UpgradeRow/H"]
+size_flags_horizontal = 3
+text = ""
+theme_override_font_sizes/font_size = 12
+theme_override_colors/font_color = Color(0.7, 0.85, 0.95, 1)
+
+[node name="UpgradeBtn" type="Button" parent="Panel/Vbox/UpgradeRow/H"]
+text = "Upgrade"
+
 [node name="DepositPanel" type="VBoxContainer" parent="Panel/Vbox"]
 theme_override_constants/separation = 4

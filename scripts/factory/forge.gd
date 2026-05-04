@@ -32,6 +32,9 @@ func get_cycle_remaining_ticks() -> int:
 func get_cycle_total_ticks() -> int:
 	return _cycle_total_ticks
 
+func processing_buffer_cap() -> int:
+	return _MachineUpgradeDefs.processing_buffer_cap_for(upgrade_level)
+
 func get_save_data() -> Dictionary:
 	var d: Dictionary = super.get_save_data()
 	d["recipe_input"] = recipe_input
@@ -76,7 +79,7 @@ func tick(_tick_index: int) -> void:
 		return
 	if _cycle_remaining_ticks <= 0 and _active_input_material == -1:
 		_active_input_material = processing_buffer[0]
-		_cycle_total_ticks = scaled_cycle_ticks(MaterialDefs.FORGE_TICKS[_active_input_material])
+		_cycle_total_ticks = apply_upgrade_to_cycle(MaterialDefs.FORGE_TICKS[_active_input_material])
 		_cycle_remaining_ticks = _cycle_total_ticks
 	if _cycle_remaining_ticks > 0:
 		_cycle_remaining_ticks -= 1

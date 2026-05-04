@@ -1,14 +1,24 @@
-class_name Smelter
+class_name Crusher
 extends Building
+## Advanced T1 ore processor (brief 09). Takes a T1 ore on input, outputs the
+## SAME material on a cycle, with a chance to drop a bonus copy. Gated behind
+## Unlocks.has("crusher_blueprint") at the build catalog level.
 
 @export var recipe_input: int = MaterialDefs.MaterialId.STONE   # one of TIER_1_MATERIALS
 
+# Base chance to emit a bonus output on cycle complete. Scales +5% per
+# upgrade level so Mk3 = 35%.
+const BONUS_CHANCE: float = 0.25
+const BONUS_CHANCE_PER_LEVEL: float = 0.05
+
 var _cycle_remaining_ticks: int = 0
 var _cycle_total_ticks: int = 0
-var _active_input_material: int = -1   # head of processing_buffer when cycle started
+var _active_input_material: int = -1
+var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 func _ready() -> void:
 	footprint_size = Vector2i(2, 2)
+	_rng.randomize()
 	var pin: Port = Port.new()
 	pin.owner_building = self
 	pin.local_position = Vector3(1.0, 0.5, 0.05)
@@ -31,6 +41,9 @@ func get_cycle_total_ticks() -> int:
 
 func processing_buffer_cap() -> int:
 	return _MachineUpgradeDefs.processing_buffer_cap_for(upgrade_level)
+
+func bonus_chance() -> float:
+	return clampf(BONUS_CHANCE + BONUS_CHANCE_PER_LEVEL * float(upgrade_level), 0.0, 1.0)
 
 func get_save_data() -> Dictionary:
 	var d: Dictionary = super.get_save_data()
@@ -56,46 +69,45 @@ func port_accept_item(item: FactoryItem, _port: Port) -> bool:
 
 func tick(_tick_index: int) -> void:
 	_drain_output_to_link()
-	# Step 1: refill processing buffer from input_queue head while there's room
-	# AND the head matches the current recipe.
+	# Refill processing buffer from input head while it matches the recipe.
 	while processing_buffer_can_accept() and not input_queue.is_empty():
 		var head: int = input_queue[0]
 		if head != recipe_input:
-			# Mismatched material at the head — jam until player switches recipe
-			# or removes the item from input.
 			status = Status.INPUT_JAMMED
 			return
 		input_queue.pop_front()
 		queue_changed.emit(QUEUE_KIND_INPUT, input_queue.size())
 		processing_buffer.append(head)
 		processing_changed.emit(processing_buffer.size())
-	# Step 2: if processing buffer is empty, nothing to do
 	if processing_buffer.is_empty():
 		status = Status.IDLE
 		return
-	# Step 3: gate on output queue space
+	# Need room for at LEAST one output (and ideally two, but if we only have
+	# room for one we still cycle and skip the bonus).
 	if not output_queue_can_accept():
 		status = Status.OUTPUT_BLOCKED
 		return
-	# Step 4: start a cycle if we don't have one running
 	if _cycle_remaining_ticks <= 0 and _active_input_material == -1:
 		_active_input_material = processing_buffer[0]
-		_cycle_total_ticks = apply_upgrade_to_cycle(MaterialDefs.SMELTER_TICKS[_active_input_material])
+		_cycle_total_ticks = apply_upgrade_to_cycle(MaterialDefs.CRUSHER_TICKS[_active_input_material])
 		_cycle_remaining_ticks = _cycle_total_ticks
-	# Step 5: advance the cycle
 	if _cycle_remaining_ticks > 0:
 		_cycle_remaining_ticks -= 1
 		status = Status.WORKING
 		return
-	# Step 6: cycle complete — pop from buffer, push result to output
+	# Cycle complete — emit one base output. The crusher is a yield bonus
+	# machine: output material == input material.
 	processing_buffer.pop_front()
 	processing_changed.emit(processing_buffer.size())
-	var out_material: int = MaterialDefs.SMELT_RECIPE[_active_input_material]
-	output_queue_push(out_material)
-	item_emitted.emit(out_material)
+	output_queue_push(_active_input_material)
+	item_emitted.emit(_active_input_material)
+	# Bonus roll. If we don't have room for the bonus, just drop it.
+	if _rng.randf() < bonus_chance() and output_queue_can_accept():
+		output_queue_push(_active_input_material)
+		item_emitted.emit(_active_input_material)
 	_active_input_material = -1
 	_cycle_total_ticks = 0
-	status = Status.IDLE   # next tick will start the next cycle if buffer non-empty
+	status = Status.IDLE
 
 func _drain_output_to_link() -> void:
 	if output_queue.is_empty():

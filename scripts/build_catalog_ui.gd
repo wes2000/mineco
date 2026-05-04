@@ -51,6 +51,12 @@ func _ready() -> void:
 			miner.inventory_changed.connect(_on_inv_changed)
 		if miner.has_signal("extended_inventory_changed") and not miner.extended_inventory_changed.is_connected(_repopulate_if_open):
 			miner.extended_inventory_changed.connect(_repopulate_if_open)
+	# Listen for blueprint unlocks so locked rows update when the player
+	# turns in the corresponding contract.
+	var unlocks: Node = get_node_or_null("/root/Unlocks")
+	if unlocks != null and unlocks.has_signal("unlocked"):
+		if not unlocks.unlocked.is_connected(_on_unlocked):
+			unlocks.unlocked.connect(_on_unlocked)
 
 func toggle() -> void:
 	if visible:
@@ -70,6 +76,9 @@ func close() -> void:
 	_selected_piece = &""
 
 func _on_inv_changed(_s: int, _i: int, _g: int) -> void:
+	_repopulate_if_open()
+
+func _on_unlocked(_id: String) -> void:
 	_repopulate_if_open()
 
 func _repopulate_if_open() -> void:
@@ -118,8 +127,11 @@ func _populate() -> void:
 func _make_row(piece: Dictionary) -> PanelContainer:
 	var pc: PanelContainer = PanelContainer.new()
 	var is_selected: bool = (StringName(String(piece.id)) == _selected_piece)
+	var locked: bool = _BuildPieceDefs.is_locked(piece)
 	pc.add_theme_stylebox_override("panel", _row_style_selected if is_selected else _row_style)
 	pc.mouse_filter = Control.MOUSE_FILTER_STOP
+	if locked:
+		pc.modulate = Color(1, 1, 1, 0.55)
 	var hbox: HBoxContainer = HBoxContainer.new()
 	hbox.add_theme_constant_override("separation", 8)
 	pc.add_child(hbox)
@@ -132,9 +144,19 @@ func _make_row(piece: Dictionary) -> PanelContainer:
 	name_lbl.add_theme_font_size_override("font_size", 14)
 	col.add_child(name_lbl)
 	var desc_lbl: Label = Label.new()
-	desc_lbl.text = String(piece.get("description", ""))
+	if locked:
+		var bp_id: String = String(piece.get("requires_blueprint", ""))
+		var bp_name: String = bp_id
+		# Resolve via BlueprintDefs if available for a friendlier label.
+		var BP: GDScript = load("res://scripts/blueprint_defs.gd") as GDScript
+		if BP != null:
+			bp_name = String(BP.call("name_for", bp_id))
+		desc_lbl.text = "Locked — needs %s" % bp_name
+		desc_lbl.add_theme_color_override("font_color", Color(0.95, 0.7, 0.45, 1))
+	else:
+		desc_lbl.text = String(piece.get("description", ""))
+		desc_lbl.add_theme_color_override("font_color", Color(0.65, 0.7, 0.78, 1))
 	desc_lbl.add_theme_font_size_override("font_size", 11)
-	desc_lbl.add_theme_color_override("font_color", Color(0.65, 0.7, 0.78, 1))
 	col.add_child(desc_lbl)
 	# Cost
 	var cost_box: HBoxContainer = HBoxContainer.new()
@@ -165,13 +187,15 @@ func _make_row(piece: Dictionary) -> PanelContainer:
 			cost_box.add_child(lbl)
 	# Action buttons
 	var pick_btn: Button = Button.new()
-	pick_btn.text = "Equip"
-	pick_btn.disabled = not affordable
+	pick_btn.text = "Locked" if locked else "Equip"
+	pick_btn.disabled = locked or not affordable
 	pick_btn.tooltip_text = "Equip (held by mouse)"
 	pick_btn.pressed.connect(_on_pick.bind(StringName(String(piece.id))))
 	hbox.add_child(pick_btn)
-	# Make the whole row clickable too.
-	pc.gui_input.connect(_on_row_input.bind(StringName(String(piece.id))))
+	# Make the whole row clickable too — but skip the click for locked pieces
+	# so the player can't accidentally equip something they can't place.
+	if not locked:
+		pc.gui_input.connect(_on_row_input.bind(StringName(String(piece.id))))
 	return pc
 
 func _on_row_input(event: InputEvent, piece_id: StringName) -> void:

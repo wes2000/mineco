@@ -66,14 +66,20 @@ const FLAME_ICON_PATH: String = "res://assets/icons/factory/flame.svg"
 @onready var _processing_flame: TextureRect = $Panel/Vbox/QueuesRow/ProcessingCol/V/FlameRow/Flame
 @onready var _processing_countdown: Label = $Panel/Vbox/QueuesRow/ProcessingCol/V/FlameRow/Countdown
 @onready var _deposit_panel: VBoxContainer = $Panel/Vbox/DepositPanel
+@onready var _upgrade_row: PanelContainer = $Panel/Vbox/UpgradeRow
+@onready var _upgrade_level_lbl: Label = $Panel/Vbox/UpgradeRow/H/LevelLabel
+@onready var _upgrade_cost_lbl: Label = $Panel/Vbox/UpgradeRow/H/CostLabel
+@onready var _upgrade_btn: Button = $Panel/Vbox/UpgradeRow/H/UpgradeBtn
+
+const _MachineUpgradeDefs: GDScript = preload("res://scripts/factory/machine_upgrade_defs.gd")
 
 var _bound_building: Building = null
 var _badge_style: StyleBoxFlat = null
 
 # Panel half-height presets — the deposit-less variant matches the loader's
 # effective queue column height by shrinking the panel itself.
-const PANEL_HALF_HEIGHT_WITH_DEPOSIT: float = 240.0
-const PANEL_HALF_HEIGHT_NO_DEPOSIT: float = 160.0
+const PANEL_HALF_HEIGHT_WITH_DEPOSIT: float = 280.0
+const PANEL_HALF_HEIGHT_NO_DEPOSIT: float = 200.0
 
 @onready var _panel: Panel = $Panel
 
@@ -84,6 +90,7 @@ func _ready() -> void:
 	_input_take_btn.pressed.connect(_on_take_input)
 	_output_take_btn.pressed.connect(_on_take_output)
 	_close_btn.pressed.connect(unbind)
+	_upgrade_btn.pressed.connect(_on_upgrade_pressed)
 	var flame_tex: Texture2D = load(FLAME_ICON_PATH) as Texture2D
 	if flame_tex != null:
 		_processing_flame.texture = flame_tex
@@ -115,7 +122,7 @@ func bind_to(building: Building) -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	_populate_recipes()
 	_input_col.visible = true
-	_processing_col.visible = (building is Smelter) or (building is Forge)
+	_processing_col.visible = (building is Smelter) or (building is Forge) or _is_crusher(building)
 	if building is Loader:
 		(building as Loader).hopper_changed.connect(_on_hopper_changed)
 		_deposit_panel.visible = true
@@ -127,6 +134,16 @@ func bind_to(building: Building) -> void:
 	building.status_changed.connect(_on_status_changed)
 	building.queue_changed.connect(_on_queue_changed)
 	building.processing_changed.connect(_on_processing_changed)
+	building.upgrade_level_changed.connect(_on_upgrade_level_changed)
+	# Track inventory so the upgrade button enables/disables as gold/materials change.
+	var miner: Node = get_tree().get_first_node_in_group("player_miner")
+	if miner != null:
+		if miner.has_signal("inventory_changed") and not miner.inventory_changed.is_connected(_on_inv_changed_for_upgrade):
+			miner.inventory_changed.connect(_on_inv_changed_for_upgrade)
+		if miner.has_signal("extended_inventory_changed") and not miner.extended_inventory_changed.is_connected(_on_ext_inv_changed_for_upgrade):
+			miner.extended_inventory_changed.connect(_on_ext_inv_changed_for_upgrade)
+		if miner.has_signal("gold_currency_changed") and not miner.gold_currency_changed.is_connected(_on_gold_changed_for_upgrade):
+			miner.gold_currency_changed.connect(_on_gold_changed_for_upgrade)
 
 func unbind() -> void:
 	if _bound_building != null:
@@ -136,10 +153,20 @@ func unbind() -> void:
 			_bound_building.queue_changed.disconnect(_on_queue_changed)
 		if _bound_building.processing_changed.is_connected(_on_processing_changed):
 			_bound_building.processing_changed.disconnect(_on_processing_changed)
+		if _bound_building.upgrade_level_changed.is_connected(_on_upgrade_level_changed):
+			_bound_building.upgrade_level_changed.disconnect(_on_upgrade_level_changed)
 		if _bound_building is Loader:
 			var ldr: Loader = _bound_building as Loader
 			if ldr.hopper_changed.is_connected(_on_hopper_changed):
 				ldr.hopper_changed.disconnect(_on_hopper_changed)
+	var miner: Node = get_tree().get_first_node_in_group("player_miner")
+	if miner != null:
+		if miner.has_signal("inventory_changed") and miner.inventory_changed.is_connected(_on_inv_changed_for_upgrade):
+			miner.inventory_changed.disconnect(_on_inv_changed_for_upgrade)
+		if miner.has_signal("extended_inventory_changed") and miner.extended_inventory_changed.is_connected(_on_ext_inv_changed_for_upgrade):
+			miner.extended_inventory_changed.disconnect(_on_ext_inv_changed_for_upgrade)
+		if miner.has_signal("gold_currency_changed") and miner.gold_currency_changed.is_connected(_on_gold_changed_for_upgrade):
+			miner.gold_currency_changed.disconnect(_on_gold_changed_for_upgrade)
 	_bound_building = null
 	visible = false
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
@@ -170,6 +197,11 @@ func _populate_recipes() -> void:
 			var label2: String = "%s -> %s" % [MaterialDefs.DISPLAY_NAME[mid], MaterialDefs.DISPLAY_NAME[MaterialDefs.FORGE_RECIPE[mid]]]
 			_recipe_select.add_item(label2, mid)
 		_select_current_recipe((_bound_building as Forge).recipe_input)
+	elif _is_crusher(_bound_building):
+		for mid: int in MaterialDefs.TIER_1_MATERIALS:
+			var label3: String = "%s (+%d%% bonus)" % [MaterialDefs.DISPLAY_NAME[mid], int(round(_crusher_bonus_chance(_bound_building) * 100.0))]
+			_recipe_select.add_item(label3, mid)
+		_select_current_recipe(int(_bound_building.get("recipe_input")))
 
 func _select_current_recipe(target: int) -> void:
 	for i: int in _recipe_select.item_count:
@@ -185,6 +217,8 @@ func _on_recipe_selected(idx: int) -> void:
 		(_bound_building as Smelter).recipe_input = mid
 	elif _bound_building is Forge:
 		(_bound_building as Forge).recipe_input = mid
+	elif _is_crusher(_bound_building):
+		_bound_building.set("recipe_input", mid)
 	_refresh()
 
 func _on_status_changed(new_status: int) -> void:
@@ -208,6 +242,8 @@ func _refresh() -> void:
 		type_name = "Smelter"
 	elif _bound_building is Forge:
 		type_name = "Forge"
+	elif _is_crusher(_bound_building):
+		type_name = "Crusher"
 	_name_label.text = type_name
 	_set_status_badge(_bound_building.status)
 	if _bound_building is Loader:
@@ -224,6 +260,7 @@ func _refresh() -> void:
 	_output_take_btn.disabled = _bound_building.output_queue.is_empty()
 	if _bound_building is Loader:
 		_refresh_deposit_panel()
+	_refresh_upgrade_panel()
 
 # Returns Array of [material_id, count] pairs grouped by material_id, preserving
 # first-occurrence order in the queue.
@@ -267,7 +304,10 @@ func _render_fixed_slots(parent: HBoxContainer, slot_list: Array, fixed_count: i
 func _render_processing_slots(parent: HBoxContainer, buffer: Array) -> void:
 	for child: Node in parent.get_children():
 		child.queue_free()
-	for i: int in Building.PROCESSING_BUFFER_MAX:
+	# Cap how many slot tiles we render so the column stays compact even at
+	# Mk3 (8 cap). Show the actual cap up to a soft visual ceiling.
+	var visible_slots: int = min(_bound_building.processing_buffer_cap() if _bound_building != null else Building.PROCESSING_BUFFER_MAX, 5)
+	for i: int in visible_slots:
 		if i < buffer.size():
 			parent.add_child(_make_slot(buffer[i], 0))   # count=0 hides the count overlay
 		else:
@@ -415,7 +455,7 @@ func _make_deposit_row(material_id: int, miner_field: String, inv_count: int, ho
 	hbox.add_child(label)
 	# Hopper count
 	var hopper_lbl: Label = Label.new()
-	hopper_lbl.text = "→ %d / %d" % [hopper_count, Loader.HOPPER_CAP]
+	hopper_lbl.text = "→ %d / %d" % [hopper_count, (_bound_building as Loader).effective_hopper_cap()]
 	hopper_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	hopper_lbl.add_theme_color_override("font_color", Color(0.65, 0.75, 0.85, 1))
 	hbox.add_child(hopper_lbl)
@@ -472,3 +512,116 @@ func _input(event: InputEvent) -> void:
 		# Esc OR a second press of E closes the panel.
 		unbind()
 		accept_event()
+
+# --- Upgrade panel ---------------------------------------------------------
+
+const _CrusherScript: GDScript = preload("res://scripts/factory/crusher.gd")
+
+func _is_crusher(b: Object) -> bool:
+	return b != null and b.get_script() == _CrusherScript
+
+func _crusher_bonus_chance(b: Building) -> float:
+	if not _is_crusher(b):
+		return 0.0
+	if b.has_method("bonus_chance"):
+		return float(b.call("bonus_chance"))
+	return 0.25
+
+func _upgrade_kind_for(b: Building) -> StringName:
+	if b is Loader: return &"loader"
+	if b is Smelter: return &"smelter"
+	if b is Forge: return &"forge"
+	if _is_crusher(b): return &"crusher"
+	return &""
+
+func _on_upgrade_level_changed(_lvl: int) -> void:
+	_refresh()
+
+func _on_inv_changed_for_upgrade(_s: int, _i: int, _g: int) -> void:
+	_refresh_upgrade_panel()
+
+func _on_ext_inv_changed_for_upgrade() -> void:
+	_refresh_upgrade_panel()
+
+func _on_gold_changed_for_upgrade(_g: int) -> void:
+	_refresh_upgrade_panel()
+
+func _refresh_upgrade_panel() -> void:
+	if _bound_building == null:
+		_upgrade_row.visible = false
+		return
+	var kind: StringName = _upgrade_kind_for(_bound_building)
+	if kind == &"":
+		_upgrade_row.visible = false
+		return
+	_upgrade_row.visible = true
+	var lvl: int = _bound_building.upgrade_level
+	_upgrade_level_lbl.text = _MachineUpgradeDefs.level_label(lvl)
+	if _MachineUpgradeDefs.is_maxed(lvl):
+		_upgrade_cost_lbl.text = "(max tier)"
+		_upgrade_btn.disabled = true
+		_upgrade_btn.text = "Maxed"
+		return
+	var step: Dictionary = _MachineUpgradeDefs.next_upgrade_for(kind, lvl)
+	if step.is_empty():
+		_upgrade_cost_lbl.text = "(no upgrade)"
+		_upgrade_btn.disabled = true
+		_upgrade_btn.text = "Upgrade"
+		return
+	var miner: Node = get_tree().get_first_node_in_group("player_miner")
+	var gold_cost: int = int(step.get("gold", 0))
+	var mats: Dictionary = step.get("materials", {})
+	# Build cost label string
+	var parts: Array[String] = []
+	parts.append("%dg" % gold_cost)
+	for mid_v: Variant in mats.keys():
+		var mid: int = int(mid_v)
+		var qty: int = int(mats[mid_v])
+		var have: int = miner.call("get_material_count", mid) if miner != null else 0
+		var name: String = String(MaterialDefs.DISPLAY_NAME.get(mid, str(mid)))
+		var ok: bool = have >= qty
+		var tag: String = "" if ok else "!"
+		parts.append("%s %d/%d%s" % [name, have, qty, tag])
+	var have_gold: int = int(miner.get("gold_currency")) if miner != null else 0
+	_upgrade_cost_lbl.text = ("→ %s   (gold %d/%d  " % [_MachineUpgradeDefs.level_label(lvl + 1), have_gold, gold_cost]) + ", ".join(parts.slice(1)) + ")"
+	_upgrade_btn.text = "Upgrade → %s" % _MachineUpgradeDefs.level_label(lvl + 1)
+	_upgrade_btn.disabled = not _can_afford_upgrade(miner, gold_cost, mats)
+
+func _can_afford_upgrade(miner: Node, gold_cost: int, mats: Dictionary) -> bool:
+	if miner == null:
+		return false
+	if int(miner.get("gold_currency")) < gold_cost:
+		return false
+	for mid_v: Variant in mats.keys():
+		var have: int = int(miner.call("get_material_count", int(mid_v)))
+		if have < int(mats[mid_v]):
+			return false
+	return true
+
+func _on_upgrade_pressed() -> void:
+	if _bound_building == null:
+		return
+	var kind: StringName = _upgrade_kind_for(_bound_building)
+	if kind == &"":
+		return
+	var lvl: int = _bound_building.upgrade_level
+	if _MachineUpgradeDefs.is_maxed(lvl):
+		return
+	var step: Dictionary = _MachineUpgradeDefs.next_upgrade_for(kind, lvl)
+	if step.is_empty():
+		return
+	var miner: Node = get_tree().get_first_node_in_group("player_miner")
+	var gold_cost: int = int(step.get("gold", 0))
+	var mats: Dictionary = step.get("materials", {})
+	if not _can_afford_upgrade(miner, gold_cost, mats):
+		return
+	# Charge
+	miner.call("add_gold_currency", -gold_cost)
+	for mid_v: Variant in mats.keys():
+		miner.call("remove_material", int(mid_v), int(mats[mid_v]))
+	_bound_building.set_upgrade_level(lvl + 1)
+	# Small confirmation feedback via the pickup feed if available.
+	var feed: Node = get_tree().get_first_node_in_group("pickup_feed")
+	if feed != null and feed.has_method("add_text_message"):
+		feed.call("add_text_message", "Upgraded to %s" % _MachineUpgradeDefs.level_label(lvl + 1))
+	_refresh()
