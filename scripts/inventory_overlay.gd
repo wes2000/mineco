@@ -7,8 +7,8 @@ extends Control
 
 const _ShopDefs: GDScript = preload("res://scripts/shop_item_defs.gd")
 
-const SLOT_SIZE: Vector2 = Vector2(36, 36)
-const EQUIP_SLOT_SIZE: Vector2 = Vector2(40, 40)
+const SLOT_SIZE: Vector2 = Vector2(32, 32)
+const EQUIP_SLOT_SIZE: Vector2 = Vector2(36, 36)
 
 const ITEM_COLORS: Dictionary = {
 	0: Color(0.6, 0.6, 0.6), 1: Color(0.7, 0.35, 0.25), 2: Color(0.4, 0.4, 0.4),
@@ -277,35 +277,24 @@ func _build_panel() -> void:
 	title.add_theme_font_size_override("font_size", 18)
 	title.add_theme_color_override("font_color", Color(0.85, 0.90, 0.95, 1))
 	v.add_child(title)
-	var rows: Array = [
-		["T1  —  Mined ore", [MaterialDefs.MaterialId.STONE, MaterialDefs.MaterialId.IRON_ORE, MaterialDefs.MaterialId.GOLD_ORE]],
-		["T2  —  Smelted",   [MaterialDefs.MaterialId.BRICK, MaterialDefs.MaterialId.IRON_INGOT, MaterialDefs.MaterialId.GOLD_INGOT]],
-		["T3  —  Forged",    [MaterialDefs.MaterialId.BLOCK, MaterialDefs.MaterialId.IRON_BAR, MaterialDefs.MaterialId.GOLD_BAR]],
+	# Compact 3×3 material grid (rows = T1 / T2 / T3, columns = stone / iron /
+	# gold). Tier and material name are shown by icon + position; counts are
+	# overlaid in the slot, so no per-row headers or per-slot name labels.
+	var mat_rows: Array = [
+		[MaterialDefs.MaterialId.STONE, MaterialDefs.MaterialId.IRON_ORE, MaterialDefs.MaterialId.GOLD_ORE],
+		[MaterialDefs.MaterialId.BRICK, MaterialDefs.MaterialId.IRON_INGOT, MaterialDefs.MaterialId.GOLD_INGOT],
+		[MaterialDefs.MaterialId.BLOCK, MaterialDefs.MaterialId.IRON_BAR, MaterialDefs.MaterialId.GOLD_BAR],
 	]
-	for row: Array in rows:
-		var header: Label = Label.new()
-		header.text = row[0]
-		header.add_theme_font_size_override("font_size", 13)
-		header.add_theme_color_override("font_color", Color(0.7, 0.75, 0.8, 1))
-		v.add_child(header)
-		var hbox: HBoxContainer = HBoxContainer.new()
-		hbox.add_theme_constant_override("separation", 10)
-		hbox.alignment = BoxContainer.ALIGNMENT_BEGIN
-		v.add_child(hbox)
-		for mid: int in row[1]:
-			var entry: VBoxContainer = VBoxContainer.new()
-			entry.add_theme_constant_override("separation", 2)
+	var mat_grid: GridContainer = GridContainer.new()
+	mat_grid.columns = 3
+	mat_grid.add_theme_constant_override("h_separation", 6)
+	mat_grid.add_theme_constant_override("v_separation", 4)
+	v.add_child(mat_grid)
+	for row: Array in mat_rows:
+		for mid: int in row:
 			var slot: Panel = _make_slot(mid)
 			_slots[mid] = slot
-			entry.add_child(slot)
-			var name_lbl: Label = Label.new()
-			name_lbl.text = MaterialDefs.DISPLAY_NAME[mid]
-			name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			name_lbl.custom_minimum_size = Vector2(SLOT_SIZE.x + 12, 0)
-			name_lbl.add_theme_font_size_override("font_size", 12)
-			name_lbl.add_theme_color_override("font_color", Color(0.75, 0.80, 0.85, 1))
-			entry.add_child(name_lbl)
-			hbox.add_child(entry)
+			mat_grid.add_child(slot)
 	# Equipped section
 	var eq_header: Label = Label.new()
 	eq_header.text = "EQUIPPED"
