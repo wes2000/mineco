@@ -229,9 +229,12 @@ func _try_open_machine_ui() -> void:
 	var ui: Node = get_tree().get_first_node_in_group("machine_ui")
 	if not hit.is_empty():
 		var bld_hit: Building = _hit_to_building(hit.get("collider") as Node)
-		if bld_hit != null and ui != null and ui.has_method("bind_to"):
-			ui.call("bind_to", bld_hit)
-			return
+		if bld_hit != null:
+			if _try_open_special_ui(bld_hit):
+				return
+			if ui != null and ui.has_method("bind_to"):
+				ui.call("bind_to", bld_hit)
+				return
 	# 3) Proximity-find closest Building within 4m.
 	var origin: Vector3 = global_position
 	var best: Building = null
@@ -245,8 +248,29 @@ func _try_open_machine_ui() -> void:
 			if d_sq < best_dist_sq:
 				best_dist_sq = d_sq
 				best = owner as Building
-	if best != null and ui != null and ui.has_method("bind_to"):
-		ui.call("bind_to", best)
+	if best != null:
+		if _try_open_special_ui(best):
+			return
+		if ui != null and ui.has_method("bind_to"):
+			ui.call("bind_to", best)
+
+# Storage crates / workbenches use their own modal panels rather than the
+# generic machine UI. Returns true if `bld` was handled by one of them.
+func _try_open_special_ui(bld: Building) -> bool:
+	var script: Script = bld.get_script()
+	var script_path: String = script.resource_path if script != null else ""
+	if script_path.ends_with("storage_crate.gd"):
+		var su: Node = get_tree().get_first_node_in_group("storage_crate_ui")
+		if su != null and su.has_method("bind_to"):
+			su.call("bind_to", bld)
+			return true
+	# Workbench uses the shared Structure script with kind == &"workbench".
+	if bld.get("kind") == &"workbench":
+		var wu: Node = get_tree().get_first_node_in_group("workbench_ui")
+		if wu != null and wu.has_method("open"):
+			wu.call("open")
+			return true
+	return false
 
 func _find_nearest_in_group(group_name: String, max_distance: float) -> Npc:
 	var origin: Vector3 = global_position

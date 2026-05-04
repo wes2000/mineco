@@ -4,19 +4,26 @@ extends Control
 
 const SLOT_SIZE: Vector2 = Vector2(48, 48)
 
+const _BuildPieceDefs: GDScript = preload("res://scripts/factory/build_piece_defs.gd")
+
 const STANDARD_SLOTS: Array = [
 	["res://assets/icons/hotbar/tool_pickaxe.svg",   "Pickaxe"],
 	["res://assets/icons/hotbar/tool_scanner.svg",   "Ore Scanner"],
 	["res://assets/icons/hotbar/tool_flashlight.svg","Flashlight"],
 ]
-const BUILD_SLOTS: Array = [
-	["res://assets/icons/hotbar/build_loader.svg",   "Loader"],
-	["res://assets/icons/hotbar/build_smelter.svg",  "Smelter"],
-	["res://assets/icons/hotbar/build_forge.svg",    "Forge"],
-	["res://assets/icons/hotbar/build_belt.svg",     "Belt"],
-	["res://assets/icons/hotbar/build_merger.svg",   "Merger"],
-	["res://assets/icons/hotbar/build_splitter.svg", "Splitter"],
-]
+
+# Build slots are derived live from BuildController.get_quickbar() so
+# rebinding via the catalog UI updates the bar without a const change.
+func _build_slots() -> Array:
+	var out: Array = []
+	var qb: Array = BuildController.get_quickbar()
+	for kind: Variant in qb:
+		var def: Dictionary = _BuildPieceDefs.by_id(StringName(String(kind)))
+		if def.is_empty():
+			out.append(["", "(empty)"])
+		else:
+			out.append([String(def.get("icon", "")), String(def.get("name", String(kind)))])
+	return out
 
 # Style for inactive slot panel
 static var _slot_style: StyleBoxFlat = null
@@ -28,12 +35,14 @@ static var _slot_style_selected: StyleBoxFlat = null
 var _slots: Array = []   # current slot Panel nodes (active set)
 var _stamina: Node = null
 
-const MODAL_GROUPS: Array[String] = ["machine_ui", "pause_menu", "inventory_overlay", "vendor_ui", "contract_ui", "boat_vendor_ui", "claim_vendor_ui", "item_shop_ui", "passive_tree_ui"]
+const MODAL_GROUPS: Array[String] = ["machine_ui", "pause_menu", "inventory_overlay", "vendor_ui", "contract_ui", "boat_vendor_ui", "claim_vendor_ui", "item_shop_ui", "passive_tree_ui", "build_catalog_ui", "storage_crate_ui", "workbench_ui"]
 
 func _ready() -> void:
 	_init_styles()
 	BuildController.active_changed.connect(_on_build_mode_changed)
 	BuildController.selection_changed.connect(_on_build_selection)
+	if BuildController.has_signal("quickbar_changed"):
+		BuildController.quickbar_changed.connect(_on_quickbar_changed)
 	_populate(STANDARD_SLOTS)
 	_highlight(0)
 	# Hook stamina (looks for /root/Main/Player/Stamina)
@@ -70,17 +79,23 @@ func _on_stamina_changed(current: float, max_v: int) -> void:
 
 func _on_build_mode_changed(is_active: bool) -> void:
 	if is_active:
-		_populate(BUILD_SLOTS)
-		_highlight(BuildController.current_tool)
+		_populate(_build_slots())
+		_highlight(BuildController.current_slot)
 	else:
 		_populate(STANDARD_SLOTS)
 		var player: Node = get_node_or_null("/root/Main/Player")
 		var idx: int = player.get("current_tool") if player != null else 0
 		_highlight(idx)
 
-func _on_build_selection(selected_tool: int) -> void:
+func _on_build_selection(selected_index: int) -> void:
 	if BuildController.active:
-		_highlight(selected_tool)
+		_highlight(selected_index)
+
+func _on_quickbar_changed() -> void:
+	# Catalog rebound a slot — refresh the bar in place if we're showing it.
+	if BuildController.active:
+		_populate(_build_slots())
+		_highlight(BuildController.current_slot)
 
 func _populate(spec: Array) -> void:
 	for child: Node in _slots_row.get_children():

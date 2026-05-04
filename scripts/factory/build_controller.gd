@@ -1,10 +1,20 @@
 extends Node
 ## Autoload. Owns build mode state, ghost preview, raycast, place/remove dispatch.
+##
+## Brief 05 reorganized this from a fixed Tool enum to a kind-driven system.
+## `current_kind` is the StringName id of the piece being placed (or &"belt"
+## for the belt link tool). `quickbar` is six kinds the player has bound to
+## number keys. Default = the original six factory tools.
 
+const _BuildPieceDefs: GDScript = preload("res://scripts/factory/build_piece_defs.gd")
+
+# Kept for backward-compat with bottom_hud's selection_changed listeners — a
+# few Tool ids that still map to specific kinds. Not the source of truth.
 enum Tool { LOADER, SMELTER, FORGE, BELT, MERGER, SPLITTER }
 
 signal active_changed(active: bool)
-signal selection_changed(selected_tool: int)
+signal selection_changed(selected_index: int)   # quickbar slot 0..5
+signal quickbar_changed
 signal link_state_changed(awaiting_dest: bool)
 
 const RAYCAST_LENGTH: float = 50.0
@@ -17,12 +27,22 @@ const PORT_PICK_RADIUS: float = 1.0   # max distance from raycast hit to a port
 
 const NO_CELL: Vector3i = Vector3i(-2147483648, -2147483648, -2147483648)
 
+const QUICKBAR_SIZE: int = 6
+const KIND_BELT: StringName = &"belt"
+const DEFAULT_QUICKBAR: Array = [
+	&"loader", &"smelter", &"forge", &"belt", &"merger", &"splitter",
+]
+
 var active: bool = false :
 	set(v):
 		if active != v:
 			active = v
 			active_changed.emit(v)
-var current_tool: int = Tool.LOADER
+
+# Currently-selected kind for placement (and its source-of-truth quickbar slot).
+var current_kind: StringName = &"loader"
+var current_slot: int = 0
+var quickbar: Array = DEFAULT_QUICKBAR.duplicate()
 var ghost_rotation_steps: int = 0
 
 # Belt-link mode state
@@ -30,8 +50,8 @@ var _link_source_port: Port = null   # set after first click on an output port
 
 var _ghost_node: Node3D = null
 var _link_preview: MeshInstance3D = null
-var _link_target_indicator: MeshInstance3D = null   # locks onto the port the cursor is over
-var _link_source_indicator: MeshInstance3D = null   # marks the locked source port (after first click)
+var _link_target_indicator: MeshInstance3D = null
+var _link_source_indicator: MeshInstance3D = null
 var _player: Node3D = null
 var _player_camera: Camera3D = null
 
@@ -48,7 +68,7 @@ func bind_player(player: Node3D, camera: Camera3D) -> void:
 func _process(_delta: float) -> void:
 	if not active or _player_camera == null:
 		return
-	if current_tool == Tool.BELT:
+	if current_kind == KIND_BELT:
 		_clear_ghost()
 		_update_link_preview()
 	else:
@@ -57,6 +77,10 @@ func _process(_delta: float) -> void:
 
 func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("build_toggle"):
+		# Don't toggle build mode while the catalog is captured (E to close).
+		var catalog: Node = get_tree().get_first_node_in_group("build_catalog_ui")
+		if catalog != null and catalog is Control and (catalog as Control).visible:
+			return
 		active = not active
 		if not active:
 			_clear_ghost()
@@ -66,21 +90,37 @@ func _input(event: InputEvent) -> void:
 		return
 	if not active:
 		return
-	if event.is_action_pressed("build_slot_1"):
-		_select_tool(Tool.LOADER)
-	elif event.is_action_pressed("build_slot_2"):
-		_select_tool(Tool.SMELTER)
-	elif event.is_action_pressed("build_slot_3"):
-		_select_tool(Tool.FORGE)
-	elif event.is_action_pressed("build_slot_4"):
-		_select_tool(Tool.BELT)
-	elif event.is_action_pressed("build_slot_5"):
-		_select_tool(Tool.MERGER)
-	elif event.is_action_pressed("build_slot_6"):
-		_select_tool(Tool.SPLITTER)
+	# Open the catalog overlay with G ("gear") if bound. The overlay will
+	# call our select_kind / bind_slot APIs.
+	if event is InputEventKey and event.pressed and not event.echo:
+		var ke: InputEventKey = event
+		if ke.physical_keycode == KEY_G:
+			var catalog2: Node = get_tree().get_first_node_in_group("build_catalog_ui")
+			if catalog2 != null and catalog2.has_method("toggle"):
+				catalog2.call("toggle")
+				return
+	# When the catalog overlay is open, number keys are owned by it (binding
+	# the selected piece to a quickbar slot). Don't double-fire the slot
+	# selection here.
+	var catalog_open: bool = false
+	var catalog: Node = get_tree().get_first_node_in_group("build_catalog_ui")
+	if catalog != null and catalog is Control and (catalog as Control).visible:
+		catalog_open = true
+	if not catalog_open and event.is_action_pressed("build_slot_1"):
+		_select_slot(0)
+	elif not catalog_open and event.is_action_pressed("build_slot_2"):
+		_select_slot(1)
+	elif not catalog_open and event.is_action_pressed("build_slot_3"):
+		_select_slot(2)
+	elif not catalog_open and event.is_action_pressed("build_slot_4"):
+		_select_slot(3)
+	elif not catalog_open and event.is_action_pressed("build_slot_5"):
+		_select_slot(4)
+	elif not catalog_open and event.is_action_pressed("build_slot_6"):
+		_select_slot(5)
 	elif event.is_action_pressed("ui_cancel"):
 		# Cancel a half-finished link
-		if current_tool == Tool.BELT and _link_source_port != null:
+		if current_kind == KIND_BELT and _link_source_port != null:
 			_link_source_port = null
 			link_state_changed.emit(false)
 	elif event.is_action_pressed("build_rotate"):
@@ -98,18 +138,49 @@ func _input(event: InputEvent) -> void:
 			if Input.is_action_pressed("build_remove"):
 				_try_remove()
 			else:
-				if current_tool == Tool.BELT:
+				if current_kind == KIND_BELT:
 					_try_link_click()
 				else:
 					_try_place()
 
-func _select_tool(t: int) -> void:
-	current_tool = t
-	if current_tool != Tool.BELT:
+func _select_slot(slot: int) -> void:
+	if slot < 0 or slot >= QUICKBAR_SIZE:
+		return
+	current_slot = slot
+	current_kind = quickbar[slot] if slot < quickbar.size() else &""
+	if current_kind != KIND_BELT:
 		_link_source_port = null
 		link_state_changed.emit(false)
-	selection_changed.emit(current_tool)
+	selection_changed.emit(current_slot)
 	_refresh_ghost()
+
+# Public — called by the catalog UI after the player clicks a row.
+func select_kind(kind: StringName) -> void:
+	current_kind = kind
+	# If this kind is on the quickbar, sync current_slot so the bottom HUD
+	# highlights the right slot.
+	var idx: int = quickbar.find(kind)
+	if idx >= 0:
+		current_slot = idx
+	selection_changed.emit(current_slot)
+	_refresh_ghost()
+
+# Public — called by the catalog UI to bind a kind to a number-key slot.
+func bind_slot(slot: int, kind: StringName) -> void:
+	if slot < 0 or slot >= QUICKBAR_SIZE:
+		return
+	while quickbar.size() < QUICKBAR_SIZE:
+		quickbar.append(&"")
+	quickbar[slot] = kind
+	quickbar_changed.emit()
+	# If they bound the slot they're standing on, refresh placement.
+	if slot == current_slot:
+		current_kind = kind
+		_refresh_ghost()
+		selection_changed.emit(current_slot)
+
+func get_quickbar() -> Array:
+	return quickbar.duplicate()
 
 # --- Ghost preview (placement tools) ---
 
@@ -133,9 +204,10 @@ func _update_ghost_position() -> void:
 
 func _refresh_ghost() -> void:
 	_clear_ghost()
-	if current_tool == Tool.BELT:
+	if current_kind == KIND_BELT or current_kind == &"":
 		return
-	var scene_path: String = _ghost_scene_path()
+	var def: Dictionary = _BuildPieceDefs.by_id(current_kind)
+	var scene_path: String = def.get("scene", "")
 	if scene_path == "":
 		return
 	var ps: PackedScene = load(scene_path)
@@ -143,15 +215,6 @@ func _refresh_ghost() -> void:
 	_ghost_node.set_process(false)
 	_ghost_node.rotation = Vector3(0, -PI / 2 * ghost_rotation_steps, 0)
 	get_tree().current_scene.add_child(_ghost_node)
-
-func _ghost_scene_path() -> String:
-	match current_tool:
-		Tool.LOADER: return "res://scenes/factory/loader.tscn"
-		Tool.SMELTER: return "res://scenes/factory/smelter.tscn"
-		Tool.FORGE: return "res://scenes/factory/forge.tscn"
-		Tool.MERGER: return "res://scenes/factory/merger.tscn"
-		Tool.SPLITTER: return "res://scenes/factory/splitter.tscn"
-	return ""
 
 func _apply_ghost_color(placeable: bool) -> void:
 	if _ghost_node == null:
@@ -167,12 +230,10 @@ func _apply_ghost_color(placeable: bool) -> void:
 # --- Belt link mode ---
 
 func _update_link_preview() -> void:
-	# Always update the source-port marker if we have one locked in.
 	if _link_source_port != null:
 		_show_source_indicator(_link_source_port.world_position())
 	else:
 		_hide_source_indicator()
-	# Find what (if anything) we're aiming at on the factory layer.
 	var hit: Dictionary = _raycast(FACTORY_LAYER_MASK)
 	var bld: Building = null
 	var hovered_port: Port = null
@@ -183,12 +244,10 @@ func _update_link_preview() -> void:
 			var p: Port = bld.find_closest_port(hit.position, port_kind_to_find)
 			if p != null and p.is_free() and p.world_position().distance_to(hit.position) <= PORT_PICK_RADIUS:
 				hovered_port = p
-	# Update target lock-on indicator
 	if hovered_port != null:
 		_show_target_indicator(hovered_port.world_position())
 	else:
 		_hide_target_indicator()
-	# Update preview line (only when we already have a source)
 	if _link_source_port == null:
 		_clear_link_preview()
 		return
@@ -283,7 +342,6 @@ func _try_link_click() -> void:
 	if bld == null:
 		return
 	if _link_source_port == null:
-		# First click — pick an output port
 		var port: Port = bld.find_closest_port(hit.position, Port.KIND_OUTPUT)
 		if port == null or port.world_position().distance_to(hit.position) > PORT_PICK_RADIUS:
 			return
@@ -292,7 +350,6 @@ func _try_link_click() -> void:
 		_link_source_port = port
 		link_state_changed.emit(true)
 	else:
-		# Second click — pick an input port and finalize
 		var port: Port = bld.find_closest_port(hit.position, Port.KIND_INPUT)
 		if port == null or port.world_position().distance_to(hit.position) > PORT_PICK_RADIUS:
 			return
@@ -303,7 +360,6 @@ func _try_link_click() -> void:
 		link_state_changed.emit(false)
 
 func _hit_to_building(n: Node) -> Building:
-	# Climb the parent chain looking for a Building (StaticBody is a child of the building Node3D).
 	while n != null:
 		if n is Building:
 			return n
@@ -346,23 +402,21 @@ func _is_placeable_at(cell: Vector3i) -> bool:
 	return true
 
 func _ghost_footprint(origin: Vector3i) -> Array[Vector3i]:
-	var size: Vector2i = _tool_footprint_size()
+	var size: Vector2i = _kind_footprint_size(current_kind)
 	var cells: Array[Vector3i] = []
 	for x: int in size.x:
 		for z: int in size.y:
 			cells.append(origin + Vector3i(x, 0, z))
 	return cells
 
-func _tool_footprint_size() -> Vector2i:
-	match current_tool:
-		Tool.LOADER, Tool.SMELTER:
-			return Vector2i(2, 2)
-		Tool.FORGE:
-			return Vector2i(3, 3)
-		Tool.MERGER, Tool.SPLITTER:
-			return Vector2i(1, 1)
-		_:
-			return Vector2i(1, 1)
+func _kind_footprint_size(kind: StringName) -> Vector2i:
+	var def: Dictionary = _BuildPieceDefs.by_id(kind)
+	if def.is_empty():
+		return Vector2i(1, 1)
+	var fp: Vector2i = def.get("footprint", Vector2i(1, 1))
+	if fp.x <= 0 or fp.y <= 0:
+		return Vector2i(1, 1)
+	return fp
 
 # --- Place / remove ---
 
@@ -370,14 +424,11 @@ func _try_place() -> void:
 	if _ghost_node == null or not _ghost_node.has_meta("placeable") or not _ghost_node.get_meta("placeable"):
 		return
 	var origin_cell: Vector3i = _ghost_node.get_meta("target_cell")
-	var kind_name: StringName = _tool_to_kind_name()
-	if kind_name == &"":
+	if current_kind == &"" or current_kind == KIND_BELT:
 		return
-	FactoryWorld.place(kind_name, origin_cell, ghost_rotation_steps)
+	FactoryWorld.place(current_kind, origin_cell, ghost_rotation_steps)
 
 func _try_remove() -> void:
-	# Try a factory-layer raycast. If it hits a belt link's segment, remove the
-	# whole link. If it hits a building, remove that building's footprint.
 	var hit: Dictionary = _raycast(FACTORY_LAYER_MASK)
 	if hit.is_empty():
 		return
@@ -388,14 +439,27 @@ func _try_remove() -> void:
 		return
 	var bld: Building = _hit_to_building(hit.collider as Node)
 	if bld != null:
-		# Find any registered cell of this building and remove it
 		FactoryWorld.remove(bld.origin_cell)
 
-func _tool_to_kind_name() -> StringName:
-	match current_tool:
-		Tool.LOADER: return &"loader"
-		Tool.SMELTER: return &"smelter"
-		Tool.FORGE: return &"forge"
-		Tool.MERGER: return &"merger"
-		Tool.SPLITTER: return &"splitter"
-	return &""
+# --- Save / load -----------------------------------------------------------
+
+func get_save_data() -> Dictionary:
+	var qb: Array = []
+	for k: Variant in quickbar:
+		qb.append(String(k))
+	return {"quickbar": qb}
+
+func apply_save_data(data: Dictionary) -> void:
+	var raw: Array = data.get("quickbar", [])
+	if raw.size() == 0:
+		quickbar = DEFAULT_QUICKBAR.duplicate()
+	else:
+		quickbar = []
+		for v: Variant in raw:
+			quickbar.append(StringName(String(v)))
+		while quickbar.size() < QUICKBAR_SIZE:
+			quickbar.append(&"")
+	current_slot = clamp(current_slot, 0, QUICKBAR_SIZE - 1)
+	current_kind = quickbar[current_slot]
+	quickbar_changed.emit()
+	selection_changed.emit(current_slot)

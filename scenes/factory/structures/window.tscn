@@ -1,0 +1,48 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/factory/structure.gd" id="1"]
+
+[sub_resource type="BoxMesh" id="Frame"]
+size = Vector3(1.0, 2.6, 0.2)
+
+[sub_resource type="BoxMesh" id="Pane"]
+size = Vector3(0.8, 1.2, 0.05)
+
+[sub_resource type="BoxShape3D" id="FrameShape"]
+size = Vector3(1.0, 2.6, 0.2)
+
+[sub_resource type="StandardMaterial3D" id="FrameMat"]
+albedo_color = Color(0.7, 0.36, 0.26, 1)
+roughness = 0.9
+
+[sub_resource type="StandardMaterial3D" id="PaneMat"]
+albedo_color = Color(0.5, 0.65, 0.8, 0.55)
+metallic = 0.4
+roughness = 0.15
+transparency = 1
+emission_enabled = true
+emission = Color(0.6, 0.7, 0.85, 1)
+emission_energy_multiplier = 0.25
+
+[node name="Window" type="Node3D"]
+script = ExtResource("1")
+footprint_size = Vector2i(1, 1)
+kind = &"window"
+
+[node name="Frame" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 1.3, 0.1)
+mesh = SubResource("Frame")
+material_override = SubResource("FrameMat")
+
+[node name="Pane" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 1.6, 0.1)
+mesh = SubResource("Pane")
+material_override = SubResource("PaneMat")
+
+[node name="StaticBody" type="StaticBody3D" parent="."]
+collision_layer = 4
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 1.3, 0.1)
+shape = SubResource("FrameShape")

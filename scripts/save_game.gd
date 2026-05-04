@@ -114,6 +114,9 @@ func collect_state() -> Dictionary:
 	# Factory
 	if FactoryWorld != null and FactoryWorld.has_method("get_save_data"):
 		data["factory"] = FactoryWorld.get_save_data()
+	# Build controller (quickbar bindings)
+	if BuildController != null and BuildController.has_method("get_save_data"):
+		data["build_controller"] = BuildController.get_save_data()
 	# Progression stats (perks, equipment modifiers, etc).
 	var ps: Node = get_node_or_null("/root/PlayerStats")
 	if ps != null and ps.has_method("get_save_data"):
@@ -155,6 +158,9 @@ func apply_state(data: Dictionary) -> void:
 		MapData.apply_save_data(data["map"])
 	if FactoryWorld != null and data.has("factory") and FactoryWorld.has_method("apply_save_data"):
 		FactoryWorld.apply_save_data(data["factory"])
+	# Build controller — restore quickbar bindings (defaults if absent).
+	if BuildController != null and data.has("build_controller") and BuildController.has_method("apply_save_data"):
+		BuildController.apply_save_data(data["build_controller"])
 	# Stats applied early so any system that re-reads them (Stamina recomputes
 	# its effective max) sees the right values when their state restores.
 	var ps: Node = get_node_or_null("/root/PlayerStats")

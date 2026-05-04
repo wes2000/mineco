@@ -1,0 +1,49 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/build_catalog_ui.gd" id="1"]
+
+[node name="BuildCatalogUI" type="Control"]
+script = ExtResource("1")
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 1
+
+[node name="Panel" type="Panel" parent="."]
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -340.0
+offset_top = -260.0
+offset_right = 340.0
+offset_bottom = 260.0
+
+[node name="Vbox" type="VBoxContainer" parent="Panel"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = -12.0
+offset_bottom = -12.0
+theme_override_constants/separation = 8
+
+[node name="Header" type="HBoxContainer" parent="Panel/Vbox"]
+
+[node name="Title" type="Label" parent="Panel/Vbox/Header"]
+text = "Build Catalog"
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 18
+
+[node name="CloseBtn" type="Button" parent="Panel/Vbox/Header"]
+text = "Close (G)"
+
+[node name="HintRow" type="HBoxContainer" parent="Panel/Vbox"]
+
+[node name="Hint" type="Label" parent="Panel/Vbox/HintRow"]
+text = "Click a piece to equip. Then press 1-6 to bind it to that hotbar slot."
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
+theme_override_colors/font_color = Color(0.7, 0.78, 0.85, 1)
+
+[node name="Tabs" type="TabContainer" parent="Panel/Vbox"]
+size_flags_vertical = 3

@@ -1,0 +1,55 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/factory/structure.gd" id="1"]
+
+[sub_resource type="CylinderMesh" id="Pole"]
+top_radius = 0.05
+bottom_radius = 0.06
+height = 1.6
+
+[sub_resource type="SphereMesh" id="Bulb"]
+radius = 0.18
+height = 0.36
+
+[sub_resource type="BoxShape3D" id="BodyShape"]
+size = Vector3(0.4, 1.6, 0.4)
+
+[sub_resource type="StandardMaterial3D" id="PoleMat"]
+albedo_color = Color(0.32, 0.30, 0.28, 1)
+metallic = 0.5
+roughness = 0.5
+
+[sub_resource type="StandardMaterial3D" id="BulbMat"]
+albedo_color = Color(1.0, 0.9, 0.6, 1)
+emission_enabled = true
+emission = Color(1.0, 0.9, 0.6, 1)
+emission_energy_multiplier = 2.0
+
+[node name="Lamp" type="Node3D"]
+script = ExtResource("1")
+footprint_size = Vector2i(1, 1)
+kind = &"lamp"
+
+[node name="Pole" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 0.8, 0.5)
+mesh = SubResource("Pole")
+material_override = SubResource("PoleMat")
+
+[node name="Bulb" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 1.7, 0.5)
+mesh = SubResource("Bulb")
+material_override = SubResource("BulbMat")
+
+[node name="Light" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 1.7, 0.5)
+light_color = Color(1.0, 0.9, 0.7, 1)
+light_energy = 1.6
+omni_range = 8.0
+
+[node name="StaticBody" type="StaticBody3D" parent="."]
+collision_layer = 4
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 0.8, 0.5)
+shape = SubResource("BodyShape")

@@ -24,7 +24,24 @@ const KIND_TO_SCENE: Dictionary = {
 	&"forge": "res://scenes/factory/forge.tscn",
 	&"splitter": "res://scenes/factory/splitter.tscn",
 	&"merger": "res://scenes/factory/merger.tscn",
+	# Structures + utility (brief 05). All extend Structure, so per-instance
+	# `kind` is the source of truth for save round-tripping.
+	&"foundation": "res://scenes/factory/structures/foundation.tscn",
+	&"wall": "res://scenes/factory/structures/wall.tscn",
+	&"roof": "res://scenes/factory/structures/roof.tscn",
+	&"door": "res://scenes/factory/structures/door.tscn",
+	&"window": "res://scenes/factory/structures/window.tscn",
+	&"storage_crate": "res://scenes/factory/structures/storage_crate.tscn",
+	&"workbench": "res://scenes/factory/structures/workbench.tscn",
+	&"lamp": "res://scenes/factory/structures/lamp.tscn",
+	&"beacon": "res://scenes/factory/structures/beacon.tscn",
 }
+
+# Pulled in via preload so the parser doesn't depend on global class_name
+# resolution for newly-added types.
+const _BuildPieceDefs: GDScript = preload("res://scripts/factory/build_piece_defs.gd")
+const _Structure: GDScript = preload("res://scripts/factory/structure.gd")
+const _StorageCrate: GDScript = preload("res://scripts/factory/storage_crate.gd")
 
 func _ready() -> void:
 	item_pool = ItemPool.new()
@@ -65,10 +82,27 @@ func unregister_cell(cell: Vector3i) -> void:
 # --- Building placement ---
 
 func place(kind: StringName, origin_cell: Vector3i, rotation_steps: int) -> bool:
+	return _place_internal(kind, origin_cell, rotation_steps, true)
+
+# Variant that skips the material charge — used by apply_save_data so loaded
+# structures don't double-bill the player.
+func _place_internal(kind: StringName, origin_cell: Vector3i, rotation_steps: int, charge_materials: bool) -> bool:
 	var scene_path: String = KIND_TO_SCENE.get(kind, "")
 	if scene_path == "":
 		push_warning("FactoryWorld.place: unknown kind %s" % kind)
 		return false
+	# Material check happens BEFORE instantiation so a refused build doesn't
+	# spawn-and-free a node every click.
+	var def: Dictionary = _BuildPieceDefs.by_id(kind)
+	var miner: Node = get_tree().get_first_node_in_group("player_miner")
+	if charge_materials and not def.is_empty():
+		var raw_cost: Dictionary = def.get("cost", {})
+		if raw_cost.size() > 0 and not _BuildPieceDefs.can_afford(miner, raw_cost):
+			# Quiet feedback via the pickup feed so the player isn't left guessing.
+			var feed: Node = get_tree().get_first_node_in_group("pickup_feed")
+			if feed != null and feed.has_method("add_text_message"):
+				feed.call("add_text_message", "Not enough materials")
+			return false
 	var ps: PackedScene = load(scene_path)
 	var node: Node3D = ps.instantiate()
 	if not (node is Building):
@@ -90,6 +124,13 @@ func place(kind: StringName, origin_cell: Vector3i, rotation_steps: int) -> bool
 				unregister_cell(c2)
 			bld.queue_free()
 			return false
+	# Charge AFTER cell registration succeeded so a failed footprint doesn't
+	# eat materials. Brief 05 spec calls this out the other way around, but
+	# we early-out on can_afford above and only commit the deduction here.
+	if charge_materials and not def.is_empty():
+		var raw_cost: Dictionary = def.get("cost", {})
+		if raw_cost.size() > 0:
+			_BuildPieceDefs.charge(miner, raw_cost)
 	_auto_flatten(cells_to_register, origin_cell.y)
 	return true
 
@@ -107,6 +148,10 @@ func _building_kind(bld: Building) -> StringName:
 	if bld is Forge: return &"forge"
 	if bld is Splitter: return &"splitter"
 	if bld is Merger: return &"merger"
+	# Structure / utility pieces all extend Structure; the `kind` exported on
+	# the scene root is the source of truth so we don't need a class per piece.
+	if bld is _Structure:
+		return StringName(String(bld.get("kind")))
 	return &""
 
 func remove(cell: Vector3i) -> void:
@@ -115,6 +160,23 @@ func remove(cell: Vector3i) -> void:
 		return
 	if owner is Building:
 		var bld: Building = owner as Building
+		# Refund the cost of the piece itself (factory defs have empty costs,
+		# so this is a no-op for vanilla factory machines but pays back placed
+		# structures at their refund_pct).
+		var miner_for_refund: Node = get_tree().get_first_node_in_group("player_miner")
+		var kind_for_refund: StringName = _building_kind(bld)
+		if kind_for_refund != &"":
+			var def: Dictionary = _BuildPieceDefs.by_id(kind_for_refund)
+			if not def.is_empty():
+				_BuildPieceDefs.refund(miner_for_refund, def.get("cost", {}), float(def.get("refund_pct", 0.5)))
+		# Refund stored materials in a Storage Crate so deconstructing it
+		# doesn't vaporize the contents.
+		if bld is _StorageCrate and miner_for_refund != null:
+			var storage: Dictionary = bld.get("storage")
+			for mid: int in storage.keys():
+				var qty: int = int(storage[mid])
+				if qty > 0:
+					miner_for_refund.call("add_factory_material", mid, qty)
 		# Refund Loader hopper to player Miner
 		if bld is Loader:
 			var loader: Loader = bld as Loader
@@ -267,8 +329,9 @@ func apply_save_data(data: Dictionary) -> void:
 		var origin: Vector3i = Vector3i(int(oc_arr[0]), int(oc_arr[1]), int(oc_arr[2]))
 		var rot_steps: int = int(d.get("rotation_steps", 0))
 		# Use the same placement path as build mode so footprints & flattening
-		# stay consistent. Then back-fill state on the resulting building.
-		if not place(kind, origin, rot_steps):
+		# stay consistent. Skip the material charge — the player already paid
+		# at original placement time.
+		if not _place_internal(kind, origin, rot_steps, false):
 			continue
 		var bld: Building = get_cell_owner(origin) as Building
 		if bld == null:
