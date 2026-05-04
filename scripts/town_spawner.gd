@@ -83,38 +83,19 @@ func _spawn() -> void:
 		npc.position = Vector3(offset.x, ground_y + 1.5, offset.y)
 		npc.rotation.y = randf_range(0.0, TAU)
 		get_tree().current_scene.add_child(npc)
-		var body_mesh: MeshInstance3D = npc.find_child("Body", true, false) as MeshInstance3D
-		if body_mesh != null:
-			var shirt_mat: StandardMaterial3D = StandardMaterial3D.new()
-			if i == VENDOR_INDEX:
-				# Sell vendor: gold shirt with warm emissive trim.
-				shirt_mat.albedo_color = Color(0.95, 0.78, 0.25, 1)
-				shirt_mat.emission_enabled = true
-				shirt_mat.emission = Color(0.6, 0.45, 0.10, 1)
-				shirt_mat.emission_energy_multiplier = 0.4
-			elif i == CONTRACT_VENDOR_INDEX:
-				# Contract vendor: dark navy "business attire" with cool blue trim.
-				shirt_mat.albedo_color = Color(0.20, 0.30, 0.55, 1)
-				shirt_mat.emission_enabled = true
-				shirt_mat.emission = Color(0.10, 0.30, 0.55, 1)
-				shirt_mat.emission_energy_multiplier = 0.4
-			elif i == CLAIM_VENDOR_INDEX:
-				# Claim vendor: rich emerald with bright gold-green trim — sets
-				# the "land baron" vibe and stands out against the other vendors.
-				shirt_mat.albedo_color = Color(0.20, 0.55, 0.30, 1)
-				shirt_mat.emission_enabled = true
-				shirt_mat.emission = Color(0.55, 0.85, 0.30, 1)
-				shirt_mat.emission_energy_multiplier = 0.45
-			elif i == ITEM_SHOP_INDEX:
-				# Item shop: warm copper / orange — reads as "blacksmith".
-				shirt_mat.albedo_color = Color(0.60, 0.30, 0.18, 1)
-				shirt_mat.emission_enabled = true
-				shirt_mat.emission = Color(0.95, 0.55, 0.20, 1)
-				shirt_mat.emission_energy_multiplier = 0.45
-			else:
-				shirt_mat.albedo_color = NPC_SHIRT_COLORS[i % NPC_SHIRT_COLORS.size()]
-			shirt_mat.roughness = 0.95
-			body_mesh.material_override = shirt_mat
+		# Tint the GLB shirt(s) — Npc.apply_shirt_tint walks every cached
+		# MeshInstance3D inside the loaded model so we don't depend on a
+		# specific node name like "Body".
+		if i == VENDOR_INDEX:
+			npc.apply_shirt_tint(Color(0.95, 0.78, 0.25, 1), Color(0.6, 0.45, 0.10, 1), 0.4)
+		elif i == CONTRACT_VENDOR_INDEX:
+			npc.apply_shirt_tint(Color(0.20, 0.30, 0.55, 1), Color(0.10, 0.30, 0.55, 1), 0.4)
+		elif i == CLAIM_VENDOR_INDEX:
+			npc.apply_shirt_tint(Color(0.20, 0.55, 0.30, 1), Color(0.55, 0.85, 0.30, 1), 0.45)
+		elif i == ITEM_SHOP_INDEX:
+			npc.apply_shirt_tint(Color(0.60, 0.30, 0.18, 1), Color(0.95, 0.55, 0.20, 1), 0.45)
+		else:
+			npc.apply_shirt_tint(NPC_SHIRT_COLORS[i % NPC_SHIRT_COLORS.size()])
 
 # Returns the MAX ground Y across 9 samples (center + 8 around a circle at the
 # hut's bounding radius). Anchoring to the high point ensures no corner floats —
@@ -155,16 +136,8 @@ func _spawn_dock_and_boat() -> void:
 	# location makes the NPC immediately try to walk back to origin.
 	npc.position = Vector3(-1.0, max(land_y, 0.20) + 1.0, coast_z + 2.0)
 	get_tree().current_scene.add_child(npc)
-	# Color the dockmaster: white sailor outfit with cool teal trim.
-	var body_mesh: MeshInstance3D = npc.find_child("Body", true, false) as MeshInstance3D
-	if body_mesh != null:
-		var shirt_mat: StandardMaterial3D = StandardMaterial3D.new()
-		shirt_mat.albedo_color = Color(0.85, 0.88, 0.92, 1)
-		shirt_mat.emission_enabled = true
-		shirt_mat.emission = Color(0.20, 0.55, 0.65, 1)
-		shirt_mat.emission_energy_multiplier = 0.35
-		shirt_mat.roughness = 0.95
-		body_mesh.material_override = shirt_mat
+	# Dockmaster: white sailor outfit with cool teal trim.
+	npc.apply_shirt_tint(Color(0.85, 0.88, 0.92, 1), Color(0.20, 0.55, 0.65, 1), 0.35)
 
 func _spawn_training_dummy() -> void:
 	# Place a single combat dummy a few meters away from the item shop NPC

@@ -37,6 +37,14 @@ var _state: int = State.IDLE
 var _state_remaining: float = 0.0
 var _player_cached: Node3D = null
 
+# Vendor flag → swap to the vendor mesh on _ready. Townsfolk get the plain
+# townsfolk mesh; everyone with a vendor flag gets the vendor mesh and is
+# tinted via apply_shirt_tint() from town_spawner.
+const _NPC_TOWN_GLB: PackedScene = preload("res://assets/models/npc_town.glb")
+const _NPC_VENDOR_GLB: PackedScene = preload("res://assets/models/npc_vendor.glb")
+# Cached after _spawn_visual so apply_shirt_tint can recolor the right meshes.
+var _visual_meshes: Array[MeshInstance3D] = []
+
 func _ready() -> void:
 	# Capture the post-physics-settle spawn so wander_radius is anchored to the
 	# actual ground position, not the slightly-elevated drop position.
@@ -64,8 +72,49 @@ func _ready() -> void:
 		add_child(claim_board)
 	if is_item_shop:
 		add_to_group("item_shop_npcs")
+	_spawn_visual()
 	_apply_visibility_range_recursive(self)
 	_begin_walk()
+
+func _spawn_visual() -> void:
+	# Pick the vendor model for any vendor flag, otherwise the townsfolk model.
+	var any_vendor: bool = is_vendor or is_contract_vendor or is_boat_vendor or is_claim_vendor or is_item_shop
+	var packed: PackedScene = _NPC_VENDOR_GLB if any_vendor else _NPC_TOWN_GLB
+	var visual_root: Node3D = get_node_or_null("Visual") as Node3D
+	if visual_root == null:
+		return
+	var inst: Node3D = packed.instantiate() as Node3D
+	visual_root.add_child(inst)
+	# Cache every MeshInstance3D inside the loaded model so apply_shirt_tint
+	# can recolor without re-walking the tree each call. We also duplicate
+	# their material_override so per-NPC tints don't leak across instances.
+	_visual_meshes.clear()
+	_collect_mesh_instances(inst)
+	for mi: MeshInstance3D in _visual_meshes:
+		var src_mat: Material = mi.material_override if mi.material_override != null else mi.get_active_material(0)
+		if src_mat is StandardMaterial3D:
+			mi.material_override = (src_mat as StandardMaterial3D).duplicate() as StandardMaterial3D
+		elif src_mat is BaseMaterial3D:
+			mi.material_override = (src_mat as BaseMaterial3D).duplicate() as BaseMaterial3D
+
+func _collect_mesh_instances(node: Node) -> void:
+	if node is MeshInstance3D:
+		_visual_meshes.append(node)
+	for c: Node in node.get_children():
+		_collect_mesh_instances(c)
+
+# Tints every visual mesh on this NPC. Used by town_spawner to differentiate
+# vendor types (gold sell vendor, navy contracts, emerald claim, etc).
+func apply_shirt_tint(tint: Color, emission: Color = Color(0, 0, 0, 0), emission_energy: float = 0.0) -> void:
+	for mi: MeshInstance3D in _visual_meshes:
+		if not (mi.material_override is BaseMaterial3D):
+			continue
+		var mat: BaseMaterial3D = mi.material_override as BaseMaterial3D
+		mat.albedo_color = tint
+		if emission.a > 0.0:
+			mat.emission_enabled = true
+			mat.emission = emission
+			mat.emission_energy_multiplier = emission_energy
 
 func _apply_visibility_range_recursive(node: Node) -> void:
 	if node is GeometryInstance3D:

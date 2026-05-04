@@ -1,26 +1,18 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/factory/structure.gd" id="1"]
-
-[sub_resource type="BoxMesh" id="Body"]
-size = Vector3(1.0, 0.2, 1.0)
+[ext_resource type="PackedScene" path="res://assets/models/structure_foundation.glb" id="2_glb"]
 
 [sub_resource type="BoxShape3D" id="BodyShape"]
 size = Vector3(1.0, 0.2, 1.0)
-
-[sub_resource type="StandardMaterial3D" id="Mat"]
-albedo_color = Color(0.55, 0.55, 0.55, 1)
-roughness = 0.95
 
 [node name="Foundation" type="Node3D"]
 script = ExtResource("1")
 footprint_size = Vector2i(1, 1)
 kind = &"foundation"
 
-[node name="Body" type="MeshInstance3D" parent="."]
+[node name="Model" parent="." instance=ExtResource("2_glb")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 0.1, 0.5)
-mesh = SubResource("Body")
-material_override = SubResource("Mat")
 
 [node name="StaticBody" type="StaticBody3D" parent="."]
 collision_layer = 4

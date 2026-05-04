@@ -101,6 +101,11 @@ func _apply_pickup_radius() -> void:
 	(_pickup_shape.shape as SphereShape3D).radius = max(0.1, _pickup_base_radius + bonus)
 
 func _emit_initial_tool() -> void:
+	# Sync the pickaxe + weapon meshes to whatever Miner currently has equipped
+	# (e.g. on a fresh boot before a save load — defaults are no-pickaxe and
+	# no-weapon, so set_pickaxe_id("") loads the fallback model).
+	_sync_pickaxe_from_equipped()
+	_sync_weapon_from_equipped()
 	_apply_tool_visuals()
 	tool_changed.emit(current_tool)
 
@@ -151,12 +156,22 @@ func _select_tool(t: int) -> void:
 
 func _on_shop_inventory_changed() -> void:
 	_sync_weapon_from_equipped()
+	_sync_pickaxe_from_equipped()
 	# If the weapon was unequipped while the slot was active, fall back to no
 	# tool so the empty mesh isn't held up.
 	if current_tool == TOOL_WEAPON and not _has_equipped_weapon():
 		current_tool = TOOL_NONE
 		_apply_tool_visuals()
 		tool_changed.emit(current_tool)
+
+func _sync_pickaxe_from_equipped() -> void:
+	if _shovel == null or not _shovel.has_method("set_pickaxe_id"):
+		return
+	if _miner == null:
+		return
+	var equipped: Dictionary = _miner.get("equipped_items")
+	var pid: String = String(equipped.get("pickaxe", "")) if equipped != null else ""
+	_shovel.call("set_pickaxe_id", pid)
 
 func _has_equipped_weapon() -> bool:
 	var equipped: Dictionary = _miner.get("equipped_items") if _miner != null else {}
