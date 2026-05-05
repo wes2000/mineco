@@ -13,6 +13,10 @@ extends CharacterBody3D
 @export var is_boat_vendor: bool = false
 @export var is_claim_vendor: bool = false
 @export var is_item_shop: bool = false
+# Which town-NPC visual variant to load. -1 (default) means use the vendor
+# model — used by the dockmaster and any out-of-town NPC. 0..3 picks one of
+# the four town variants in _NPC_VARIANTS (red / green / blue / yellow).
+@export var visual_variant: int = -1
 
 # Set on _ready when is_contract_vendor — the per-vendor contract state.
 var contract_board: ContractBoard = null
@@ -37,11 +41,16 @@ var _state: int = State.IDLE
 var _state_remaining: float = 0.0
 var _player_cached: Node3D = null
 
-# Vendor flag → swap to the vendor mesh on _ready. Townsfolk get the plain
-# townsfolk mesh; everyone with a vendor flag gets the vendor mesh and is
-# tinted via apply_shirt_tint() from town_spawner.
-const _NPC_TOWN_GLB: PackedScene = preload("res://assets/models/npc_town.glb")
+# Town NPC variants — one per index 0..3. The town spawner assigns each of
+# its four NPC slots a different variant so they read as distinct people.
+# Out-of-town NPCs (dockmaster) use the vendor mesh.
 const _NPC_VENDOR_GLB: PackedScene = preload("res://assets/models/npc_vendor.glb")
+const _NPC_VARIANTS: Array[PackedScene] = [
+	preload("res://assets/models/npc_red.glb"),
+	preload("res://assets/models/npc_green.glb"),
+	preload("res://assets/models/npc_blue.glb"),
+	preload("res://assets/models/npc_town.glb"),  # original / yellow
+]
 # Cached after _spawn_visual so apply_shirt_tint can recolor the right meshes.
 var _visual_meshes: Array[MeshInstance3D] = []
 
@@ -77,9 +86,14 @@ func _ready() -> void:
 	_begin_walk()
 
 func _spawn_visual() -> void:
-	# Pick the vendor model for any vendor flag, otherwise the townsfolk model.
-	var any_vendor: bool = is_vendor or is_contract_vendor or is_boat_vendor or is_claim_vendor or is_item_shop
-	var packed: PackedScene = _NPC_VENDOR_GLB if any_vendor else _NPC_TOWN_GLB
+	# Pick the visual variant: town spawner stamps visual_variant 0..3 on
+	# each of its four town NPC slots so they look distinct; everyone else
+	# (dockmaster / future NPCs) defaults to the vendor model.
+	var packed: PackedScene
+	if visual_variant >= 0 and visual_variant < _NPC_VARIANTS.size():
+		packed = _NPC_VARIANTS[visual_variant]
+	else:
+		packed = _NPC_VENDOR_GLB
 	var visual_root: Node3D = get_node_or_null("Visual") as Node3D
 	if visual_root == null:
 		return

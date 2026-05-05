@@ -3,6 +3,13 @@ extends Node
 ## in a loose cluster + 4 NPCs wandering between them.
 
 @export var hut_scene: PackedScene = preload("res://scenes/hut.tscn")
+# Three GLB-backed hut variants. Indexed per HUT_OFFSETS so the four huts
+# get distinct silhouettes (variant 0/1/2/0 by default).
+@export var hut_variants: Array[PackedScene] = [
+	preload("res://scenes/hut_a.tscn"),
+	preload("res://scenes/hut_b.tscn"),
+	preload("res://scenes/hut_c.tscn"),
+]
 @export var npc_scene: PackedScene = preload("res://scenes/npc.tscn")
 @export var dock_scene: PackedScene = preload("res://scenes/dock.tscn")
 @export var boat_scene: PackedScene = preload("res://scenes/boat.tscn")
@@ -54,8 +61,15 @@ func _spawn() -> void:
 	# Give distant chunks a beat to stream in past the player chunk that triggered
 	# world_ready — the spawner needs ground at points up to ~17m away.
 	await get_tree().create_timer(1.5).timeout
-	for offset: Vector2 in HUT_OFFSETS:
-		var hut: Node3D = hut_scene.instantiate() as Node3D
+	for h_idx: int in HUT_OFFSETS.size():
+		var offset: Vector2 = HUT_OFFSETS[h_idx]
+		# Cycle through the hut variants so the cluster doesn't read as four
+		# copies of the same building. Falls back to hut_scene if the variant
+		# array is empty.
+		var packed: PackedScene = hut_scene
+		if hut_variants.size() > 0:
+			packed = hut_variants[h_idx % hut_variants.size()]
+		var hut: Node3D = packed.instantiate() as Node3D
 		get_tree().current_scene.add_child(hut)
 		var ground_y: float = await _find_max_ground_y_in_footprint(offset.x, offset.y)
 		hut.global_position = Vector3(offset.x, ground_y - HUT_SINK, offset.y)
@@ -75,6 +89,9 @@ func _spawn() -> void:
 			npc.is_claim_vendor = true
 		elif i == ITEM_SHOP_INDEX:
 			npc.is_item_shop = true
+		# Each town slot gets its own NPC visual variant so the four NPCs
+		# read as distinct people instead of four copies of one model.
+		npc.visual_variant = i
 		# Position MUST be set before add_child — Npc._ready captures _spawn_pos
 		# from global_position. If we set position after add_child, _spawn_pos
 		# stays at (0, 0, 0) and the y-fallthrough self-heal then teleports
