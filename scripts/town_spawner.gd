@@ -61,14 +61,9 @@ func _spawn() -> void:
 	# Give distant chunks a beat to stream in past the player chunk that triggered
 	# world_ready — the spawner needs ground at points up to ~17m away.
 	await get_tree().create_timer(1.5).timeout
-	# Sample EVERY ground point we'll need — NPCs, dummy, dock, dockmaster — BEFORE
-	# spawning huts. The hut StaticBodies have ~22m-tall BoxShape3Ds on collision
-	# layer 1, and several NPC offsets sit inside those footprints. If we sample
-	# after huts spawn, the downward ground ray hits the hut roof and the NPC ends
-	# up parked tens of meters in the air.
-	var hut_ground_y: Array[float] = []
-	for h_idx: int in HUT_OFFSETS.size():
-		hut_ground_y.append(await _find_max_ground_y_in_footprint(HUT_OFFSETS[h_idx].x, HUT_OFFSETS[h_idx].y))
+	# Sample every ground point we'll need before spawning anything that adds
+	# collision. (Huts used to go in here too — disabled for now, awaiting new
+	# building art.)
 	var npc_ground_y: Array[float] = []
 	for i: int in NPC_OFFSETS.size():
 		npc_ground_y.append(await _find_ground_y_robust(NPC_OFFSETS[i].x, NPC_OFFSETS[i].y))
@@ -83,16 +78,6 @@ func _spawn() -> void:
 	if coast_z < 1.0:
 		coast_z = 130.0
 	var dock_land_y: float = await _find_ground_y_robust(0.0, coast_z)
-	# Now spawn huts using the cached ground samples.
-	for h_idx: int in HUT_OFFSETS.size():
-		var offset: Vector2 = HUT_OFFSETS[h_idx]
-		var packed: PackedScene = hut_scene
-		if hut_variants.size() > 0:
-			packed = hut_variants[h_idx % hut_variants.size()]
-		var hut: Node3D = packed.instantiate() as Node3D
-		get_tree().current_scene.add_child(hut)
-		hut.global_position = Vector3(offset.x, hut_ground_y[h_idx] - HUT_SINK, offset.y)
-		hut.rotation.y = randf_range(0.0, TAU)
 	_spawn_dock_and_boat(coast_z, dock_land_y)
 	_spawn_training_dummy_at(dummy_spot, dummy_ground_y)
 	for i: int in NPC_OFFSETS.size():

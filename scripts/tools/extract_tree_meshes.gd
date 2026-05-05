@@ -6,14 +6,31 @@ extends Node
 ## reference it. Quits the editor's game session when done.
 
 const TREES: Array[Dictionary] = [
-	{"glb": "res://assets/nature/tree_pine_a.glb",
-	 "mesh_path": "res://assets/nature/tree_pine_a.mesh.tres"},
-	{"glb": "res://assets/nature/tree_pine_b.glb",
-	 "mesh_path": "res://assets/nature/tree_pine_b.mesh.tres"},
-	{"glb": "res://assets/nature/tree_oak2.glb",
-	 "mesh_path": "res://assets/nature/tree_oak2.mesh.tres"},
-	{"glb": "res://assets/nature/tree_cedar.glb",
-	 "mesh_path": "res://assets/nature/tree_cedar.mesh.tres"},
+	# Trees
+	{"glb": "res://assets/nature/megakit/CommonTree_1.gltf",
+	 "mesh_path": "res://assets/nature/megakit/CommonTree_1.mesh.tres"},
+	{"glb": "res://assets/nature/megakit/CommonTree_3.gltf",
+	 "mesh_path": "res://assets/nature/megakit/CommonTree_3.mesh.tres"},
+	{"glb": "res://assets/nature/megakit/Pine_1.gltf",
+	 "mesh_path": "res://assets/nature/megakit/Pine_1.mesh.tres"},
+	{"glb": "res://assets/nature/megakit/Pine_3.gltf",
+	 "mesh_path": "res://assets/nature/megakit/Pine_3.mesh.tres"},
+	{"glb": "res://assets/nature/megakit/TwistedTree_2.gltf",
+	 "mesh_path": "res://assets/nature/megakit/TwistedTree_2.mesh.tres"},
+	# Bushes
+	{"glb": "res://assets/nature/megakit/Bush_Common.gltf",
+	 "mesh_path": "res://assets/nature/megakit/Bush_Common.mesh.tres"},
+	{"glb": "res://assets/nature/megakit/Bush_Common_Flowers.gltf",
+	 "mesh_path": "res://assets/nature/megakit/Bush_Common_Flowers.mesh.tres"},
+	{"glb": "res://assets/nature/megakit/Fern_1.gltf",
+	 "mesh_path": "res://assets/nature/megakit/Fern_1.mesh.tres"},
+	# Grass
+	{"glb": "res://assets/nature/megakit/Grass_Common_Tall.gltf",
+	 "mesh_path": "res://assets/nature/megakit/Grass_Common_Tall.mesh.tres"},
+	{"glb": "res://assets/nature/megakit/Grass_Wispy_Tall.gltf",
+	 "mesh_path": "res://assets/nature/megakit/Grass_Wispy_Tall.mesh.tres"},
+	{"glb": "res://assets/nature/megakit/Clover_1.gltf",
+	 "mesh_path": "res://assets/nature/megakit/Clover_1.mesh.tres"},
 ]
 
 func _ready() -> void:
@@ -44,9 +61,10 @@ func _ready() -> void:
 	print("extract_tree_meshes: done")
 	get_tree().quit()
 
-# Returns a copy of `src` with every vertex shifted by (0, lift, 0). Each
-# surface keeps its original primitive/format/material — we only translate
-# vertex positions so the saved .tres is a drop-in replacement.
+# Returns a copy of `src` with every vertex shifted by (0, lift, 0) and any
+# vertex colors neutralized to white. The MegaKit trees ship with red/orange
+# autumn vertex colors that multiply against the leaf texture and turn the
+# foliage muddy red — flattening to white lets the texture's own color show.
 func _lift_mesh(src: Mesh, lift: float) -> ArrayMesh:
 	var out: ArrayMesh = ArrayMesh.new()
 	for s: int in src.get_surface_count():
@@ -58,6 +76,12 @@ func _lift_mesh(src: Mesh, lift: float) -> ArrayMesh:
 			var v: Vector3 = verts[i]
 			lifted[i] = Vector3(v.x, v.y + lift, v.z)
 		arrays[Mesh.ARRAY_VERTEX] = lifted
+		# Strip the vertex-color attribute. The MegaKit trees ship with
+		# autumn-tinted COLOR_0 data, and voxel-tools' MultiMesh rendering
+		# multiplies it against the leaf texture even though the StandardMaterial3D
+		# has vertex_color_use_as_albedo = false, so trees came out muddy red.
+		# Removing the attribute entirely means there's nothing to multiply.
+		arrays[Mesh.ARRAY_COLOR] = null
 		var primitive: int = src.surface_get_primitive_type(s)
 		out.add_surface_from_arrays(primitive, arrays)
 		var mat: Material = src.surface_get_material(s)

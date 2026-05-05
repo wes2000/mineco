@@ -1,88 +1,195 @@
 [gd_resource type="VoxelInstanceLibrary" format=3 uid="uid://cjebi6i1m2ctk"]
 
-[ext_resource type="Material" uid="uid://djw3fovf6yplh" path="res://assets/nature/grass_tuft_mat.tres" id="1_y5u7t"]
-[ext_resource type="ArrayMesh" uid="uid://bgkob737oq6q0" path="res://assets/nature/grass_tuft.mesh.tres" id="2_gxdfq"]
-[ext_resource type="ArrayMesh" path="res://assets/nature/tree_pine_a.mesh.tres" id="3_pinea"]
-[ext_resource type="ArrayMesh" path="res://assets/nature/tree_pine_b.mesh.tres" id="4_pineb"]
-[ext_resource type="ArrayMesh" path="res://assets/nature/tree_oak2.mesh.tres" id="5_oak"]
-[ext_resource type="ArrayMesh" path="res://assets/nature/tree_cedar.mesh.tres" id="6_cedar"]
+[ext_resource type="ArrayMesh" path="res://assets/nature/megakit/CommonTree_1.mesh.tres" id="1_ct1"]
+[ext_resource type="ArrayMesh" path="res://assets/nature/megakit/CommonTree_3.mesh.tres" id="2_ct3"]
+[ext_resource type="ArrayMesh" path="res://assets/nature/megakit/Pine_1.mesh.tres" id="3_pn1"]
+[ext_resource type="ArrayMesh" path="res://assets/nature/megakit/Pine_3.mesh.tres" id="4_pn3"]
+[ext_resource type="ArrayMesh" path="res://assets/nature/megakit/TwistedTree_2.mesh.tres" id="5_tw2"]
+[ext_resource type="ArrayMesh" path="res://assets/nature/megakit/Bush_Common.mesh.tres" id="6_bush"]
+[ext_resource type="ArrayMesh" path="res://assets/nature/megakit/Bush_Common_Flowers.mesh.tres" id="7_bushf"]
+[ext_resource type="ArrayMesh" path="res://assets/nature/megakit/Fern_1.mesh.tres" id="8_fern"]
+[ext_resource type="ArrayMesh" path="res://assets/nature/megakit/Grass_Common_Tall.mesh.tres" id="9_gtall"]
+[ext_resource type="ArrayMesh" path="res://assets/nature/megakit/Grass_Wispy_Tall.mesh.tres" id="10_gwispy"]
+[ext_resource type="ArrayMesh" path="res://assets/nature/megakit/Clover_1.mesh.tres" id="11_clover"]
 
-[sub_resource type="FastNoiseLite" id="GrassClumpNoise"]
+[sub_resource type="VoxelInstanceGenerator" id="CommonTree1Gen"]
+density = 0.012
+min_scale = 1.5
+max_scale = 2.5
+max_slope_degrees = 18.0
+min_height = 4.0
+max_height = 99.0
+vertical_alignment = 1.0
+offset_along_normal = -0.4
+
+[sub_resource type="VoxelInstanceLibraryMultiMeshItem" id="CommonTree1Item"]
+generator = SubResource("CommonTree1Gen")
+mesh = ExtResource("1_ct1")
+
+[sub_resource type="VoxelInstanceGenerator" id="CommonTree3Gen"]
+density = 0.010
+min_scale = 1.5
+max_scale = 2.5
+max_slope_degrees = 18.0
+min_height = 4.0
+max_height = 99.0
+vertical_alignment = 1.0
+offset_along_normal = -0.4
+
+[sub_resource type="VoxelInstanceLibraryMultiMeshItem" id="CommonTree3Item"]
+generator = SubResource("CommonTree3Gen")
+mesh = ExtResource("2_ct3")
+
+[sub_resource type="VoxelInstanceGenerator" id="Pine1Gen"]
+density = 0.012
+min_scale = 1.5
+max_scale = 2.5
+max_slope_degrees = 22.0
+min_height = 4.0
+max_height = 99.0
+vertical_alignment = 1.0
+offset_along_normal = -0.4
+
+[sub_resource type="VoxelInstanceLibraryMultiMeshItem" id="Pine1Item"]
+generator = SubResource("Pine1Gen")
+mesh = ExtResource("3_pn1")
+
+[sub_resource type="VoxelInstanceGenerator" id="Pine3Gen"]
+density = 0.010
+min_scale = 1.5
+max_scale = 2.5
+max_slope_degrees = 22.0
+min_height = 4.0
+max_height = 99.0
+vertical_alignment = 1.0
+offset_along_normal = -0.4
+
+[sub_resource type="VoxelInstanceLibraryMultiMeshItem" id="Pine3Item"]
+generator = SubResource("Pine3Gen")
+mesh = ExtResource("4_pn3")
+
+[sub_resource type="VoxelInstanceGenerator" id="TwistedTree2Gen"]
+density = 0.006
+min_scale = 1.5
+max_scale = 2.5
+max_slope_degrees = 18.0
+min_height = 4.0
+max_height = 99.0
+vertical_alignment = 1.0
+offset_along_normal = -0.4
+
+[sub_resource type="VoxelInstanceLibraryMultiMeshItem" id="TwistedTree2Item"]
+generator = SubResource("TwistedTree2Gen")
+mesh = ExtResource("5_tw2")
+
+[sub_resource type="VoxelInstanceGenerator" id="BushGen"]
+density = 0.06
+min_scale = 1.0
+max_scale = 1.6
+max_slope_degrees = 25.0
+min_height = 1.5
+max_height = 99.0
+vertical_alignment = 1.0
+offset_along_normal = -0.15
+
+[sub_resource type="VoxelInstanceLibraryMultiMeshItem" id="BushItem"]
+generator = SubResource("BushGen")
+mesh = ExtResource("6_bush")
+
+[sub_resource type="VoxelInstanceGenerator" id="BushFlowersGen"]
+density = 0.04
+min_scale = 1.0
+max_scale = 1.6
+max_slope_degrees = 25.0
+min_height = 1.5
+max_height = 99.0
+vertical_alignment = 1.0
+offset_along_normal = -0.15
+
+[sub_resource type="VoxelInstanceLibraryMultiMeshItem" id="BushFlowersItem"]
+generator = SubResource("BushFlowersGen")
+mesh = ExtResource("7_bushf")
+
+[sub_resource type="VoxelInstanceGenerator" id="FernGen"]
+density = 0.05
+min_scale = 1.0
+max_scale = 1.6
+max_slope_degrees = 25.0
+min_height = 1.5
+max_height = 99.0
+vertical_alignment = 1.0
+offset_along_normal = -0.15
+
+[sub_resource type="VoxelInstanceLibraryMultiMeshItem" id="FernItem"]
+generator = SubResource("FernGen")
+mesh = ExtResource("8_fern")
+
+[sub_resource type="FastNoiseLite" id="GroundCoverNoise"]
 frequency = 0.04
 
-[sub_resource type="VoxelInstanceGenerator" id="VoxelInstanceGenerator_3vi27"]
+[sub_resource type="VoxelInstanceGenerator" id="GrassTallGen"]
 emit_mode = 2
-density = 2.5
+density = 1.5
 min_scale = 0.7
-max_scale = 1.6
+max_scale = 1.3
 max_slope_degrees = 30.0
 min_height = 1.2
 max_height = 99.0
-noise = SubResource("GrassClumpNoise")
+noise = SubResource("GroundCoverNoise")
 noise_dimension = 0
 noise_on_scale = 0.5
+vertical_alignment = 1.0
+offset_along_normal = -0.05
 
-[sub_resource type="VoxelInstanceLibraryMultiMeshItem" id="GrassItem"]
-generator = SubResource("VoxelInstanceGenerator_3vi27")
-mesh = ExtResource("2_gxdfq")
-material_override = ExtResource("1_y5u7t")
+[sub_resource type="VoxelInstanceLibraryMultiMeshItem" id="GrassTallItem"]
+generator = SubResource("GrassTallGen")
+mesh = ExtResource("9_gtall")
 cast_shadow = 0
 
-[sub_resource type="VoxelInstanceGenerator" id="PineAGen"]
-density = 0.025
-min_scale = 6.0
-max_scale = 10.5
-max_slope_degrees = 15.0
-min_height = 4.0
+[sub_resource type="VoxelInstanceGenerator" id="GrassWispyGen"]
+emit_mode = 2
+density = 1.0
+min_scale = 0.7
+max_scale = 1.3
+max_slope_degrees = 30.0
+min_height = 1.2
+max_height = 99.0
+noise = SubResource("GroundCoverNoise")
+noise_dimension = 0
+noise_on_scale = 0.5
+vertical_alignment = 1.0
+offset_along_normal = -0.05
+
+[sub_resource type="VoxelInstanceLibraryMultiMeshItem" id="GrassWispyItem"]
+generator = SubResource("GrassWispyGen")
+mesh = ExtResource("10_gwispy")
+cast_shadow = 0
+
+[sub_resource type="VoxelInstanceGenerator" id="CloverGen"]
+emit_mode = 2
+density = 0.8
+min_scale = 0.7
+max_scale = 1.3
+max_slope_degrees = 30.0
+min_height = 1.2
 max_height = 99.0
 vertical_alignment = 1.0
-offset_along_normal = -1.0
+offset_along_normal = -0.05
 
-[sub_resource type="VoxelInstanceLibraryMultiMeshItem" id="PineAItem"]
-generator = SubResource("PineAGen")
-mesh = ExtResource("3_pinea")
-
-[sub_resource type="VoxelInstanceGenerator" id="PineBGen"]
-density = 0.02
-min_scale = 6.0
-max_scale = 10.5
-max_slope_degrees = 15.0
-min_height = 4.0
-max_height = 99.0
-vertical_alignment = 1.0
-offset_along_normal = -1.0
-
-[sub_resource type="VoxelInstanceLibraryMultiMeshItem" id="PineBItem"]
-generator = SubResource("PineBGen")
-mesh = ExtResource("4_pineb")
-
-[sub_resource type="VoxelInstanceGenerator" id="OakGen"]
-density = 0.02
-min_scale = 6.0
-max_scale = 10.5
-max_slope_degrees = 12.0
-min_height = 5.0
-max_height = 99.0
-vertical_alignment = 1.0
-offset_along_normal = -1.0
-
-[sub_resource type="VoxelInstanceLibraryMultiMeshItem" id="OakItem"]
-generator = SubResource("OakGen")
-mesh = ExtResource("5_oak")
-
-[sub_resource type="VoxelInstanceGenerator" id="CedarGen"]
-density = 0.015
-min_scale = 6.0
-max_scale = 10.5
-max_slope_degrees = 12.0
-min_height = 5.0
-max_height = 99.0
-vertical_alignment = 1.0
-offset_along_normal = -1.0
-
-[sub_resource type="VoxelInstanceLibraryMultiMeshItem" id="CedarItem"]
-generator = SubResource("CedarGen")
-mesh = ExtResource("6_cedar")
+[sub_resource type="VoxelInstanceLibraryMultiMeshItem" id="CloverItem"]
+generator = SubResource("CloverGen")
+mesh = ExtResource("11_clover")
+cast_shadow = 0
 
 [resource]
-_data = [0, 0, SubResource("GrassItem"), 3, SubResource("PineAItem"), 4, SubResource("PineBItem"), 5, SubResource("OakItem"), 6, SubResource("CedarItem")]
+_data = [
+0, 0, SubResource("GrassTallItem"),
+1, SubResource("GrassWispyItem"),
+2, SubResource("CloverItem"),
+3, SubResource("CommonTree1Item"),
+4, SubResource("CommonTree3Item"),
+5, SubResource("Pine1Item"),
+6, SubResource("Pine3Item"),
+9, SubResource("BushFlowersItem"),
+10, SubResource("FernItem"),
+]
