@@ -70,7 +70,7 @@ mesh = SubResource("Window")
 material_override = SubResource("WindowMat")
 
 [node name="StaticBody" type="StaticBody3D" parent="."]
-collision_layer = 1
+collision_layer = 2
 collision_mask = 0
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody"]
