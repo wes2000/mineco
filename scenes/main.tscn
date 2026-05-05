@@ -1,47 +1,47 @@
 [gd_scene format=3 uid="uid://bqaxg86e73bvu"]
 
 [ext_resource type="Environment" uid="uid://dugjdrp32e76d" path="res://scenes/environment.tres" id="1_o6xl0"]
-[ext_resource type="Material" path="res://scenes/terrain_material.tres" id="2_mat"]
+[ext_resource type="Material" uid="uid://bb55y7kn8rbvj" path="res://scenes/terrain_material.tres" id="2_mat"]
 [ext_resource type="VoxelGeneratorScript" path="res://scenes/island_generator.tres" id="3_gen"]
-[ext_resource type="Material" path="res://scenes/water_material.tres" id="3_jyhfs"]
+[ext_resource type="Material" uid="uid://c0bb1g111tpl8" path="res://scenes/water_material.tres" id="3_jyhfs"]
 [ext_resource type="VoxelInstanceLibrary" uid="uid://cjebi6i1m2ctk" path="res://scenes/nature_library.tres" id="4_85g3d"]
 [ext_resource type="PlaneMesh" path="res://scenes/water_mesh.tres" id="4_tbgi4"]
 [ext_resource type="PackedScene" uid="uid://c84g5elookjdj" path="res://scenes/player.tscn" id="5_player"]
 [ext_resource type="Script" uid="uid://bj5yq6juetkoi" path="res://scripts/spawn_gate.gd" id="6_gate"]
 [ext_resource type="Script" uid="uid://c6ix7x1gbhcuy" path="res://scripts/water_init.gd" id="6_tipki"]
 [ext_resource type="AudioStream" uid="uid://bo61ym5whvefn" path="res://assets/audio/wind_ambient.ogg" id="10_ya4ey"]
-[ext_resource type="Script" path="res://scripts/ore_generator.gd" id="13_oregen"]
-[ext_resource type="PackedScene" path="res://scenes/ore_deposits/stone_small.tscn" id="14_p1"]
-[ext_resource type="PackedScene" path="res://scenes/ore_deposits/stone_medium.tscn" id="15_p2"]
-[ext_resource type="PackedScene" path="res://scenes/ore_deposits/stone_large.tscn" id="16_p3"]
-[ext_resource type="PackedScene" path="res://scenes/ore_deposits/iron_small.tscn" id="17_p4"]
-[ext_resource type="PackedScene" path="res://scenes/ore_deposits/iron_large.tscn" id="18_p5"]
-[ext_resource type="PackedScene" path="res://scenes/ore_deposits/gold_small.tscn" id="19_p6"]
-[ext_resource type="PackedScene" path="res://scenes/ore_deposits/gold_large.tscn" id="20_p7"]
-[ext_resource type="PackedScene" path="res://scenes/surface_rock.tscn" id="21_p8"]
+[ext_resource type="Script" uid="uid://cn1t44j2e7ehq" path="res://scripts/ore_generator.gd" id="13_oregen"]
+[ext_resource type="PackedScene" uid="uid://c7hrirq76c837" path="res://scenes/ore_deposits/stone_small.tscn" id="14_p1"]
+[ext_resource type="PackedScene" uid="uid://c7hrirq755y37" path="res://scenes/ore_deposits/stone_medium.tscn" id="15_p2"]
+[ext_resource type="PackedScene" uid="uid://c7hrirq754237" path="res://scenes/ore_deposits/stone_large.tscn" id="16_p3"]
+[ext_resource type="PackedScene" uid="uid://c7hrirqw4c837" path="res://scenes/ore_deposits/iron_small.tscn" id="17_p4"]
+[ext_resource type="PackedScene" uid="uid://c7hrirqw34237" path="res://scenes/ore_deposits/iron_large.tscn" id="18_p5"]
+[ext_resource type="PackedScene" uid="uid://c7hrirqupc837" path="res://scenes/ore_deposits/gold_small.tscn" id="19_p6"]
+[ext_resource type="PackedScene" uid="uid://c7hrirquo4237" path="res://scenes/ore_deposits/gold_large.tscn" id="20_p7"]
+[ext_resource type="PackedScene" uid="uid://dggxsb7xgocdg" path="res://scenes/surface_rock.tscn" id="21_p8"]
 [ext_resource type="PackedScene" path="res://scenes/factory/machine_ui.tscn" id="24_mui"]
 [ext_resource type="PackedScene" path="res://scenes/pause_menu.tscn" id="26_menu"]
 [ext_resource type="PackedScene" path="res://scenes/inventory_overlay.tscn" id="27_inv"]
 [ext_resource type="PackedScene" path="res://scenes/bottom_hud.tscn" id="28_bhud"]
-[ext_resource type="Script" path="res://scripts/bird_spawner.gd" id="29_birds"]
-[ext_resource type="Script" path="res://scripts/town_spawner.gd" id="31_town"]
-[ext_resource type="Script" path="res://scripts/island_encounters.gd" id="46_islenc"]
+[ext_resource type="Script" uid="uid://csxbm4u250byo" path="res://scripts/bird_spawner.gd" id="29_birds"]
 [ext_resource type="PackedScene" path="res://scenes/pickup_feed.tscn" id="30_feed"]
+[ext_resource type="Script" uid="uid://dqfxbb22qoxy4" path="res://scripts/town_spawner.gd" id="31_town"]
 [ext_resource type="PackedScene" path="res://scenes/minimap_widget.tscn" id="32_gold"]
-[ext_resource type="PackedScene" path="res://scenes/map_popup.tscn" id="37_map"]
-[ext_resource type="PackedScene" path="res://scenes/boat_vendor_ui.tscn" id="38_boatvend"]
-[ext_resource type="PackedScene" path="res://scenes/tachometer.tscn" id="39_tach"]
 [ext_resource type="PackedScene" path="res://scenes/vendor_ui.tscn" id="33_vend"]
 [ext_resource type="PackedScene" path="res://scenes/scanner_overlay.tscn" id="34_scan"]
 [ext_resource type="PackedScene" path="res://scenes/contract_ui.tscn" id="35_contract"]
 [ext_resource type="PackedScene" path="res://scenes/contracts_overlay.tscn" id="36_cover"]
+[ext_resource type="PackedScene" path="res://scenes/map_popup.tscn" id="37_map"]
+[ext_resource type="PackedScene" path="res://scenes/boat_vendor_ui.tscn" id="38_boatvend"]
+[ext_resource type="PackedScene" path="res://scenes/tachometer.tscn" id="39_tach"]
 [ext_resource type="PackedScene" path="res://scenes/claim_vendor_ui.tscn" id="40_claimui"]
 [ext_resource type="PackedScene" path="res://scenes/item_shop_ui.tscn" id="41_shopui"]
 [ext_resource type="PackedScene" path="res://scenes/passive_tree_ui.tscn" id="42_perksui"]
-[ext_resource type="PackedScene" path="res://scenes/company_panel_ui.tscn" id="47_companyui"]
 [ext_resource type="PackedScene" path="res://scenes/build_catalog_ui.tscn" id="43_catalogui"]
 [ext_resource type="PackedScene" path="res://scenes/storage_crate_ui.tscn" id="44_crateui"]
 [ext_resource type="PackedScene" path="res://scenes/workbench_ui.tscn" id="45_workbenchui"]
+[ext_resource type="Script" uid="uid://c4i7le1bh035o" path="res://scripts/island_encounters.gd" id="46_islenc"]
+[ext_resource type="PackedScene" path="res://scenes/company_panel_ui.tscn" id="47_companyui"]
 
 [sub_resource type="VoxelMesherTransvoxel" id="Mesher_1"]
 
@@ -89,61 +89,85 @@ autoplay = true
 
 [node name="HUD" type="CanvasLayer" parent="." unique_id=911672643]
 
-[node name="DamageFlash" type="ColorRect" parent="HUD"]
+[node name="DamageFlash" type="ColorRect" parent="HUD" unique_id=1269498560]
+modulate = Color(1, 1, 1, 0)
+anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-color = Color(0.85, 0.10, 0.10, 1)
-modulate = Color(1, 1, 1, 0)
 mouse_filter = 2
+color = Color(0.85, 0.1, 0.1, 1)
 
-[node name="MachineUI" parent="HUD" instance=ExtResource("24_mui")]
+[node name="MachineUI" parent="HUD" unique_id=533428064 instance=ExtResource("24_mui")]
+layout_mode = 3
 
-[node name="BottomHud" parent="HUD" instance=ExtResource("28_bhud")]
+[node name="BottomHud" parent="HUD" unique_id=1021778540 instance=ExtResource("28_bhud")]
+layout_mode = 3
 
-[node name="PickupFeed" parent="HUD" instance=ExtResource("30_feed")]
+[node name="PickupFeed" parent="HUD" unique_id=1459545605 instance=ExtResource("30_feed")]
+layout_mode = 3
 
-[node name="MinimapWidget" parent="HUD" instance=ExtResource("32_gold")]
+[node name="MinimapWidget" parent="HUD" unique_id=222691871 instance=ExtResource("32_gold")]
+layout_mode = 3
 
-[node name="MapPopup" parent="HUD" instance=ExtResource("37_map")]
+[node name="MapPopup" parent="HUD" unique_id=538261747 instance=ExtResource("37_map")]
+layout_mode = 3
 
-[node name="BoatVendorUI" parent="HUD" instance=ExtResource("38_boatvend")]
+[node name="BoatVendorUI" parent="HUD" unique_id=2035555930 instance=ExtResource("38_boatvend")]
+layout_mode = 3
 
-[node name="Tachometer" parent="HUD" instance=ExtResource("39_tach")]
+[node name="Tachometer" parent="HUD" unique_id=478321406 instance=ExtResource("39_tach")]
+layout_mode = 3
 
-[node name="VendorUI" parent="HUD" instance=ExtResource("33_vend")]
+[node name="VendorUI" parent="HUD" unique_id=1969499157 instance=ExtResource("33_vend")]
+layout_mode = 3
 
-[node name="ScannerOverlay" parent="HUD" instance=ExtResource("34_scan")]
+[node name="ScannerOverlay" parent="HUD" unique_id=630536290 instance=ExtResource("34_scan")]
+layout_mode = 3
 
-[node name="ContractUI" parent="HUD" instance=ExtResource("35_contract")]
+[node name="ContractUI" parent="HUD" unique_id=1934840506 instance=ExtResource("35_contract")]
+layout_mode = 3
 
-[node name="ContractsOverlay" parent="HUD" instance=ExtResource("36_cover")]
+[node name="ContractsOverlay" parent="HUD" unique_id=1229296488 instance=ExtResource("36_cover")]
+layout_mode = 3
+anchors_preset = 0
 
-[node name="ClaimVendorUI" parent="HUD" instance=ExtResource("40_claimui")]
+[node name="ClaimVendorUI" parent="HUD" unique_id=1373983134 instance=ExtResource("40_claimui")]
+layout_mode = 3
 
-[node name="ItemShopUI" parent="HUD" instance=ExtResource("41_shopui")]
+[node name="ItemShopUI" parent="HUD" unique_id=15643336 instance=ExtResource("41_shopui")]
+layout_mode = 3
 
-[node name="PassiveTreeUI" parent="HUD" instance=ExtResource("42_perksui")]
+[node name="PassiveTreeUI" parent="HUD" unique_id=202537693 instance=ExtResource("42_perksui")]
+layout_mode = 3
 
-[node name="CompanyPanelUI" parent="HUD" instance=ExtResource("47_companyui")]
+[node name="CompanyPanelUI" parent="HUD" unique_id=1076919496 instance=ExtResource("47_companyui")]
+layout_mode = 3
 
-[node name="BuildCatalogUI" parent="HUD" instance=ExtResource("43_catalogui")]
+[node name="BuildCatalogUI" parent="HUD" unique_id=584686742 instance=ExtResource("43_catalogui")]
+layout_mode = 3
+anchors_preset = 15
 
-[node name="StorageCrateUI" parent="HUD" instance=ExtResource("44_crateui")]
+[node name="StorageCrateUI" parent="HUD" unique_id=260821820 instance=ExtResource("44_crateui")]
+layout_mode = 3
+anchors_preset = 15
 
-[node name="WorkbenchUI" parent="HUD" instance=ExtResource("45_workbenchui")]
+[node name="WorkbenchUI" parent="HUD" unique_id=301049135 instance=ExtResource("45_workbenchui")]
+layout_mode = 3
+anchors_preset = 15
 
-[node name="PauseMenu" parent="HUD" instance=ExtResource("26_menu")]
+[node name="PauseMenu" parent="HUD" unique_id=1191369157 instance=ExtResource("26_menu")]
+layout_mode = 3
 
-[node name="InventoryOverlay" parent="HUD" instance=ExtResource("27_inv")]
+[node name="InventoryOverlay" parent="HUD" unique_id=2138763995 instance=ExtResource("27_inv")]
+layout_mode = 3
 
-[node name="BirdSpawner" type="Node" parent="."]
+[node name="BirdSpawner" type="Node" parent="." unique_id=524115789]
 script = ExtResource("29_birds")
 
-[node name="TownSpawner" type="Node" parent="."]
+[node name="TownSpawner" type="Node" parent="." unique_id=1120951539]
 script = ExtResource("31_town")
-spawn_gate_path = NodePath("../SpawnGate")
 
-[node name="OreGenerator" type="Node3D" parent="."]
+[node name="OreGenerator" type="Node3D" parent="." unique_id=765404926]
 script = ExtResource("13_oregen")
 stone_small_scn = ExtResource("14_p1")
 stone_medium_scn = ExtResource("15_p2")
@@ -155,7 +179,7 @@ gold_large_scn = ExtResource("20_p7")
 surface_rock_scn = ExtResource("21_p8")
 voxel_terrain_path = NodePath("../VoxelTerrain")
 
-[node name="IslandEncounters" type="Node" parent="."]
+[node name="IslandEncounters" type="Node" parent="." unique_id=1181349572]
 script = ExtResource("46_islenc")
 spawn_gate_path = NodePath("../SpawnGate")
 voxel_terrain_path = NodePath("../VoxelTerrain")

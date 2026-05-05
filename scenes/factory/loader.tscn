@@ -1,28 +1,8 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/factory/loader.gd" id="1"]
 [ext_resource type="AudioStream" path="res://assets/audio/mine_thump.ogg" id="AudioClick"]
-
-[sub_resource type="BoxMesh" id="Body"]
-size = Vector3(1.8, 1.5, 1.8)
-
-[sub_resource type="BoxMesh" id="Hopper"]
-size = Vector3(1.4, 0.2, 1.4)
-
-[sub_resource type="BoxMesh" id="Port"]
-size = Vector3(0.5, 0.4, 0.3)
-
-[sub_resource type="StandardMaterial3D" id="Mat"]
-albedo_color = Color(0.25, 0.4, 0.6, 1)
-emission_enabled = true
-emission = Color(0.05, 0.15, 0.25, 1)
-emission_energy_multiplier = 0.0
-
-[sub_resource type="StandardMaterial3D" id="Hop"]
-albedo_color = Color(0.15, 0.2, 0.3, 1)
-
-[sub_resource type="StandardMaterial3D" id="PortMat"]
-albedo_color = Color(0.6, 0.5, 0.2, 1)
+[ext_resource type="PackedScene" path="res://assets/models/factory_loader.glb" id="3_glb"]
 
 [sub_resource type="BoxShape3D" id="ColliderShape"]
 size = Vector3(2.00, 1.50, 2.00)
@@ -31,20 +11,8 @@ size = Vector3(2.00, 1.50, 2.00)
 script = ExtResource("1")
 footprint_size = Vector2i(2, 2)
 
-[node name="Body" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0.75, 1)
-mesh = SubResource("Body")
-material_override = SubResource("Mat")
-
-[node name="Hopper" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1.6, 1)
-mesh = SubResource("Hopper")
-material_override = SubResource("Hop")
-
-[node name="OutputPort" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0.5, 1.95)
-mesh = SubResource("Port")
-material_override = SubResource("PortMat")
+[node name="Model" parent="." instance=ExtResource("3_glb")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1)
 
 [node name="HumLoop" type="AudioStreamPlayer3D" parent="."]
 autoplay = false
@@ -64,4 +32,3 @@ collision_mask = 0
 [node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.00, 0.75, 1.00)
 shape = SubResource("ColliderShape")
-

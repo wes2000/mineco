@@ -1,34 +1,8 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/factory/crusher.gd" id="1"]
 [ext_resource type="AudioStream" path="res://assets/audio/mine_thump.ogg" id="AudioClick"]
-
-[sub_resource type="BoxMesh" id="Body"]
-size = Vector3(1.8, 1.6, 1.8)
-
-[sub_resource type="CylinderMesh" id="Grinder"]
-top_radius = 0.7
-bottom_radius = 0.4
-height = 0.7
-
-[sub_resource type="BoxMesh" id="Port"]
-size = Vector3(0.5, 0.4, 0.3)
-
-[sub_resource type="StandardMaterial3D" id="Mat"]
-albedo_color = Color(0.32, 0.34, 0.40, 1)
-metallic = 0.4
-roughness = 0.7
-emission_enabled = true
-emission = Color(0.30, 0.20, 0.10, 1)
-emission_energy_multiplier = 0.0
-
-[sub_resource type="StandardMaterial3D" id="GrinderMat"]
-albedo_color = Color(0.55, 0.45, 0.20, 1)
-metallic = 0.7
-roughness = 0.4
-
-[sub_resource type="StandardMaterial3D" id="PortMat"]
-albedo_color = Color(0.6, 0.5, 0.2, 1)
+[ext_resource type="PackedScene" path="res://assets/models/factory_crusher.glb" id="3_glb"]
 
 [sub_resource type="BoxShape3D" id="ColliderShape"]
 size = Vector3(2.0, 2.0, 2.0)
@@ -37,25 +11,8 @@ size = Vector3(2.0, 2.0, 2.0)
 script = ExtResource("1")
 footprint_size = Vector2i(2, 2)
 
-[node name="Body" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0.8, 1)
-mesh = SubResource("Body")
-material_override = SubResource("Mat")
-
-[node name="Grinder" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1.95, 1)
-mesh = SubResource("Grinder")
-material_override = SubResource("GrinderMat")
-
-[node name="InputPort" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0.5, 0.05)
-mesh = SubResource("Port")
-material_override = SubResource("PortMat")
-
-[node name="OutputPort" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0.5, 1.95)
-mesh = SubResource("Port")
-material_override = SubResource("PortMat")
+[node name="Model" parent="." instance=ExtResource("3_glb")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1)
 
 [node name="HumLoop" type="AudioStreamPlayer3D" parent="."]
 autoplay = false

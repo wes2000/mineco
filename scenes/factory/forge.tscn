@@ -1,31 +1,8 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/factory/forge.gd" id="1"]
 [ext_resource type="AudioStream" path="res://assets/audio/mine_thump.ogg" id="AudioClick"]
-
-[sub_resource type="BoxMesh" id="Body"]
-size = Vector3(2.8, 2.5, 2.8)
-
-[sub_resource type="BoxMesh" id="Port"]
-size = Vector3(0.6, 0.5, 0.3)
-
-[sub_resource type="BoxMesh" id="Fire"]
-size = Vector3(2.0, 1.0, 2.0)
-
-[sub_resource type="StandardMaterial3D" id="Mat"]
-albedo_color = Color(0.18, 0.18, 0.2, 1)
-emission_enabled = true
-emission = Color(0.5, 0.2, 0.1, 1)
-emission_energy_multiplier = 0.0
-
-[sub_resource type="StandardMaterial3D" id="PortMat"]
-albedo_color = Color(0.55, 0.45, 0.2, 1)
-
-[sub_resource type="StandardMaterial3D" id="FireMat"]
-albedo_color = Color(1.0, 0.45, 0.1, 1)
-emission_enabled = true
-emission = Color(1.0, 0.45, 0.1, 1)
-emission_energy_multiplier = 0.0
+[ext_resource type="PackedScene" path="res://assets/models/factory_forge.glb" id="3_glb"]
 
 [sub_resource type="BoxShape3D" id="ColliderShape"]
 size = Vector3(3.00, 2.50, 3.00)
@@ -34,25 +11,8 @@ size = Vector3(3.00, 2.50, 3.00)
 script = ExtResource("1")
 footprint_size = Vector2i(3, 3)
 
-[node name="Body" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 1.25, 1.5)
-mesh = SubResource("Body")
-material_override = SubResource("Mat")
-
-[node name="InputPort" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 0.6, 0.05)
-mesh = SubResource("Port")
-material_override = SubResource("PortMat")
-
-[node name="OutputPort" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 0.6, 2.95)
-mesh = SubResource("Port")
-material_override = SubResource("PortMat")
-
-[node name="Fire" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 0.7, 1.5)
-mesh = SubResource("Fire")
-material_override = SubResource("FireMat")
+[node name="Model" parent="." instance=ExtResource("3_glb")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 0, 1.5)
 
 [node name="HumLoop" type="AudioStreamPlayer3D" parent="."]
 autoplay = false
@@ -72,4 +32,3 @@ collision_mask = 0
 [node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.50, 1.25, 1.50)
 shape = SubResource("ColliderShape")
-

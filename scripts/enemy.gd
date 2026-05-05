@@ -60,22 +60,27 @@ func _ready() -> void:
 	_apply_visibility_range_recursive(self)
 
 func _capture_flash_materials() -> void:
-	# Walk MeshRoot, duplicate every StandardMaterial3D material_override so
-	# the hit-flash can mutate albedo without leaking across enemy instances
-	# (scene-level material sub-resources are shared otherwise). Cache each
-	# original albedo so the tween can return to the right base color.
+	# Walk MeshRoot recursively (GLBs nest meshes inside Node3D wrappers),
+	# duplicate every StandardMaterial3D so the hit-flash can mutate albedo
+	# without leaking across enemy instances. If a mesh has no material_override
+	# we read its first surface material instead.
 	if _mesh_root == null:
 		return
-	for child: Node in _mesh_root.get_children():
-		if not (child is MeshInstance3D):
-			continue
-		var mi: MeshInstance3D = child
-		if not (mi.material_override is StandardMaterial3D):
-			continue
-		var dup: StandardMaterial3D = (mi.material_override as StandardMaterial3D).duplicate() as StandardMaterial3D
-		mi.material_override = dup
-		_flash_materials.append(dup)
-		_flash_base_colors.append(dup.albedo_color)
+	_collect_flash_materials_recursive(_mesh_root)
+
+func _collect_flash_materials_recursive(node: Node) -> void:
+	if node is MeshInstance3D:
+		var mi: MeshInstance3D = node
+		var src: Material = mi.material_override
+		if src == null:
+			src = mi.get_active_material(0)
+		if src is StandardMaterial3D:
+			var dup: StandardMaterial3D = (src as StandardMaterial3D).duplicate() as StandardMaterial3D
+			mi.material_override = dup
+			_flash_materials.append(dup)
+			_flash_base_colors.append(dup.albedo_color)
+	for c: Node in node.get_children():
+		_collect_flash_materials_recursive(c)
 
 func configure(opts: Dictionary) -> void:
 	# Called by IslandEncounters before _ready (we set vars; _ready then reads
