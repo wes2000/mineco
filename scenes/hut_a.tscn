@@ -1,20 +1,20 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene format=3 uid="uid://ummuummwsu46"]
 
-[ext_resource type="Script" path="res://scripts/distant_culler.gd" id="1_culler"]
-[ext_resource type="PackedScene" path="res://assets/models/hut_a.glb" id="2_glb"]
+[ext_resource type="Script" uid="uid://3gs5utrk6ouj" path="res://scripts/distant_culler.gd" id="1_culler"]
+[ext_resource type="PackedScene" uid="uid://csrvyvqn2swjx" path="res://assets/models/hut_a.glb" id="2_glb"]
 
 [sub_resource type="BoxShape3D" id="BodyShape"]
-size = Vector3(3.2, 2.6, 3.2)
+size = Vector3(20.25, 21.35, 24.9)
 
-[node name="Hut" type="Node3D"]
+[node name="Hut" type="Node3D" unique_id=1776226710]
 script = ExtResource("1_culler")
 
-[node name="Model" parent="." instance=ExtResource("2_glb")]
+[node name="Model" parent="." unique_id=53936792 instance=ExtResource("2_glb")]
+transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0.1, 1.545, 0)
 
-[node name="StaticBody" type="StaticBody3D" parent="."]
-collision_layer = 1
+[node name="StaticBody" type="StaticBody3D" parent="." unique_id=1240176509]
 collision_mask = 0
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.3, 0)
+[node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody" unique_id=461994369]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.6, 9.345, 0.045)
 shape = SubResource("BodyShape")
