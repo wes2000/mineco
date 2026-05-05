@@ -2,10 +2,10 @@
 
 [ext_resource type="Material" uid="uid://djw3fovf6yplh" path="res://assets/nature/grass_tuft_mat.tres" id="1_y5u7t"]
 [ext_resource type="ArrayMesh" uid="uid://bgkob737oq6q0" path="res://assets/nature/grass_tuft.mesh.tres" id="2_gxdfq"]
-[ext_resource type="Material" uid="uid://b8ipu2rycjmcl" path="res://assets/nature/tree_pine_mat.tres" id="7_bxdlk"]
-[ext_resource type="ArrayMesh" uid="uid://djrcro2u6xolk" path="res://assets/nature/tree_pine.mesh.tres" id="8_3ikvv"]
-[ext_resource type="Material" uid="uid://mq42c4vk6l5l" path="res://assets/nature/tree_oak_mat.tres" id="9_xgu08"]
-[ext_resource type="ArrayMesh" uid="uid://b6vokx724jxwx" path="res://assets/nature/tree_oak.mesh.tres" id="10_ouu1u"]
+[ext_resource type="ArrayMesh" path="res://assets/nature/tree_pine_a.mesh.tres" id="3_pinea"]
+[ext_resource type="ArrayMesh" path="res://assets/nature/tree_pine_b.mesh.tres" id="4_pineb"]
+[ext_resource type="ArrayMesh" path="res://assets/nature/tree_oak2.mesh.tres" id="5_oak"]
+[ext_resource type="ArrayMesh" path="res://assets/nature/tree_cedar.mesh.tres" id="6_cedar"]
 
 [sub_resource type="FastNoiseLite" id="GrassClumpNoise"]
 frequency = 0.04
@@ -22,37 +22,59 @@ noise = SubResource("GrassClumpNoise")
 noise_dimension = 0
 noise_on_scale = 0.5
 
-[sub_resource type="VoxelInstanceLibraryMultiMeshItem" id="VoxelInstanceLibraryMultiMeshItem_443xy"]
+[sub_resource type="VoxelInstanceLibraryMultiMeshItem" id="GrassItem"]
 generator = SubResource("VoxelInstanceGenerator_3vi27")
 mesh = ExtResource("2_gxdfq")
 material_override = ExtResource("1_y5u7t")
 cast_shadow = 0
 
-[sub_resource type="VoxelInstanceGenerator" id="VoxelInstanceGenerator_mk34c"]
-density = 0.04
-min_scale = 2.5
-max_scale = 4.0
+[sub_resource type="VoxelInstanceGenerator" id="PineAGen"]
+density = 0.025
+min_scale = 2.0
+max_scale = 3.5
 max_slope_degrees = 15.0
 min_height = 4.0
 max_height = 99.0
 
-[sub_resource type="VoxelInstanceLibraryMultiMeshItem" id="VoxelInstanceLibraryMultiMeshItem_8xi82"]
-generator = SubResource("VoxelInstanceGenerator_mk34c")
-mesh = ExtResource("8_3ikvv")
-material_override = ExtResource("7_bxdlk")
+[sub_resource type="VoxelInstanceLibraryMultiMeshItem" id="PineAItem"]
+generator = SubResource("PineAGen")
+mesh = ExtResource("3_pinea")
 
-[sub_resource type="VoxelInstanceGenerator" id="VoxelInstanceGenerator_rjw5w"]
-density = 0.03
-min_scale = 2.5
-max_scale = 4.0
+[sub_resource type="VoxelInstanceGenerator" id="PineBGen"]
+density = 0.020
+min_scale = 2.0
+max_scale = 3.5
+max_slope_degrees = 15.0
+min_height = 4.0
+max_height = 99.0
+
+[sub_resource type="VoxelInstanceLibraryMultiMeshItem" id="PineBItem"]
+generator = SubResource("PineBGen")
+mesh = ExtResource("4_pineb")
+
+[sub_resource type="VoxelInstanceGenerator" id="OakGen"]
+density = 0.020
+min_scale = 2.0
+max_scale = 3.5
 max_slope_degrees = 12.0
 min_height = 5.0
 max_height = 99.0
 
-[sub_resource type="VoxelInstanceLibraryMultiMeshItem" id="VoxelInstanceLibraryMultiMeshItem_ovy0f"]
-generator = SubResource("VoxelInstanceGenerator_rjw5w")
-mesh = ExtResource("10_ouu1u")
-material_override = ExtResource("9_xgu08")
+[sub_resource type="VoxelInstanceLibraryMultiMeshItem" id="OakItem"]
+generator = SubResource("OakGen")
+mesh = ExtResource("5_oak")
+
+[sub_resource type="VoxelInstanceGenerator" id="CedarGen"]
+density = 0.015
+min_scale = 2.0
+max_scale = 3.5
+max_slope_degrees = 12.0
+min_height = 5.0
+max_height = 99.0
+
+[sub_resource type="VoxelInstanceLibraryMultiMeshItem" id="CedarItem"]
+generator = SubResource("CedarGen")
+mesh = ExtResource("6_cedar")
 
 [resource]
-_data = [0, 0, SubResource("VoxelInstanceLibraryMultiMeshItem_443xy"), 3, SubResource("VoxelInstanceLibraryMultiMeshItem_8xi82"), 4, SubResource("VoxelInstanceLibraryMultiMeshItem_ovy0f")]
+_data = [0, 0, SubResource("GrassItem"), 3, SubResource("PineAItem"), 4, SubResource("PineBItem"), 5, SubResource("OakItem"), 6, SubResource("CedarItem")]
