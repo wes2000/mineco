@@ -42,6 +42,10 @@ const CRUSHER_TICKS: Dictionary = {
 	MaterialId.GOLD_ORE: 80,
 }
 
+# Recipe ratio: smelter and forge both consume this many input items per output.
+# Iron example: 3 iron ore -> 1 iron ingot (smelter), 3 iron ingots -> 1 iron bar (forge).
+const RECIPE_INPUT_PER_OUTPUT: int = 3
+
 # Recipe maps
 const SMELT_RECIPE: Dictionary = {
 	MaterialId.STONE: MaterialId.BRICK,

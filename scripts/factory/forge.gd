@@ -71,7 +71,8 @@ func tick(_tick_index: int) -> void:
 		queue_changed.emit(QUEUE_KIND_INPUT, input_queue.size())
 		processing_buffer.append(head)
 		processing_changed.emit(processing_buffer.size())
-	if processing_buffer.is_empty():
+	# Need a full batch in the buffer before a cycle can run.
+	if processing_buffer.size() < MaterialDefs.RECIPE_INPUT_PER_OUTPUT:
 		status = Status.IDLE
 		return
 	if not output_queue_can_accept():
@@ -85,7 +86,9 @@ func tick(_tick_index: int) -> void:
 		_cycle_remaining_ticks -= 1
 		status = Status.WORKING
 		return
-	processing_buffer.pop_front()
+	# Cycle complete — consume a full batch, emit one output.
+	for _i: int in MaterialDefs.RECIPE_INPUT_PER_OUTPUT:
+		processing_buffer.pop_front()
 	processing_changed.emit(processing_buffer.size())
 	var out_material: int = MaterialDefs.FORGE_RECIPE[_active_input_material]
 	output_queue_push(out_material)

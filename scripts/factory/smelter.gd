@@ -69,8 +69,9 @@ func tick(_tick_index: int) -> void:
 		queue_changed.emit(QUEUE_KIND_INPUT, input_queue.size())
 		processing_buffer.append(head)
 		processing_changed.emit(processing_buffer.size())
-	# Step 2: if processing buffer is empty, nothing to do
-	if processing_buffer.is_empty():
+	# Step 2: need a full RECIPE_INPUT_PER_OUTPUT batch in the buffer to run a
+	# cycle. Smaller stacks just sit there waiting for more input.
+	if processing_buffer.size() < MaterialDefs.RECIPE_INPUT_PER_OUTPUT:
 		status = Status.IDLE
 		return
 	# Step 3: gate on output queue space
@@ -87,8 +88,10 @@ func tick(_tick_index: int) -> void:
 		_cycle_remaining_ticks -= 1
 		status = Status.WORKING
 		return
-	# Step 6: cycle complete — pop from buffer, push result to output
-	processing_buffer.pop_front()
+	# Step 6: cycle complete — pop a full batch of RECIPE_INPUT_PER_OUTPUT
+	# items from the buffer and emit one result.
+	for _i: int in MaterialDefs.RECIPE_INPUT_PER_OUTPUT:
+		processing_buffer.pop_front()
 	processing_changed.emit(processing_buffer.size())
 	var out_material: int = MaterialDefs.SMELT_RECIPE[_active_input_material]
 	output_queue_push(out_material)
