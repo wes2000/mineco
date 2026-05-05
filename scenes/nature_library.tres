@@ -30,8 +30,8 @@ cast_shadow = 0
 
 [sub_resource type="VoxelInstanceGenerator" id="PineAGen"]
 density = 0.025
-min_scale = 2.0
-max_scale = 3.5
+min_scale = 6.0
+max_scale = 10.5
 max_slope_degrees = 15.0
 min_height = 4.0
 max_height = 99.0
@@ -41,9 +41,9 @@ generator = SubResource("PineAGen")
 mesh = ExtResource("3_pinea")
 
 [sub_resource type="VoxelInstanceGenerator" id="PineBGen"]
-density = 0.020
-min_scale = 2.0
-max_scale = 3.5
+density = 0.02
+min_scale = 6.0
+max_scale = 10.5
 max_slope_degrees = 15.0
 min_height = 4.0
 max_height = 99.0
@@ -53,9 +53,9 @@ generator = SubResource("PineBGen")
 mesh = ExtResource("4_pineb")
 
 [sub_resource type="VoxelInstanceGenerator" id="OakGen"]
-density = 0.020
-min_scale = 2.0
-max_scale = 3.5
+density = 0.02
+min_scale = 6.0
+max_scale = 10.5
 max_slope_degrees = 12.0
 min_height = 5.0
 max_height = 99.0
@@ -66,8 +66,8 @@ mesh = ExtResource("5_oak")
 
 [sub_resource type="VoxelInstanceGenerator" id="CedarGen"]
 density = 0.015
-min_scale = 2.0
-max_scale = 3.5
+min_scale = 6.0
+max_scale = 10.5
 max_slope_degrees = 12.0
 min_height = 5.0
 max_height = 99.0
