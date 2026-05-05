@@ -29,7 +29,12 @@ func _ready() -> void:
 			push_warning("extract_tree_meshes: no MeshInstance3D in %s" % glb_path)
 			inst.queue_free()
 			continue
-		var mesh: Mesh = mi.mesh.duplicate(true) as Mesh
+		var src_mesh: Mesh = mi.mesh
+		# Bake the GLB pivot up so the mesh's AABB bottom sits at y=0.
+		# VoxelInstanceLibraryMultiMeshItem has no per-item transform offset,
+		# so trees authored centered on the origin would render half buried.
+		var lift: float = -src_mesh.get_aabb().position.y
+		var mesh: ArrayMesh = _lift_mesh(src_mesh, lift)
 		var err: int = ResourceSaver.save(mesh, entry["mesh_path"])
 		if err != OK:
 			push_error("extract_tree_meshes: save failed for %s (err %d)" % [entry["mesh_path"], err])
@@ -38,6 +43,27 @@ func _ready() -> void:
 		inst.queue_free()
 	print("extract_tree_meshes: done")
 	get_tree().quit()
+
+# Returns a copy of `src` with every vertex shifted by (0, lift, 0). Each
+# surface keeps its original primitive/format/material — we only translate
+# vertex positions so the saved .tres is a drop-in replacement.
+func _lift_mesh(src: Mesh, lift: float) -> ArrayMesh:
+	var out: ArrayMesh = ArrayMesh.new()
+	for s: int in src.get_surface_count():
+		var arrays: Array = src.surface_get_arrays(s)
+		var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		var lifted: PackedVector3Array = PackedVector3Array()
+		lifted.resize(verts.size())
+		for i: int in verts.size():
+			var v: Vector3 = verts[i]
+			lifted[i] = Vector3(v.x, v.y + lift, v.z)
+		arrays[Mesh.ARRAY_VERTEX] = lifted
+		var primitive: int = src.surface_get_primitive_type(s)
+		out.add_surface_from_arrays(primitive, arrays)
+		var mat: Material = src.surface_get_material(s)
+		if mat != null:
+			out.surface_set_material(s, mat)
+	return out
 
 func _find_mesh_instance(node: Node) -> MeshInstance3D:
 	if node is MeshInstance3D:
