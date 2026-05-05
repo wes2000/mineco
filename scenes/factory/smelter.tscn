@@ -1,34 +1,31 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene format=3 uid="uid://bvvej7odp11ns"]
 
-[ext_resource type="Script" path="res://scripts/factory/smelter.gd" id="1"]
-[ext_resource type="AudioStream" path="res://assets/audio/mine_thump.ogg" id="AudioClick"]
-[ext_resource type="PackedScene" path="res://assets/models/factory_smelter.glb" id="3_glb"]
+[ext_resource type="Script" uid="uid://j2xfven7muyo" path="res://scripts/factory/smelter.gd" id="1"]
+[ext_resource type="PackedScene" uid="uid://7jtkkv5xcx21" path="res://assets/models/factory_smelter.glb" id="3_glb"]
+[ext_resource type="AudioStream" uid="uid://cc0dt2jgnu637" path="res://assets/audio/mine_thump.ogg" id="AudioClick"]
 
 [sub_resource type="BoxShape3D" id="ColliderShape"]
-size = Vector3(2.00, 2.00, 2.00)
+size = Vector3(2, 2, 2)
 
-[node name="Smelter" type="Node3D"]
+[node name="Smelter" type="Node3D" unique_id=1787674105]
 script = ExtResource("1")
-footprint_size = Vector2i(2, 2)
 
-[node name="Model" parent="." instance=ExtResource("3_glb")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1)
+[node name="Model" parent="." unique_id=1092012412 instance=ExtResource("3_glb")]
+transform = Transform3D(2.75, 0, 0, 0, 2.75, 0, 0, 0, 2.75, 1, 0.45, 1)
 
-[node name="HumLoop" type="AudioStreamPlayer3D" parent="."]
-autoplay = false
+[node name="HumLoop" type="AudioStreamPlayer3D" parent="." unique_id=136534381]
 volume_db = -11.0
 max_distance = 20.0
 
-[node name="EmitClick" type="AudioStreamPlayer3D" parent="."]
+[node name="EmitClick" type="AudioStreamPlayer3D" parent="." unique_id=390613814]
 stream = ExtResource("AudioClick")
-autoplay = false
 volume_db = -11.0
 max_distance = 20.0
 
-[node name="StaticBody" type="StaticBody3D" parent="."]
+[node name="StaticBody" type="StaticBody3D" parent="." unique_id=1600976484]
 collision_layer = 4
 collision_mask = 0
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.00, 1.00, 1.00)
+[node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody" unique_id=1420383142]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1)
 shape = SubResource("ColliderShape")
