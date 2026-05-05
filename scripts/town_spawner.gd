@@ -61,26 +61,43 @@ func _spawn() -> void:
 	# Give distant chunks a beat to stream in past the player chunk that triggered
 	# world_ready — the spawner needs ground at points up to ~17m away.
 	await get_tree().create_timer(1.5).timeout
+	# Sample EVERY ground point we'll need — NPCs, dummy, dock, dockmaster — BEFORE
+	# spawning huts. The hut StaticBodies have ~22m-tall BoxShape3Ds on collision
+	# layer 1, and several NPC offsets sit inside those footprints. If we sample
+	# after huts spawn, the downward ground ray hits the hut roof and the NPC ends
+	# up parked tens of meters in the air.
+	var hut_ground_y: Array[float] = []
+	for h_idx: int in HUT_OFFSETS.size():
+		hut_ground_y.append(await _find_max_ground_y_in_footprint(HUT_OFFSETS[h_idx].x, HUT_OFFSETS[h_idx].y))
+	var npc_ground_y: Array[float] = []
+	for i: int in NPC_OFFSETS.size():
+		npc_ground_y.append(await _find_ground_y_robust(NPC_OFFSETS[i].x, NPC_OFFSETS[i].y))
+	var dummy_spot: Vector2 = NPC_OFFSETS[ITEM_SHOP_INDEX] + Vector2(2.5, 1.5)
+	var dummy_ground_y: float = await _find_ground_y_robust(dummy_spot.x, dummy_spot.y)
+	var coast_z: float = 0.0
+	for r: int in range(40, 180, 4):
+		var y: float = await _find_ground_y_robust(0.0, float(r))
+		if y < 0.6:
+			coast_z = float(r) - 4.0
+			break
+	if coast_z < 1.0:
+		coast_z = 130.0
+	var dock_land_y: float = await _find_ground_y_robust(0.0, coast_z)
+	# Now spawn huts using the cached ground samples.
 	for h_idx: int in HUT_OFFSETS.size():
 		var offset: Vector2 = HUT_OFFSETS[h_idx]
-		# Cycle through the hut variants so the cluster doesn't read as four
-		# copies of the same building. Falls back to hut_scene if the variant
-		# array is empty.
 		var packed: PackedScene = hut_scene
 		if hut_variants.size() > 0:
 			packed = hut_variants[h_idx % hut_variants.size()]
 		var hut: Node3D = packed.instantiate() as Node3D
 		get_tree().current_scene.add_child(hut)
-		var ground_y: float = await _find_max_ground_y_in_footprint(offset.x, offset.y)
-		hut.global_position = Vector3(offset.x, ground_y - HUT_SINK, offset.y)
+		hut.global_position = Vector3(offset.x, hut_ground_y[h_idx] - HUT_SINK, offset.y)
 		hut.rotation.y = randf_range(0.0, TAU)
-	_spawn_dock_and_boat()
-	await _spawn_training_dummy()
+	_spawn_dock_and_boat(coast_z, dock_land_y)
+	_spawn_training_dummy_at(dummy_spot, dummy_ground_y)
 	for i: int in NPC_OFFSETS.size():
 		var offset: Vector2 = NPC_OFFSETS[i]
 		var npc: Npc = npc_scene.instantiate() as Npc
-		# Set vendor flags BEFORE add_child so npc._ready() picks them up and
-		# joins the right groups on first entry to the tree.
 		if i == VENDOR_INDEX:
 			npc.is_vendor = true
 		elif i == CONTRACT_VENDOR_INDEX:
@@ -89,40 +106,22 @@ func _spawn() -> void:
 			npc.is_claim_vendor = true
 		elif i == ITEM_SHOP_INDEX:
 			npc.is_item_shop = true
-		# Each town slot gets its own NPC visual variant so the four NPCs
-		# read as distinct people instead of four copies of one model.
 		npc.visual_variant = i
 		# Position MUST be set before add_child — Npc._ready captures _spawn_pos
 		# from global_position. If we set position after add_child, _spawn_pos
-		# stays at (0, 0, 0) and the y-fallthrough self-heal then teleports
-		# the NPC back to origin (which is below ground in this scene).
-		var ground_y: float = await _find_ground_y_robust(offset.x, offset.y)
-		npc.position = Vector3(offset.x, ground_y + 1.5, offset.y)
+		# stays at (0, 0, 0) and parked-far-from-player NPCs snap to origin.
+		# +0.3 is a small settle drop; capsule bottom is at NPC origin so this
+		# keeps physics from starting embedded in the terrain SDF surface.
+		npc.position = Vector3(offset.x, npc_ground_y[i] + 0.3, offset.y)
 		npc.rotation.y = randf_range(0.0, TAU)
 		get_tree().current_scene.add_child(npc)
-		# Color shaders intentionally disabled — let the GLB's native
-		# materials show through. Vendor differentiation now relies on the
-		# vendor-vs-townsfolk model swap in npc.gd._spawn_visual instead.
 
 # Returns the MAX ground Y across 9 samples (center + 8 around a circle at the
 # hut's bounding radius). Anchoring to the high point ensures no corner floats —
 # other corners may sink slightly into the terrain, hidden by HUT_SINK. The
 # circle pattern is rotation-invariant: any rotation of the hut still has its
 # corners covered by the 8 perimeter samples.
-func _spawn_dock_and_boat() -> void:
-	# Walk outward from origin in the +Z direction until ground Y drops to
-	# water level. That gives us the south coastline. Place the dock so its
-	# inner end sits on land and its outer end juts into the water; the boat
-	# floats just past the outer end; the dockmaster stands on the dock.
-	var coast_z: float = 0.0
-	for r: int in range(40, 180, 4):
-		var y: float = await _find_ground_y_robust(0.0, float(r))
-		if y < 0.6:
-			coast_z = float(r) - 4.0   # back up one step so we're on land
-			break
-	if coast_z < 1.0:
-		coast_z = 130.0   # fallback if the scan never hit water
-	var land_y: float = await _find_ground_y_robust(0.0, coast_z)
+func _spawn_dock_and_boat(coast_z: float, land_y: float) -> void:
 	# Dock: 8m long, oriented south (its +Z extends toward the water).
 	# Place the dock so its INNER edge sits at the coast, jutting outward.
 	var dock_center_z: float = coast_z + 4.0   # half the dock length forward
@@ -141,19 +140,12 @@ func _spawn_dock_and_boat() -> void:
 	# Position MUST be set before add_child — Npc._ready captures _spawn_pos
 	# from global_position, and a stale (0,0,0) spawn 130m from the real
 	# location makes the NPC immediately try to walk back to origin.
-	npc.position = Vector3(-1.0, max(land_y, 0.20) + 1.0, coast_z + 2.0)
+	npc.position = Vector3(-1.0, max(land_y, 0.20) + 0.3, coast_z + 2.0)
 	get_tree().current_scene.add_child(npc)
-	# Dockmaster uses the vendor-flagged GLB; no shirt tint applied.
 
-func _spawn_training_dummy() -> void:
-	# Place a single combat dummy a few meters away from the item shop NPC
-	# (offset NPC_OFFSETS[ITEM_SHOP_INDEX] = (2, 7)). Sits next to the shop so
-	# the brand-new weapon has an obvious target.
+func _spawn_training_dummy_at(spot: Vector2, ground_y: float) -> void:
 	if dummy_scene == null:
 		return
-	var origin: Vector2 = NPC_OFFSETS[ITEM_SHOP_INDEX]
-	var spot: Vector2 = origin + Vector2(2.5, 1.5)
-	var ground_y: float = await _find_ground_y_robust(spot.x, spot.y)
 	var dummy: Node3D = dummy_scene.instantiate() as Node3D
 	get_tree().current_scene.add_child(dummy)
 	# Body is centered ~1.15m above the post; sink the post-base into the

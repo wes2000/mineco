@@ -14,4 +14,4 @@ transform = Transform3D(1.2225, 0, 0, 0, 1.2225, 0, 0, 0, 1.2225, 0, 2.934, 0)
 shape = SubResource("Capsule")
 
 [node name="Visual" type="Node3D" parent="." unique_id=2074714483]
-transform = Transform3D(2.25, 0, 0, 0, 2.25, 0, 0, 0, 2.25, 0, 0, 0)
+transform = Transform3D(2.25, 0, 0, 0, 2.25, 0, 0, 0, 2.25, 0, 1.125, 0)
