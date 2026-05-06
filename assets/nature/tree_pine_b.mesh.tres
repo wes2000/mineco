@@ -1,7 +1,7 @@
-[gd_resource type="ArrayMesh" format=4]
+[gd_resource type="ArrayMesh" format=4 uid="uid://cc7m1os1xmiya"]
 
-[ext_resource type="Texture2D" path="res://assets/nature/tree_pine_b_0.png" id="1_uwecv"]
-[ext_resource type="Texture2D" path="res://assets/nature/tree_pine_b_1.png" id="2_8bedq"]
+[ext_resource type="Texture2D" uid="uid://dkfe6r2c4ghu1" path="res://assets/nature/tree_pine_b_0.png" id="1_uwecv"]
+[ext_resource type="Texture2D" uid="uid://bvcho656rhqyl" path="res://assets/nature/tree_pine_b_1.png" id="2_8bedq"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_dkext"]
 resource_name = "material_0"

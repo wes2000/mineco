@@ -1,7 +1,7 @@
-[gd_resource type="ArrayMesh" format=4]
+[gd_resource type="ArrayMesh" format=4 uid="uid://3i1dwrej2njx"]
 
-[ext_resource type="Texture2D" path="res://assets/nature/megakit/Leaves_NormalTree_C.png" id="1_2q08s"]
-[ext_resource type="Texture2D" path="res://assets/nature/megakit/Flowers.png" id="2_toxqu"]
+[ext_resource type="Texture2D" uid="uid://c7kfce384cad7" path="res://assets/nature/megakit/Leaves_NormalTree_C.png" id="1_2q08s"]
+[ext_resource type="Texture2D" uid="uid://tfj05spuhu6t" path="res://assets/nature/megakit/Flowers.png" id="2_toxqu"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_qb01b"]
 resource_name = "Leaves_NormalTree"

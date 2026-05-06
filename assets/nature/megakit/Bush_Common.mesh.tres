@@ -1,6 +1,6 @@
-[gd_resource type="ArrayMesh" format=4]
+[gd_resource type="ArrayMesh" format=4 uid="uid://dnlx7ph68amqu"]
 
-[ext_resource type="Texture2D" path="res://assets/nature/megakit/Leaves_TwistedTree_C.png" id="1_e703l"]
+[ext_resource type="Texture2D" uid="uid://d26nu451igt23" path="res://assets/nature/megakit/Leaves_TwistedTree_C.png" id="1_e703l"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_aj0rr"]
 resource_name = "Leaves_TwistedTree"

@@ -26,10 +26,10 @@ tracks/0/path = NodePath("Mesh:rotation")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/keys = {
-"times": PackedFloat32Array(0, 0.18, 0.4, 0.7),
+"times": PackedFloat32Array(0, 0.2, 0.4, 0.7),
 "transitions": PackedFloat32Array(1, 1, 1, 1),
 "update": 0,
-"values": [Vector3(-1.0297443, -1.3875368, -0.13962634), Vector3(-2.0297443, -1.3875368, -0.13962634), Vector3(-0.2297443, -1.3875368, -0.13962634), Vector3(-1.0297443, -1.3875368, -0.13962634)]
+"values": [Vector3(-1.0297443, -1.3857914, -0.13962634), Vector3(-2.0297444, -1.3875368, -0.13962634), Vector3(-0.2297443, -1.3875368, -0.13962634), Vector3(-1.0297443, -1.3875368, -0.13962634)]
 }
 tracks/1/type = "method"
 tracks/1/imported = false
@@ -69,10 +69,11 @@ _data = {
 }
 
 [node name="Shovel" type="Node3D" unique_id=1552995531]
+transform = Transform3D(0.9449489, 0, -0.3272179, 0, 1, 0, 0.3272179, 0, 0.9449489, 0, 0, 0)
 script = ExtResource("1_081d1")
 
 [node name="Mesh" type="Node3D" parent="." unique_id=298605476]
-transform = Transform3D(0.13161263, -0.04790308, -0.03752876, 0.049592916, 0.13625543, 0, 0.035265498, -0.012835592, 0.14005923, 0.6, -0.5, -0.8)
+transform = Transform3D(0.009410822, 0.12469153, -0.073406115, -0.010393519, 0.07395373, 0.124289244, 0.14432049, -0.0028049408, 0.013737582, 0.6, -0.5, -0.8)
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=1316043811]
 libraries/ = SubResource("AnimationLibrary_ctp45")

@@ -40,6 +40,16 @@ var _heading: Vector3 = Vector3(0, 0, 1)
 var _state: int = State.IDLE
 var _state_remaining: float = 0.0
 var _player_cached: Node3D = null
+# Procedural fake-walk bob. The NPC GLBs are unrigged static meshes — no
+# AnimationPlayer to drive — so while WALKing we sin-bob the Visual node's
+# y/z to suggest a gait. Visual local position is reset to (0, 1.125, 0) on
+# IDLE so the feet match the capsule bottom.
+const _WALK_BOB_AMPLITUDE: float = 0.06
+const _WALK_TILT_AMPLITUDE: float = 0.08
+const _WALK_BOB_HZ: float = 2.4
+var _walk_phase: float = 0.0
+var _visual_root: Node3D = null
+const _VISUAL_REST_Y: float = 1.125
 
 # Town NPC variants — one per index 0..3. The town spawner assigns each of
 # its four NPC slots a different variant so they read as distinct people.
@@ -97,6 +107,7 @@ func _spawn_visual() -> void:
 	var visual_root: Node3D = get_node_or_null("Visual") as Node3D
 	if visual_root == null:
 		return
+	_visual_root = visual_root
 	var inst: Node3D = packed.instantiate() as Node3D
 	visual_root.add_child(inst)
 	# Cache every MeshInstance3D inside the loaded model so apply_shirt_tint
@@ -165,6 +176,7 @@ func _physics_process(delta: float) -> void:
 		velocity.x = 0.0
 		velocity.z = 0.0
 	move_and_slide()
+	_update_walk_bob(delta)
 	# Self-heal: voxel chunks unload while the player is far away, leaving the
 	# NPC standing on nothing. They fall into the void and stay there once the
 	# player returns. Snap them back to spawn if they've dropped unreasonably
@@ -196,3 +208,22 @@ func _is_player_within(dist: float) -> bool:
 	if _player_cached == null:
 		return true   # no player yet — don't pre-emptively freeze
 	return global_position.distance_squared_to(_player_cached.global_position) <= dist * dist
+
+# Procedural fake-walk: bob the Visual node up/down + side-to-side tilt while
+# WALKing. Settles back to rest pose when IDLE. The GLBs are unrigged static
+# meshes, so this is the cheapest way to suggest a gait without sourcing
+# rigged + animated character assets.
+func _update_walk_bob(delta: float) -> void:
+	if _visual_root == null:
+		return
+	if _state == State.WALK:
+		_walk_phase += delta * _WALK_BOB_HZ * TAU
+		var bob: float = sin(_walk_phase * 2.0) * _WALK_BOB_AMPLITUDE
+		var tilt: float = sin(_walk_phase) * _WALK_TILT_AMPLITUDE
+		_visual_root.position = Vector3(0.0, _VISUAL_REST_Y + bob, 0.0)
+		_visual_root.rotation = Vector3(0.0, 0.0, tilt)
+	else:
+		# Ease back to rest so the snap to idle isn't jarring.
+		_walk_phase = 0.0
+		_visual_root.position = _visual_root.position.lerp(Vector3(0.0, _VISUAL_REST_Y, 0.0), 8.0 * delta)
+		_visual_root.rotation = _visual_root.rotation.lerp(Vector3.ZERO, 8.0 * delta)

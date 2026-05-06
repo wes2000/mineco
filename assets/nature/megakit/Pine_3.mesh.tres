@@ -1,8 +1,8 @@
-[gd_resource type="ArrayMesh" format=4]
+[gd_resource type="ArrayMesh" format=4 uid="uid://cxv45oym7s2b6"]
 
-[ext_resource type="Texture2D" path="res://assets/nature/megakit/Bark_NormalTree.png" id="1_vi3hi"]
-[ext_resource type="Texture2D" path="res://assets/nature/megakit/Bark_NormalTree_Normal.png" id="2_1vf7f"]
-[ext_resource type="Texture2D" path="res://assets/nature/megakit/Leaf_Pine_C.png" id="3_3ghvk"]
+[ext_resource type="Texture2D" uid="uid://bx2gmkxewv5gb" path="res://assets/nature/megakit/Bark_NormalTree.png" id="1_vi3hi"]
+[ext_resource type="Texture2D" uid="uid://cau01rruilj57" path="res://assets/nature/megakit/Bark_NormalTree_Normal.png" id="2_1vf7f"]
+[ext_resource type="Texture2D" uid="uid://cgjanuvoyumuh" path="res://assets/nature/megakit/Leaf_Pine_C.png" id="3_3ghvk"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_1gjvm"]
 resource_name = "Bark_NormalTree"

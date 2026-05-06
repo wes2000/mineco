@@ -1,8 +1,8 @@
-[gd_resource type="ArrayMesh" format=4]
+[gd_resource type="ArrayMesh" format=4 uid="uid://cjeni4t6t0l8f"]
 
-[ext_resource type="Texture2D" path="res://assets/nature/megakit/Bark_TwistedTree.png" id="1_7ty3w"]
-[ext_resource type="Texture2D" path="res://assets/nature/megakit/Bark_TwistedTree_Normal.png" id="2_booag"]
-[ext_resource type="Texture2D" path="res://assets/nature/megakit/Leaves_TwistedTree_C.png" id="3_0yfqp"]
+[ext_resource type="Texture2D" uid="uid://cflmclsgrd20b" path="res://assets/nature/megakit/Bark_TwistedTree.png" id="1_7ty3w"]
+[ext_resource type="Texture2D" uid="uid://s35dill77f3j" path="res://assets/nature/megakit/Bark_TwistedTree_Normal.png" id="2_booag"]
+[ext_resource type="Texture2D" uid="uid://d26nu451igt23" path="res://assets/nature/megakit/Leaves_TwistedTree_C.png" id="3_0yfqp"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_cli4a"]
 resource_name = "Bark_TwistedTree"

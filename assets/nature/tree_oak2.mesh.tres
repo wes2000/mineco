@@ -1,7 +1,7 @@
-[gd_resource type="ArrayMesh" format=4]
+[gd_resource type="ArrayMesh" format=4 uid="uid://ul7ardtl45kv"]
 
-[ext_resource type="Texture2D" path="res://assets/nature/tree_oak2_0.png" id="1_o88n1"]
-[ext_resource type="Texture2D" path="res://assets/nature/tree_oak2_1.png" id="2_coih4"]
+[ext_resource type="Texture2D" uid="uid://d20mfsgfxpckv" path="res://assets/nature/tree_oak2_0.png" id="1_o88n1"]
+[ext_resource type="Texture2D" uid="uid://c28anc37wwa5w" path="res://assets/nature/tree_oak2_1.png" id="2_coih4"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_a4jvx"]
 resource_name = "material_0"

@@ -1,7 +1,7 @@
-[gd_resource type="ArrayMesh" format=4]
+[gd_resource type="ArrayMesh" format=4 uid="uid://bv4b6jfit5aiu"]
 
-[ext_resource type="Texture2D" path="res://assets/nature/tree_cedar_0.png" id="1_4n2v1"]
-[ext_resource type="Texture2D" path="res://assets/nature/tree_cedar_1.png" id="2_i22eg"]
+[ext_resource type="Texture2D" uid="uid://b6penaxsce6c1" path="res://assets/nature/tree_cedar_0.png" id="1_4n2v1"]
+[ext_resource type="Texture2D" uid="uid://cp1v4h5sq5c8o" path="res://assets/nature/tree_cedar_1.png" id="2_i22eg"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_rmwe8"]
 resource_name = "material_0"
