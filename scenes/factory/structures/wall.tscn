@@ -4,20 +4,23 @@
 [ext_resource type="PackedScene" path="res://assets/models/structure_wall.glb" id="2_glb"]
 
 [sub_resource type="BoxShape3D" id="BodyShape"]
-size = Vector3(1.0, 2.6, 0.2)
+size = Vector3(1.0, 2.616, 0.333)
 
 [node name="Wall" type="Node3D"]
 script = ExtResource("1")
 footprint_size = Vector2i(1, 1)
 kind = &"wall"
 
+; Model scaled 3x in Y so one wall piece reaches a useful ~2.6 m. Wall is
+; positioned at the south edge of its 1 m cell so that adjacent walls in
+; neighboring cells line up edge-to-edge.
 [node name="Model" parent="." instance=ExtResource("2_glb")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 1.3, 0.1)
+transform = Transform3D(1, 0, 0, 0, 3, 0, 0, 0, 1, 0.5, 1.308, 0.166)
 
 [node name="StaticBody" type="StaticBody3D" parent="."]
 collision_layer = 4
 collision_mask = 0
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 1.3, 0.1)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 1.308, 0.166)
 shape = SubResource("BodyShape")
