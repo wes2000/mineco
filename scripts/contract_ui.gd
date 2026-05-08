@@ -213,7 +213,7 @@ func _make_card(contract: Dictionary, idx: int, is_active: bool) -> PanelContain
 	items_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	items_col.add_theme_constant_override("separation", 2)
 	hbox.add_child(items_col)
-	for entry: Array in contract.items:
+	for entry: Array in MaterialDefs.sort_items_by_rarity(contract.items):
 		var mid: int = entry[0]
 		var needed: int = entry[1]
 		items_col.add_child(_make_item_row(mid, needed, is_active))
@@ -315,8 +315,9 @@ func _make_item_row(material_id: int, needed: int, show_progress: bool) -> HBoxC
 	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	if show_progress:
 		var have: int = _miner.get_material_count(material_id) if _miner != null else 0
-		var clamped: int = min(have, needed)
-		lbl.text = "%s   %d / %d" % [MaterialDefs.DISPLAY_NAME[material_id], clamped, needed]
+		# Show actual inventory count over the requirement so overlapping
+		# contracts can each see the full stack.
+		lbl.text = "%s   %d / %d" % [MaterialDefs.DISPLAY_NAME[material_id], have, needed]
 		if have >= needed:
 			lbl.add_theme_color_override("font_color", Color(0.55, 1.0, 0.55, 1))
 		else:

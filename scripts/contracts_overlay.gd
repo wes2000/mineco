@@ -174,15 +174,17 @@ func _make_card(contract: Dictionary, idx: int = -1) -> PanelContainer:
 			if idx >= 0:
 				_countdown_labels[idx] = count_lbl
 		v.add_child(hdr_row)
-	for entry: Array in contract.items:
+	for entry: Array in MaterialDefs.sort_items_by_rarity(contract.items):
 		var mid: int = entry[0]
 		var needed: int = entry[1]
 		var have: int = _miner.get_material_count(mid) if _miner != null else 0
-		var clamped: int = min(have, needed)
 		var lbl: Label = Label.new()
 		var done: bool = (have >= needed)
 		var check: String = "  ✓" if done else ""
-		lbl.text = "%s   %d / %d%s" % [MaterialDefs.DISPLAY_NAME[mid], clamped, needed, check]
+		# Show the player's actual inventory count over the requirement so a
+		# single quest doesn't hide the rest of the stack you'd need for
+		# overlapping contracts. ✓ when satisfied.
+		lbl.text = "%s   %d / %d%s" % [MaterialDefs.DISPLAY_NAME[mid], have, needed, check]
 		lbl.add_theme_font_size_override("font_size", 13)
 		lbl.add_theme_color_override("font_color", Color(0.55, 1.0, 0.55, 1) if done else Color(0.85, 0.88, 0.92, 1))
 		v.add_child(lbl)

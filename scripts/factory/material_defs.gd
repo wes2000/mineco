@@ -68,3 +68,17 @@ const DISPLAY_NAME: Dictionary = {
 const TIER_1_MATERIALS: Array[int] = [MaterialId.STONE, MaterialId.IRON_ORE, MaterialId.GOLD_ORE]
 const TIER_2_MATERIALS: Array[int] = [MaterialId.BRICK, MaterialId.IRON_INGOT, MaterialId.GOLD_INGOT]
 const TIER_3_MATERIALS: Array[int] = [MaterialId.BLOCK, MaterialId.IRON_BAR, MaterialId.GOLD_BAR]
+
+# Returns a copy of `items` (each entry is [material_id, count]) sorted in
+# rarity order: tier 1 first, then tier 2, then tier 3, breaking ties by
+# material id so stone-line / iron-line / gold-line stay in the same order.
+static func sort_items_by_rarity(items: Array) -> Array:
+	var out: Array = items.duplicate()
+	out.sort_custom(func(a: Array, b: Array) -> bool:
+		var ta: int = TIER.get(a[0], 0)
+		var tb: int = TIER.get(b[0], 0)
+		if ta != tb:
+			return ta < tb
+		return int(a[0]) < int(b[0])
+	)
+	return out

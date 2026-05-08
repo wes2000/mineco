@@ -12,7 +12,7 @@ script = ExtResource("1")
 footprint_size = Vector2i(3, 3)
 
 [node name="Model" parent="." unique_id=542693118 instance=ExtResource("3_glb")]
-transform = Transform3D(2.75, 0, 0, 0, 2.75, 0, 0, 0, 2.75, 1.5, 0.555, 1.5)
+transform = Transform3D(0, 0, -2.75, 0, 2.75, 0, 2.75, 0, 0, 1.5, 0.555, 1.5)
 
 [node name="HumLoop" type="AudioStreamPlayer3D" parent="." unique_id=1631808592]
 volume_db = -11.0

@@ -30,6 +30,7 @@ signal enemy_killed(island_id: String)
 
 @onready var _health: Node = $Health
 @onready var _mesh_root: Node3D = $MeshRoot
+@onready var _hp_bar_fg: MeshInstance3D = $HealthBar/HBarFg
 
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 var _spawn_pos: Vector3
@@ -207,7 +208,13 @@ func _apply_visibility_range_recursive(node: Node) -> void:
 	for c: Node in node.get_children():
 		_apply_visibility_range_recursive(c)
 
-func _on_damaged(_amount: float, _source_pos: Vector3, _current: float, _max_v: int) -> void:
+func _on_damaged(_amount: float, _source_pos: Vector3, current: float, max_v: int) -> void:
+	# Update the floating health bar. Scale the foreground quad's X to the
+	# remaining HP fraction; bar lives outside MeshRoot so the 3x enemy
+	# scale doesn't double-scale the bar.
+	if _hp_bar_fg != null and max_v > 0:
+		var frac: float = clampf(current / float(max_v), 0.0, 1.0)
+		_hp_bar_fg.scale = Vector3(frac, 1.0, 1.0)
 	# Hit-flash via per-material albedo tween. Node3D has no `modulate`
 	# (CanvasItem/Control only), so we tint each MeshInstance3D's duplicated
 	# material directly and tween it back to the captured base color.
