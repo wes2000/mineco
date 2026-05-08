@@ -133,6 +133,9 @@ func open(board: Node) -> void:
 			_miner.inventory_changed.connect(_on_inv_changed)
 		if _miner.has_signal("extended_inventory_changed") and not _miner.extended_inventory_changed.is_connected(_refresh):
 			_miner.extended_inventory_changed.connect(_refresh)
+		# Refresh-button affordability tracks gold; rebuild on gold changes too.
+		if _miner.has_signal("gold_currency_changed") and not _miner.gold_currency_changed.is_connected(_on_gold_changed):
+			_miner.gold_currency_changed.connect(_on_gold_changed)
 	_refresh()
 
 func close() -> void:
@@ -145,10 +148,15 @@ func close() -> void:
 			_miner.inventory_changed.disconnect(_on_inv_changed)
 		if _miner.has_signal("extended_inventory_changed") and _miner.extended_inventory_changed.is_connected(_refresh):
 			_miner.extended_inventory_changed.disconnect(_refresh)
+		if _miner.has_signal("gold_currency_changed") and _miner.gold_currency_changed.is_connected(_on_gold_changed):
+			_miner.gold_currency_changed.disconnect(_on_gold_changed)
 	_board = null
 	_miner = null
 
 func _on_inv_changed(_s: int, _i: int, _g: int) -> void:
+	_refresh()
+
+func _on_gold_changed(_amount: int) -> void:
 	_refresh()
 
 func _input(event: InputEvent) -> void:
@@ -180,10 +188,23 @@ func _refresh() -> void:
 		_active_section.add_child(none)
 	for i: int in _board.active.size():
 		_active_section.add_child(_make_card(_board.active[i], i, true))
-	# Available section
+	# Available section (header + refresh button on a single row)
 	for c: Node in _available_section.get_children():
 		c.queue_free()
-	_available_section.add_child(_section_header("AVAILABLE"))
+	var avail_header_row: HBoxContainer = HBoxContainer.new()
+	avail_header_row.add_theme_constant_override("separation", 8)
+	var avail_lbl: Label = _section_header("AVAILABLE")
+	avail_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	avail_header_row.add_child(avail_lbl)
+	var refresh_btn: Button = Button.new()
+	refresh_btn.text = "Refresh  (%dg)" % _board.REFRESH_COST
+	refresh_btn.disabled = _miner == null or int(_miner.get("gold_currency")) < _board.REFRESH_COST
+	refresh_btn.pressed.connect(func() -> void:
+		if _board.has_method("refresh") and _miner != null:
+			_board.refresh(_miner)
+	)
+	avail_header_row.add_child(refresh_btn)
+	_available_section.add_child(avail_header_row)
 	for i: int in _board.available.size():
 		_available_section.add_child(_make_card(_board.available[i], i, false))
 

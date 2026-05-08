@@ -139,6 +139,23 @@ func _on_hit_frame() -> void:
 		if _is_locked_claim_deposit(hit_pos):
 			_ore_audio.play()
 			return
+		# If the deposit is still buried (the surrounding voxel cells are
+		# mostly solid), spend this swing chipping the dirt around it instead
+		# of damaging it. Gives the player the "ah-ha" reveal moment when the
+		# colorful node pops out before they start chewing into it.
+		if _is_deposit_buried(collider as Node3D):
+			if _voxel_tool != null:
+				var carve_r: float = brush_radius * (Admin.radius_multiplier if Admin.big_radius else 1.0)
+				var stats_dig: Node = get_node_or_null("/root/PlayerStats")
+				if stats_dig != null:
+					carve_r *= float(stats_dig.call("get_stat", &"dig_radius_mult"))
+				_voxel_tool.do_sphere(hit.position, carve_r)
+				_carves.append({
+					"pos": [hit.position.x, hit.position.y, hit.position.z],
+					"radius": carve_r,
+				})
+			_dirt_audio.play()
+			return
 		if not collider.chunk_broken.is_connected(_on_chunk_broken):
 			collider.chunk_broken.connect(_on_chunk_broken)
 		_last_ore_hit_pos = hit_pos
@@ -174,6 +191,30 @@ func _on_chunk_broken(material: int, amount: int, _stage: int) -> void:
 	if pickup_id != -1:
 		material_pickup.emit(pickup_id, amount)
 	_credit_owned_claim(material, amount)
+
+# Returns true if the deposit is still mostly entombed in voxel terrain.
+# Samples 8 cells in a ring around the deposit at head/upper-body height
+# (skipping the floor so deposits sitting on solid ground aren't considered
+# buried) and reports buried when 4+ are solid (SDF < 0).
+func _is_deposit_buried(deposit: Node3D) -> bool:
+	if _voxel_tool == null:
+		return false
+	var center: Vector3 = deposit.global_position
+	var probes: Array[Vector3] = [
+		Vector3(1.5, 0.6, 0.0), Vector3(-1.5, 0.6, 0.0),
+		Vector3(0.0, 0.6, 1.5), Vector3(0.0, 0.6, -1.5),
+		Vector3(1.0, 1.5, 0.0), Vector3(-1.0, 1.5, 0.0),
+		Vector3(0.0, 1.5, 1.0), Vector3(0.0, 1.5, -1.0),
+	]
+	var solid: int = 0
+	for offset: Vector3 in probes:
+		var p: Vector3 = center + offset
+		var cell: Vector3i = Vector3i(floori(p.x), floori(p.y), floori(p.z))
+		# Voxel terrain uses the SDF channel (set up by IslandVoxelGenerator).
+		# Convention: SDF < 0 inside solid, > 0 outside (air).
+		if _voxel_tool.get_voxel_f(cell) < 0.0:
+			solid += 1
+	return solid >= 4
 
 func _is_locked_claim_deposit(world_pos: Vector3) -> bool:
 	# Returns true if the deposit at world_pos sits inside a claim island

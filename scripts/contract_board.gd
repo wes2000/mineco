@@ -248,6 +248,80 @@ func _allowed_materials() -> Array:
 	var key: int = clampi(level, 1, 8)
 	return ALLOWED_BY_LEVEL[key]
 
+# Union of every level's pool — used by `refresh()` so paying the gold cost
+# brings back the easy T1 contracts even after the vendor has leveled out of
+# them. Keeps insertion order stable and de-duplicated.
+func _allowed_materials_any_level() -> Array:
+	var seen: Dictionary = {}
+	var out: Array = []
+	for lvl: int in [1, 2, 3, 4, 5, 6, 7, 8]:
+		for mid: Variant in ALLOWED_BY_LEVEL[lvl]:
+			if not seen.has(mid):
+				seen[mid] = true
+				out.append(mid)
+	return out
+
+const REFRESH_COST: int = 5
+
+# Pays REFRESH_COST gold and re-rolls the entire `available` list using the
+# any-level pool so the player isn't stuck choosing only between high-tier
+# contracts. Returns true on success, false if the player can't afford it.
+func refresh(miner: Node) -> bool:
+	if miner == null:
+		return false
+	if int(miner.get("gold_currency")) < REFRESH_COST:
+		return false
+	miner.add_gold_currency(-REFRESH_COST)
+	available.clear()
+	while available.size() < AVAILABLE_MAX:
+		available.append(_generate_universal())
+	changed.emit()
+	return true
+
+# Same shape as _generate() but pulls from the any-level pool. Refined-goods
+# modifier keeps using the T2/T3 refined pool — that's the modifier's whole
+# point and shouldn't be flattened by a refresh.
+func _generate_universal() -> Dictionary:
+	var saved_pool_provider: Callable = _allowed_materials
+	# Cheapest "swap pool for one call" approach without restructuring _generate
+	# is to inline its logic with the universal pool. Keep in sync if _generate
+	# changes shape.
+	var modifier: String = _pick_modifier()
+	var num_items: int = randi_range(1, 3)
+	var pool: Array
+	if modifier == MOD_REFINED:
+		pool = _refined_pool()
+	else:
+		pool = _allowed_materials_any_level()
+	var items: Array = []
+	var used: Dictionary = {}
+	var attempts: int = 0
+	while items.size() < num_items and attempts < 12:
+		var mid: int = pool.pick_random()
+		if used.has(mid):
+			attempts += 1
+			continue
+		used[mid] = true
+		var amount: int = _amount_for_material(mid)
+		if modifier == MOD_BULK:
+			amount = max(1, int(round(float(amount) * float(MOD_COUNT_MUL[MOD_BULK]))))
+		items.append([mid, amount])
+	var sell_value: int = 0
+	for entry: Array in items:
+		sell_value += int(entry[1]) * int(PRICES.get(entry[0], 0))
+	var reward_mul: float = float(MOD_REWARD_MUL.get(modifier, 1.0))
+	var xp_mul: float = float(MOD_XP_MUL.get(modifier, 1.0))
+	var bp_chance: float = clampf(float(MOD_BLUEPRINT_CHANCE.get(modifier, 0.0)), 0.0, 1.0)
+	return {
+		"items": items,
+		"reward_gold": int(round(float(sell_value * 5) * reward_mul)),
+		"xp": int(round(float(sell_value) * xp_mul)),
+		"modifier": modifier,
+		"expires_at": 0.0,
+		"blueprint_chance": bp_chance,
+		"required_flags": [],
+	}
+
 func _amount_for_material(mid: int) -> int:
 	var tier: int = MaterialDefs.TIER.get(mid, 1)
 	match tier:
