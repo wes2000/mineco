@@ -11,7 +11,7 @@ const _CrosshairHUD: GDScript = preload("res://scripts/crosshair_hud.gd")
 
 # 5 tabs across the top of the shop. Cosmetics is special: instead of a
 # single column it splits into Crosshair shapes (left) and Colors (right).
-const TAB_NAMES: Array = ["Pickaxes", "Weapons", "Scanners", "Utility", "Cosmetics"]
+const TAB_NAMES: Array[String] = ["Pickaxes", "Weapons", "Scanners", "Utility", "Cosmetics"]
 const TAB_CATEGORIES: Array[StringName] = [
 	&"pickaxe", &"weapon", &"scanner", &"utility", &""   # cosmetics handled separately
 ]
@@ -111,11 +111,14 @@ func _input(event: InputEvent) -> void:
 		accept_event()
 
 func _refresh() -> void:
-	# Wipe + rebuild the entire tab list. Each tab is a fresh ScrollContainer
-	# so Godot can scroll long category lists independently. Tabs are renamed
-	# via TabContainer.set_tab_title since the title is on the container, not
-	# the child name.
+	# Wipe + rebuild the tabs. queue_free is DEFERRED, so naive teardown
+	# leaves stale "Pickaxes" siblings around and add_child renames the
+	# new child to "@ScrollContainer@nnnn" (which then surfaces as the
+	# tab title). Use remove_child + queue_free to free synchronously so
+	# our preferred names stick. TabContainer uses the child node name as
+	# the tab label by default — no set_tab_title needed.
 	for c: Node in _tabs.get_children():
+		_tabs.remove_child(c)
 		c.queue_free()
 	_gold_label.text = "%d g" % (int(_miner.get("gold_currency")) if _miner != null else 0)
 	var preserved_tab: int = clampi(_tabs.current_tab, 0, TAB_NAMES.size() - 1)
@@ -123,7 +126,6 @@ func _refresh() -> void:
 		var tab_root: ScrollContainer = ScrollContainer.new()
 		tab_root.name = TAB_NAMES[i]
 		_tabs.add_child(tab_root)
-		_tabs.set_tab_title(i, TAB_NAMES[i])
 		var cat: StringName = TAB_CATEGORIES[i]
 		if cat == &"":
 			tab_root.add_child(_build_cosmetics_tab())
