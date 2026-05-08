@@ -1,0 +1,27 @@
+# Godot 4 cache & generated files
+.godot/
+*.translation
+
+# Mono / .NET
+.mono/
+data_*/
+mono_crash.*.json
+
+# Exports & build artifacts
+exports/
+build/
+*.exe
+*.pck
+*.zip
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.directory
+.vscode/
+.idea/
+.claude/
+
+# Third-party assets — held out of the public repo until licensing is confirmed.
+# Remove this line once you've verified you have redistribution rights.
+assets/
