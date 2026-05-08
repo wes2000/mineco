@@ -275,40 +275,13 @@ func _try_open_machine_ui() -> void:
 		_driving_boat.call("exit")
 		_driving_boat = null
 		return
-	# 1a) Sell vendor NPC within 4m? Open the sell window.
-	var vendor: Npc = _find_nearest_in_group("vendor_npcs", 4.0)
-	if vendor != null:
-		var vu: Node = get_tree().get_first_node_in_group("vendor_ui")
-		if vu != null and vu.has_method("open"):
-			vu.call("open")
-			return
-	# 1b) Contract vendor NPC within 4m? Open the contract board.
-	var contract_vendor: Npc = _find_nearest_in_group("contract_vendor_npcs", 4.0)
-	if contract_vendor != null and contract_vendor.contract_board != null:
-		var cu: Node = get_tree().get_first_node_in_group("contract_ui")
-		if cu != null and cu.has_method("open"):
-			cu.call("open", contract_vendor.contract_board)
-			return
-	# 1b2) Claim vendor NPC within 4m? Open the land-claim board.
-	var claim_vendor: Npc = _find_nearest_in_group("claim_vendor_npcs", 4.0)
-	if claim_vendor != null and claim_vendor.claim_board != null:
-		var clu: Node = get_tree().get_first_node_in_group("claim_vendor_ui")
-		if clu != null and clu.has_method("open"):
-			clu.call("open", claim_vendor.claim_board)
-			return
-	# 1b3) Item shop NPC within 4m? Open the item shop.
-	var item_shop: Npc = _find_nearest_in_group("item_shop_npcs", 4.0)
-	if item_shop != null:
-		var su: Node = get_tree().get_first_node_in_group("item_shop_ui")
-		if su != null and su.has_method("open"):
-			su.call("open")
-			return
-	# 1c) Boat vendor NPC within 4m? Open the boat vendor window.
-	var boat_vendor: Npc = _find_nearest_in_group("boat_vendor_npcs", 4.0)
-	if boat_vendor != null:
-		var bu: Node = get_tree().get_first_node_in_group("boat_vendor_ui")
-		if bu != null and bu.has_method("open"):
-			bu.call("open")
+	# Pick the SINGLE closest vendor NPC across every vendor group, so a
+	# claim vendor 1 m away wins over a sell vendor 2.5 m away even if the
+	# code originally checked sellers first. Range tightened to 2.5 m so
+	# the player has to actually walk up to a specific NPC.
+	var nearest: Npc = _find_nearest_vendor(2.5)
+	if nearest != null:
+		if _try_open_for_vendor(nearest):
 			return
 	# 1d) Boat within 4m? Climb in (only if we own one).
 	var nearby_boat: Node = _find_nearest_boat(4.5)
@@ -385,6 +358,82 @@ func _find_nearest_in_group(group_name: String, max_distance: float) -> Npc:
 				best = n as Npc
 	return best
 
+# Vendor groups that interaction can dispatch to. Order is irrelevant — we
+# only use it as a set to walk and the closest NPC across all groups wins.
+const _VENDOR_GROUPS: Array[String] = [
+	"vendor_npcs",
+	"contract_vendor_npcs",
+	"claim_vendor_npcs",
+	"item_shop_npcs",
+	"boat_vendor_npcs",
+]
+
+# Returns the closest Npc in any vendor group within `max_distance`, or
+# null. De-dupes across groups in case an NPC is multiply-tagged.
+func _find_nearest_vendor(max_distance: float) -> Npc:
+	var origin: Vector3 = global_position
+	var max_sq: float = max_distance * max_distance
+	var best: Npc = null
+	var best_d: float = max_sq
+	var seen: Dictionary = {}
+	for g: String in _VENDOR_GROUPS:
+		for n: Node in get_tree().get_nodes_in_group(g):
+			if not (n is Npc):
+				continue
+			var key: int = n.get_instance_id()
+			if seen.has(key):
+				continue
+			seen[key] = true
+			var d_sq: float = (n as Node3D).global_position.distance_squared_to(origin)
+			if d_sq < best_d:
+				best_d = d_sq
+				best = n as Npc
+	return best
+
+# Dispatch to the right vendor UI based on which group(s) the NPC belongs
+# to. Returns true on success so the caller can short-circuit. Also kicks
+# off the freeze + face_target so the NPC stops wandering during the
+# conversation.
+func _try_open_for_vendor(npc: Npc) -> bool:
+	var ui: Node = null
+	var open_args: Array = []
+	if npc.is_in_group("vendor_npcs"):
+		ui = get_tree().get_first_node_in_group("vendor_ui")
+	elif npc.is_in_group("contract_vendor_npcs") and npc.contract_board != null:
+		ui = get_tree().get_first_node_in_group("contract_ui")
+		open_args = [npc.contract_board]
+	elif npc.is_in_group("claim_vendor_npcs") and npc.claim_board != null:
+		ui = get_tree().get_first_node_in_group("claim_vendor_ui")
+		open_args = [npc.claim_board]
+	elif npc.is_in_group("item_shop_npcs"):
+		ui = get_tree().get_first_node_in_group("item_shop_ui")
+	elif npc.is_in_group("boat_vendor_npcs"):
+		ui = get_tree().get_first_node_in_group("boat_vendor_ui")
+	if ui == null or not ui.has_method("open"):
+		return false
+	ui.callv("open", open_args)
+	_start_vendor_freeze(npc)
+	return true
+
+# Freeze management. The frozen NPC is captured here so _process can
+# auto-release on the frame the player closes the menu (mouse recaptured).
+var _frozen_vendor: Npc = null
+
+func _start_vendor_freeze(npc: Npc) -> void:
+	if _frozen_vendor != null and _frozen_vendor != npc:
+		_end_vendor_freeze()
+	_frozen_vendor = npc
+	npc.is_frozen = true
+	npc.face_target = self
+
+func _end_vendor_freeze() -> void:
+	if _frozen_vendor == null:
+		return
+	if is_instance_valid(_frozen_vendor):
+		_frozen_vendor.is_frozen = false
+		_frozen_vendor.face_target = null
+	_frozen_vendor = null
+
 func _find_nearest_boat(max_distance: float) -> Node:
 	var origin: Vector3 = global_position
 	var max_sq: float = max_distance * max_distance
@@ -406,6 +455,11 @@ func _hit_to_building(n: Node) -> Building:
 	return null
 
 func _process(_delta: float) -> void:
+	# Vendor freeze auto-release: cursor coming back to CAPTURED means every
+	# modal closed, so the NPC can resume wandering. Done before the
+	# weapon-attack early-exits so it always runs even in build mode.
+	if _frozen_vendor != null and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+		_end_vendor_freeze()
 	# Weapon attack — gated on standard mode + weapon equipped + owns one.
 	if BuildController.active or current_tool != TOOL_WEAPON:
 		return

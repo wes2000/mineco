@@ -30,11 +30,11 @@ collision_layer = 9
 collision_mask = 1
 script = ExtResource("1_enemy")
 
-; MeshRoot lifted by half the scaled enemy height (~3.4 m at 4× scale) so
-; the GLB's center-pivoted feet sit at NPC y=0 instead of sinking half-
-; way into the terrain.
+; MeshRoot lifted to compensate for the GLB's centered pivot. 3.4 was a
+; full half-height lift assuming feet at AABB bottom; the actual feet sit
+; a bit higher than that so 2.4 lands them flush with the ground.
 [node name="MeshRoot" type="Node3D" parent="."]
-transform = Transform3D(4, 0, 0, 0, 4, 0, 0, 0, 4, 0, 3.4, 0)
+transform = Transform3D(4, 0, 0, 0, 4, 0, 0, 0, 4, 0, 2.4, 0)
 
 [node name="Model" parent="MeshRoot" instance=ExtResource("3_glb")]
 

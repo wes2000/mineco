@@ -40,6 +40,11 @@ var _heading: Vector3 = Vector3(0, 0, 1)
 var _state: int = State.IDLE
 var _state_remaining: float = 0.0
 var _player_cached: Node3D = null
+# Set by Player while a vendor UI is open against this NPC. While true the
+# NPC stops wandering and slowly turns to look at `face_target` so the
+# player can complete the conversation without chasing them around.
+var is_frozen: bool = false
+var face_target: Node3D = null
 # Procedural fake-walk bob. The NPC GLBs are unrigged static meshes — no
 # AnimationPlayer to drive — so while WALKing we sin-bob the Visual node's
 # y/z to suggest a gait. Visual local position is reset to (0, 1.125, 0) on
@@ -150,6 +155,27 @@ func _apply_visibility_range_recursive(node: Node) -> void:
 		_apply_visibility_range_recursive(c)
 
 func _physics_process(delta: float) -> void:
+	# Frozen takes precedence over everything — keep this NPC rooted in
+	# place, faced at the player, while a vendor UI is open. Skip the wander
+	# state machine entirely; gravity + move_and_slide still run so we
+	# don't lose ground contact, and the bob settles into idle.
+	if is_frozen:
+		if _state != State.IDLE:
+			_state = State.IDLE
+		velocity.x = 0.0
+		velocity.z = 0.0
+		if not is_on_floor():
+			velocity.y -= _gravity * delta
+		else:
+			velocity.y = 0.0
+		if face_target != null and is_instance_valid(face_target):
+			var look: Vector3 = (face_target as Node3D).global_position
+			look.y = global_position.y
+			if look.distance_squared_to(global_position) > 0.04:
+				look_at(look, Vector3.UP)
+		move_and_slide()
+		_update_walk_bob(delta)
+		return
 	# Park at spawn while the player is far away — without this NPCs run
 	# gravity over unstreamed chunks and visibly fall through the void
 	# while the surrounding terrain is still meshing in.
