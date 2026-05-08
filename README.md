@@ -5,14 +5,14 @@ A Godot 4.6 mining/factory game (Windows-only build target).
 ## Project layout
 
 ```
-project.godot           Godot project config
-VERSION                 Single source of truth for the game version
-icon.svg                Window/desktop icon
-scenes/                 Game scenes
-autoload/updater.gd     Auto-update logic (registered as "Updater" autoload)
-autoload/update_dialog.gd  In-game update prompt UI
-scripts/updater_helper.ps1 PowerShell helper that swaps files after the game exits
-design_plans/           Design docs
+project.godot              Godot project config (config/version is the runtime version source)
+VERSION                    Plain-text mirror of config/version, kept in sync for CI/tooling
+icon.svg                   Window/desktop icon
+scenes/                    Game scenes
+autoload/updater.gd        Auto-update logic + embedded PowerShell helper
+autoload/update_dialog.gd  In-game update prompt UI (blue/white themed)
+design_plans/              Design docs
+export_presets.cfg         Windows Desktop export preset
 ```
 
 `assets/` (not in this repo) holds 3D assets used by the game scenes.
@@ -28,7 +28,7 @@ The auto-updater is **disabled in the editor** — it only runs in exported buil
 
 This is the workflow for shipping an update to your friend.
 
-1. **Bump the version.** Edit `VERSION` (e.g. `0.1.0` → `0.2.0`). Also update `config/version` in `project.godot` to match.
+1. **Bump the version.** Edit `config/version` in `project.godot` (e.g. `0.1.0` → `0.2.0`) — this is what the running game reads. Mirror it into `VERSION` for git/CI legibility.
 2. **Commit and tag:**
    ```powershell
    git add VERSION project.godot
@@ -61,10 +61,12 @@ The updater looks specifically for an asset named **`mineco-v<VERSION>-windows.z
 On launch (release builds only):
 
 1. `Updater` autoload `GET`s `api.github.com/repos/wes2000/mineco/releases/latest`.
-2. Compares `tag_name` (e.g. `v0.2.0`) against `res://VERSION`.
-3. If the release is newer and the user hasn't already skipped this version, shows an update prompt with release notes and `[Update Now] / [Skip This Version]`.
-4. **Update Now**: downloads `mineco-v<VERSION>-windows.zip` to `%TEMP%\mineco_update\update.zip`, extracts to `%TEMP%\mineco_update\extracted\`, writes `updater_helper.ps1` to `%TEMP%`, launches it (detached), then quits the game.
+2. Compares the release's `tag_name` (e.g. `v0.2.0`) against `ProjectSettings.application/config/version` (which Godot packs into the binary as `project.binary` — always present in the `.pck`).
+3. If the release is newer and the user hasn't already skipped this version, shows the blue/white update prompt with release notes and `[Update Now] / [Skip This Version]`.
+4. **Update Now**: downloads `mineco-v<VERSION>-windows.zip` to `%TEMP%\mineco_update\update.zip`, extracts to `%TEMP%\mineco_update\extracted\`, writes the embedded PowerShell helper to `%TEMP%\mineco_apply_update.ps1`, launches it (detached), then quits the game.
 5. The PowerShell helper waits for the game's PID to exit, copies the new files over the install directory, and relaunches the game.
+
+The helper script lives as a `const HELPER_SCRIPT` string inside `autoload/updater.gd` rather than as a separate `.ps1` file. This is deliberate: Godot's export filter (`all_resources`) doesn't pack non-resource files like `.ps1` or `.txt` by default, so the helper would be missing from the `.pck`. Embedding it in the GDScript bytecode sidesteps the filter entirely.
 
 ### Why a PowerShell helper?
 

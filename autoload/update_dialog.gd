@@ -1,9 +1,22 @@
 extends Window
-## Modal shown when an update is available. UI is constructed in code so the
-## scene tree stays as a single .gd file. Signals communicate with the Updater.
+## Modal shown when an update is available. UI + theming are constructed
+## in code so the dialog has a consistent blue-on-white look regardless of
+## the host OS's window background.
 
 signal update_requested
 signal skip_requested
+
+const BG_COLOR        := Color("#1e3a5f")  # deep navy panel
+const TEXT_PRIMARY    := Color("#ffffff")
+const TEXT_SECONDARY  := Color("#cfe2f3")  # very light blue for secondary
+const NOTES_BG        := Color("#152a45")  # darker navy for the notes panel
+const BUTTON_NORMAL   := Color("#3a6ea5")
+const BUTTON_HOVER    := Color("#5285c0")
+const BUTTON_PRESSED  := Color("#2c5683")
+const BUTTON_DISABLED := Color("#2a4a6f")
+const BUTTON_DISABLED_TEXT := Color("#9eb7d0")
+const PROGRESS_TRACK  := Color("#152a45")
+const PROGRESS_FILL   := Color("#5da9f0")
 
 var _versions: Label
 var _notes: RichTextLabel
@@ -23,6 +36,14 @@ func _init() -> void:
 
 
 func _ready() -> void:
+	# Solid blue panel that fills the Window so the OS-default background
+	# never shows through.
+	var bg := Panel.new()
+	bg.anchor_right = 1.0
+	bg.anchor_bottom = 1.0
+	bg.add_theme_stylebox_override("panel", _flat(BG_COLOR, 0))
+	add_child(bg)
+
 	var margin := MarginContainer.new()
 	margin.anchor_right = 1.0
 	margin.anchor_bottom = 1.0
@@ -30,7 +51,7 @@ func _ready() -> void:
 	margin.add_theme_constant_override("margin_top", 16)
 	margin.add_theme_constant_override("margin_right", 16)
 	margin.add_theme_constant_override("margin_bottom", 16)
-	add_child(margin)
+	bg.add_child(margin)
 
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 10)
@@ -38,10 +59,12 @@ func _ready() -> void:
 
 	_versions = Label.new()
 	_versions.add_theme_font_size_override("font_size", 18)
+	_versions.add_theme_color_override("font_color", TEXT_PRIMARY)
 	vb.add_child(_versions)
 
 	var notes_header := Label.new()
 	notes_header.text = "Release notes:"
+	notes_header.add_theme_color_override("font_color", TEXT_SECONDARY)
 	vb.add_child(notes_header)
 
 	_notes = RichTextLabel.new()
@@ -49,16 +72,23 @@ func _ready() -> void:
 	_notes.scroll_active = true
 	_notes.bbcode_enabled = false
 	_notes.fit_content = false
+	_notes.add_theme_color_override("default_color", TEXT_PRIMARY)
+	_notes.add_theme_stylebox_override("normal", _flat(NOTES_BG, 4))
+	_notes.add_theme_stylebox_override("focus", _flat(NOTES_BG, 4))
 	vb.add_child(_notes)
 
 	_progress = ProgressBar.new()
 	_progress.visible = false
 	_progress.min_value = 0
 	_progress.max_value = 100
+	_progress.add_theme_stylebox_override("background", _flat(PROGRESS_TRACK, 3))
+	_progress.add_theme_stylebox_override("fill", _flat(PROGRESS_FILL, 3))
+	_progress.add_theme_color_override("font_color", TEXT_PRIMARY)
 	vb.add_child(_progress)
 
 	_status = Label.new()
 	_status.visible = false
+	_status.add_theme_color_override("font_color", TEXT_SECONDARY)
 	vb.add_child(_status)
 
 	var hb := HBoxContainer.new()
@@ -66,15 +96,44 @@ func _ready() -> void:
 	hb.add_theme_constant_override("separation", 8)
 	vb.add_child(hb)
 
-	_btn_skip = Button.new()
-	_btn_skip.text = "Skip This Version"
+	_btn_skip = _make_button("Skip This Version")
 	_btn_skip.pressed.connect(func(): skip_requested.emit())
 	hb.add_child(_btn_skip)
 
-	_btn_update = Button.new()
-	_btn_update.text = "Update Now"
+	_btn_update = _make_button("Update Now")
 	_btn_update.pressed.connect(func(): update_requested.emit())
 	hb.add_child(_btn_update)
+
+
+func _flat(color: Color, corner: int) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = color
+	if corner > 0:
+		sb.set_corner_radius_all(corner)
+	return sb
+
+
+func _make_button(label: String) -> Button:
+	var b := Button.new()
+	b.text = label
+	b.add_theme_color_override("font_color", TEXT_PRIMARY)
+	b.add_theme_color_override("font_hover_color", TEXT_PRIMARY)
+	b.add_theme_color_override("font_pressed_color", TEXT_PRIMARY)
+	b.add_theme_color_override("font_disabled_color", BUTTON_DISABLED_TEXT)
+	var states := {
+		"normal":   BUTTON_NORMAL,
+		"hover":    BUTTON_HOVER,
+		"pressed":  BUTTON_PRESSED,
+		"disabled": BUTTON_DISABLED,
+	}
+	for state in states:
+		var sb := _flat(states[state], 4)
+		sb.content_margin_left = 14
+		sb.content_margin_right = 14
+		sb.content_margin_top = 6
+		sb.content_margin_bottom = 6
+		b.add_theme_stylebox_override(state, sb)
+	return b
 
 
 func configure(current_version: String, new_version: String, notes: String) -> void:

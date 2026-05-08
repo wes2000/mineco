@@ -1,18 +1,75 @@
 extends Node
 ## Auto-updater. On launch, asks GitHub for the latest release of REPO,
-## compares its tag against res://VERSION, and prompts the user if a newer
-## build is available.
+## compares its tag against the project's config/version, and prompts the
+## user if a newer build is available.
 ##
 ## Skipped entirely when running in the editor or on non-Windows platforms.
+##
+## The version source and helper script are read from packed resources
+## (project.binary and this script's bytecode) so the updater works without
+## relying on plain-text files surviving the export filter.
 
 const REPO := "wes2000/mineco"
-const VERSION_FILE := "res://VERSION"
 const API_URL := "https://api.github.com/repos/%s/releases/latest"
 const ASSET_PATTERN := "mineco-v%s-windows.zip"
 const SKIP_CFG := "user://updater_skip.cfg"
-const HELPER_TEMPLATE := "res://scripts/updater_helper.ps1"
 
 const DialogScript := preload("res://autoload/update_dialog.gd")
+
+# PowerShell helper, embedded so it survives Godot's export filtering.
+# Spawned post-quit; waits for the game's PID, copies new files into place,
+# relaunches the game. Logs to %TEMP%\mineco_update_helper.log.
+const HELPER_SCRIPT := """# MiningSim post-exit updater helper (auto-generated; edit in updater.gd).
+param(
+	[Parameter(Mandatory=$true)][int]$WaitPid,
+	[Parameter(Mandatory=$true)][string]$Source,
+	[Parameter(Mandatory=$true)][string]$Dest,
+	[Parameter(Mandatory=$true)][string]$Exe
+)
+
+$ErrorActionPreference = 'Stop'
+$LogPath = Join-Path $env:TEMP 'mineco_update_helper.log'
+
+function Write-Log($msg) {
+	$stamp = Get-Date -Format 's'
+	Add-Content -Path $LogPath -Value \"[$stamp] $msg\"
+}
+
+try {
+	Write-Log \"Helper started. WaitPid=$WaitPid Source=$Source Dest=$Dest Exe=$Exe\"
+
+	$deadline = (Get-Date).AddSeconds(30)
+	while (Get-Process -Id $WaitPid -ErrorAction SilentlyContinue) {
+		if ((Get-Date) -gt $deadline) {
+			Write-Log \"Timeout waiting for pid $WaitPid to exit.\"
+			exit 1
+		}
+		Start-Sleep -Milliseconds 250
+	}
+	Write-Log 'Game exited.'
+
+	Start-Sleep -Milliseconds 500
+
+	if (-not (Test-Path $Source)) { Write-Log \"Source missing: $Source\"; exit 1 }
+	if (-not (Test-Path $Dest))   { Write-Log \"Dest missing: $Dest\"; exit 1 }
+
+	Copy-Item -Path (Join-Path $Source '*') -Destination $Dest -Recurse -Force
+	Write-Log 'Copy complete.'
+
+	Start-Process -FilePath $Exe -WorkingDirectory $Dest
+	Write-Log \"Relaunched $Exe.\"
+
+	try {
+		Remove-Item -Path (Split-Path $Source -Parent) -Recurse -Force -ErrorAction SilentlyContinue
+	} catch {
+		Write-Log \"Cleanup skipped: $($_.Exception.Message)\"
+	}
+}
+catch {
+	Write-Log \"Helper failed: $($_.Exception.Message)\"
+	exit 1
+}
+"""
 
 var current_version: String = "0.0.0"
 var _check_http: HTTPRequest
@@ -22,7 +79,7 @@ var _dialog: Window
 
 
 func _ready() -> void:
-	current_version = _read_version_file()
+	current_version = str(ProjectSettings.get_setting("application/config/version", "0.0.0"))
 	if OS.has_feature("editor"):
 		return
 	if OS.get_name() != "Windows":
@@ -36,15 +93,6 @@ func _ready() -> void:
 	])
 	if err != OK:
 		push_warning("Updater: failed to start request (err %d)" % err)
-
-
-func _read_version_file() -> String:
-	var f := FileAccess.open(VERSION_FILE, FileAccess.READ)
-	if f == null:
-		return "0.0.0"
-	var v := f.get_as_text().strip_edges()
-	f.close()
-	return v
 
 
 func _on_release_check_done(result: int, code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
@@ -135,7 +183,6 @@ func _dismiss_dialog() -> void:
 
 func _begin_download(_version: String, asset_url: String) -> void:
 	var dl_dir := OS.get_environment("TEMP").path_join("mineco_update")
-	# Clean any previous attempt.
 	if DirAccess.dir_exists_absolute(dl_dir):
 		_remove_dir_recursive(dl_dir)
 	DirAccess.make_dir_recursive_absolute(dl_dir)
@@ -232,21 +279,13 @@ func _spawn_helper_and_quit(extracted_dir: String) -> void:
 	var install_dir := OS.get_executable_path().get_base_dir()
 	var exe_path := OS.get_executable_path()
 
-	var helper_src := FileAccess.open(HELPER_TEMPLATE, FileAccess.READ)
-	if helper_src == null:
-		if is_instance_valid(_dialog):
-			_dialog.show_error("Helper script missing from install.")
-		return
-	var helper_text := helper_src.get_as_text()
-	helper_src.close()
-
 	var helper_path := OS.get_environment("TEMP").path_join("mineco_apply_update.ps1")
 	var helper_out := FileAccess.open(helper_path, FileAccess.WRITE)
 	if helper_out == null:
 		if is_instance_valid(_dialog):
 			_dialog.show_error("Could not write helper to TEMP.")
 		return
-	helper_out.store_string(helper_text)
+	helper_out.store_string(HELPER_SCRIPT)
 	helper_out.close()
 
 	var args := [
