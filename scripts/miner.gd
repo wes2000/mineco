@@ -108,6 +108,10 @@ func _ready() -> void:
 		_voxel_tool.mode = VoxelTool.MODE_REMOVE
 	_shovel.swing_hit_frame.connect(_on_hit_frame)
 	add_to_group("player_miner")
+	# Grants the default crosshair to fresh games. apply_save_data also calls
+	# this after a load, so saves missing the field self-heal too.
+	apply_owned_modifiers()
+	shop_inventory_changed.emit()
 
 func _process(_delta: float) -> void:
 	if BuildController.active:
@@ -363,6 +367,13 @@ func equip_item(item_id: String) -> bool:
 # after buy/equip/load and from _ready so a fresh player still re-applies
 # whatever was loaded by SaveGame.apply_state.
 func apply_owned_modifiers() -> void:
+	# Make sure the default crosshair is granted + equipped before anything
+	# else. Idempotent — both fresh _ready and post-load apply_save_data
+	# go through this path.
+	if not owned_items.has(_ShopDefs.DEFAULT_CROSSHAIR):
+		owned_items.append(_ShopDefs.DEFAULT_CROSSHAIR)
+	if not equipped_items.has(String(_ShopDefs.CAT_CROSSHAIR)):
+		equipped_items[String(_ShopDefs.CAT_CROSSHAIR)] = _ShopDefs.DEFAULT_CROSSHAIR
 	var stats: Node = get_node_or_null("/root/PlayerStats")
 	if stats == null:
 		return

@@ -195,7 +195,40 @@ func _build_game_tab() -> void:
 			del_btn.disabled = not has
 			disarm_del.call()
 		)
+	# Unstuck — teleport the player back to spawn (0, 30, 0). Lets you
+	# recover after falling through the world or getting wedged inside
+	# a built piece. Re-runs SpawnGate's chunk-mesh wait so distant-island
+	# saves don't fall through the void on respawn either.
+	var sep_unstuck: HSeparator = HSeparator.new()
+	v.add_child(sep_unstuck)
+	var unstuck_hdr: Label = Label.new()
+	unstuck_hdr.text = "Recover"
+	unstuck_hdr.add_theme_font_size_override("font_size", 14)
+	unstuck_hdr.add_theme_color_override("font_color", Color(0.95, 0.65, 0.55, 1))
+	v.add_child(unstuck_hdr)
+	var unstuck_btn: Button = Button.new()
+	unstuck_btn.text = "Unstuck (Teleport to Spawn)"
+	unstuck_btn.custom_minimum_size = Vector2(220, 36)
+	unstuck_btn.pressed.connect(func() -> void:
+		_teleport_to_spawn()
+		close()
+	)
+	v.add_child(unstuck_btn)
 	$Panel/Vbox/Tabs/Game.add_child(v)
+
+# Teleport the player to main-town spawn and re-suspend physics until the
+# spawn chunk is meshed (otherwise unstuck-from-a-far-island would just drop
+# them into the void waiting for the chunk).
+func _teleport_to_spawn() -> void:
+	var player: Node3D = get_tree().root.get_node_or_null("Main/Player") as Node3D
+	if player == null:
+		return
+	player.global_position = Vector3(0, 30, 0)
+	if player is CharacterBody3D:
+		(player as CharacterBody3D).velocity = Vector3.ZERO
+	var gate: Node = get_tree().get_first_node_in_group("spawn_gate")
+	if gate != null and gate.has_method("suspend_until_ground"):
+		gate.call("suspend_until_ground")
 
 func _build_audio_tab() -> void:
 	$Panel/Vbox/Tabs/Audio.add_child(_placeholder_label("Coming soon"))

@@ -22,11 +22,19 @@ const CAT_PICKAXE: StringName = &"pickaxe"
 const CAT_SCANNER: StringName = &"scanner"
 const CAT_UTILITY: StringName = &"utility"
 const CAT_WEAPON: StringName = &"weapon"
+const CAT_CROSSHAIR: StringName = &"crosshair"
 
 # Weapon items are equip-slot too — only one weapon equipped at a time. Their
 # `modifiers` arrays stay empty: the Weapon node reads its def from
 # WeaponDefs by id instead of going through the PlayerStats mod system.
-const EQUIP_CATEGORIES: Array[StringName] = [CAT_PICKAXE, CAT_SCANNER, CAT_WEAPON]
+# Crosshair items are also equip-slot but pure cosmetic — the CrosshairHUD
+# reads `crosshair_style` + `crosshair_color` off the equipped def.
+const EQUIP_CATEGORIES: Array[StringName] = [CAT_PICKAXE, CAT_SCANNER, CAT_WEAPON, CAT_CROSSHAIR]
+
+# Default crosshair id — must exist in ITEMS below. Granted free at first
+# spawn (Miner.apply_owned_modifiers ensures this) so the player always has
+# a working crosshair even before visiting the shop.
+const DEFAULT_CROSSHAIR: String = "crosshair_dot_white"
 
 const ITEMS: Array = [
 	# --- Pickaxes (equip slot) ---
@@ -146,6 +154,82 @@ const ITEMS: Array = [
 		"modifiers": [],
 		"description": "Ranged hitscan. Long cooldown.",
 	},
+	# --- Crosshairs (equip slot, cosmetic) ---
+	# Each entry carries `crosshair_style` ("dot" / "x" / "t" / "o" / "o_dot")
+	# and `crosshair_color` for the HUD to read on equip. Modifiers stay empty.
+	{
+		"id": "crosshair_dot_white", "name": "Dot — White",
+		"category": CAT_CROSSHAIR, "price": 0, "requires": [],
+		"icon": "",
+		"modifiers": [],
+		"description": "Default white dot.",
+		"crosshair_style": "dot",
+		"crosshair_color": Color(1, 1, 1, 1),
+	},
+	{
+		"id": "crosshair_x_white", "name": "Cross — White",
+		"category": CAT_CROSSHAIR, "price": 200, "requires": [],
+		"icon": "",
+		"modifiers": [],
+		"description": "Two diagonal lines in an X.",
+		"crosshair_style": "x",
+		"crosshair_color": Color(1, 1, 1, 1),
+	},
+	{
+		"id": "crosshair_t_white", "name": "Tee — White",
+		"category": CAT_CROSSHAIR, "price": 200, "requires": [],
+		"icon": "",
+		"modifiers": [],
+		"description": "Inverted T crosshair.",
+		"crosshair_style": "t",
+		"crosshair_color": Color(1, 1, 1, 1),
+	},
+	{
+		"id": "crosshair_o_white", "name": "Ring — White",
+		"category": CAT_CROSSHAIR, "price": 200, "requires": [],
+		"icon": "",
+		"modifiers": [],
+		"description": "Open circle.",
+		"crosshair_style": "o",
+		"crosshair_color": Color(1, 1, 1, 1),
+	},
+	{
+		"id": "crosshair_o_dot_white", "name": "Ring + Dot — White",
+		"category": CAT_CROSSHAIR, "price": 250, "requires": [],
+		"icon": "",
+		"modifiers": [],
+		"description": "Open circle with center dot.",
+		"crosshair_style": "o_dot",
+		"crosshair_color": Color(1, 1, 1, 1),
+	},
+	# Color variants (re-skin the basic dot)
+	{
+		"id": "crosshair_dot_red", "name": "Dot — Red",
+		"category": CAT_CROSSHAIR, "price": 100, "requires": [],
+		"icon": "",
+		"modifiers": [],
+		"description": "Red dot for high contrast.",
+		"crosshair_style": "dot",
+		"crosshair_color": Color(0.95, 0.25, 0.25, 1),
+	},
+	{
+		"id": "crosshair_dot_green", "name": "Dot — Green",
+		"category": CAT_CROSSHAIR, "price": 100, "requires": [],
+		"icon": "",
+		"modifiers": [],
+		"description": "Green dot.",
+		"crosshair_style": "dot",
+		"crosshair_color": Color(0.35, 0.95, 0.4, 1),
+	},
+	{
+		"id": "crosshair_dot_yellow", "name": "Dot — Yellow",
+		"category": CAT_CROSSHAIR, "price": 100, "requires": [],
+		"icon": "",
+		"modifiers": [],
+		"description": "Yellow dot.",
+		"crosshair_style": "dot",
+		"crosshair_color": Color(1.0, 0.9, 0.3, 1),
+	},
 ]
 
 static var _icon_cache: Dictionary = {}
@@ -181,6 +265,7 @@ static func category_name(cat: StringName) -> String:
 	if cat == CAT_SCANNER: return "Scanners"
 	if cat == CAT_UTILITY: return "Utility"
 	if cat == CAT_WEAPON: return "Weapons"
+	if cat == CAT_CROSSHAIR: return "Crosshairs"
 	return String(cat)
 
 # True if the item's prerequisites are all satisfied by `owned_ids` AND the
