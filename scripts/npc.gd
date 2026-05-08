@@ -49,7 +49,7 @@ const _WALK_TILT_AMPLITUDE: float = 0.08
 const _WALK_BOB_HZ: float = 2.4
 var _walk_phase: float = 0.0
 var _visual_root: Node3D = null
-const _VISUAL_REST_Y: float = 1.125
+const _VISUAL_REST_Y: float = 1.4
 
 # Town NPC variants — one per index 0..3. The town spawner assigns each of
 # its four NPC slots a different variant so they read as distinct people.

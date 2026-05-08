@@ -4,13 +4,17 @@
 [ext_resource type="PackedScene" uid="uid://0kvt0s5qg58" path="res://assets/models/boat.glb" id="2_glb"]
 
 [sub_resource type="BoxShape3D" id="HullShape"]
-size = Vector3(14, 4, 10)
+size = Vector3(8, 2.4, 5)
 
 [node name="Boat" type="CharacterBody3D" unique_id=779710697]
 script = ExtResource("1")
 
+; Collision rotated to match the model's ~47° Y rotation (basis values come
+; from the Model transform divided by its scale=12). Box spans Y=0 to Y=2.4
+; so the deck sits flush with the player's footstep height when stepping
+; off the dock.
 [node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=1591338405]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
+transform = Transform3D(-0.7314, 0, -0.682, 0, 1, 0, 0.682, 0, -0.7314, 0, 1.2, 0)
 shape = SubResource("HullShape")
 debug_color = Color(0.9759181, 0, 0.4122103, 1)
 debug_fill = false

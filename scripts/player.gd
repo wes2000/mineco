@@ -409,6 +409,10 @@ func _process(_delta: float) -> void:
 	# Weapon attack — gated on standard mode + weapon equipped + owns one.
 	if BuildController.active or current_tool != TOOL_WEAPON:
 		return
+	# Modal UI -> mouse becomes visible; suppress LMB attack so menu clicks
+	# don't double-fire as a swing on whatever's behind the panel.
+	if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
+		return
 	if _weapon == null or not _weapon.has_method("try_attack"):
 		return
 	if Input.is_action_pressed("mine"):

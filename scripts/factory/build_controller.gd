@@ -135,6 +135,11 @@ func _input(event: InputEvent) -> void:
 			ghost_rotation_steps = (ghost_rotation_steps - 1) & 3
 			_refresh_ghost()
 		elif mb.button_index == MOUSE_BUTTON_LEFT:
+			# A modal UI (build catalog, pause, vendor, contract, etc.) all
+			# release the mouse cursor; if the cursor isn't captured, the
+			# click is for the menu — don't fire it into the world.
+			if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
+				return
 			if Input.is_action_pressed("build_remove"):
 				_try_remove()
 			else:

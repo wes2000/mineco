@@ -116,6 +116,10 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
 	if BuildController.active:
 		return   # build mode suppresses mining (LMB belongs to placement)
+	# Any modal UI that grabs the cursor releases the mouse — treat that as
+	# "menu open" and don't fire LMB into the world.
+	if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
+		return
 	# Only swing if the player has the pickaxe equipped.
 	if _player == null or _player.get("current_tool") != 0:   # 0 = TOOL_PICKAXE
 		return

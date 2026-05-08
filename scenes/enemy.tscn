@@ -5,8 +5,8 @@
 [ext_resource type="PackedScene" path="res://assets/models/enemy.glb" id="3_glb"]
 
 [sub_resource type="CapsuleShape3D" id="BodyShape"]
-radius = 1.35
-height = 5.1
+radius = 0.9
+height = 3.4
 
 [sub_resource type="QuadMesh" id="HBarMesh"]
 size = Vector2(2.5, 0.25)
@@ -31,12 +31,12 @@ collision_mask = 1
 script = ExtResource("1_enemy")
 
 [node name="MeshRoot" type="Node3D" parent="."]
-transform = Transform3D(3, 0, 0, 0, 3, 0, 0, 0, 3, 0, 0, 0)
+transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0)
 
 [node name="Model" parent="MeshRoot" instance=ExtResource("3_glb")]
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.85, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.9, 0)
 shape = SubResource("BodyShape")
 
 [node name="Health" type="Node" parent="."]
@@ -44,7 +44,7 @@ script = ExtResource("2_health")
 base_max = 30
 
 [node name="HealthBar" type="Node3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5.6, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.0, 0)
 
 [node name="HBarBg" type="MeshInstance3D" parent="HealthBar"]
 mesh = SubResource("HBarMesh")

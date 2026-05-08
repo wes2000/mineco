@@ -20,6 +20,12 @@ const PICKAXE_GLBS: Dictionary = {
 	# Deepcore reuses the gold model until a dedicated mesh ships.
 	"pickaxe_deepcore":    "res://assets/models/pickaxe_gold.glb",
 }
+# Per-tier scale override. The GLBs aren't all authored at the same size,
+# so this dict patches up the obvious mismatches without re-exporting the
+# meshes. Default = 1.0 when an id is missing.
+const PICKAXE_SCALE: Dictionary = {
+	"pickaxe_iron": 3.0,
+}
 # Same orientation correction the original ShovelGLB used inside the Mesh
 # wrapper — the GLB asset's forward axis is flipped relative to ours.
 const PICKAXE_LOCAL_XFORM: Transform3D = Transform3D(
@@ -51,7 +57,13 @@ func set_pickaxe_id(pickaxe_id: String) -> void:
 	var inst: Node3D = packed.instantiate() as Node3D
 	if inst == null:
 		return
-	inst.transform = PICKAXE_LOCAL_XFORM
+	var scale_mul: float = float(PICKAXE_SCALE.get(pickaxe_id, 1.0))
+	if scale_mul != 1.0:
+		var t: Transform3D = PICKAXE_LOCAL_XFORM
+		t.basis = t.basis.scaled(Vector3.ONE * scale_mul)
+		inst.transform = t
+	else:
+		inst.transform = PICKAXE_LOCAL_XFORM
 	_mesh.add_child(inst)
 
 func try_swing(stamina) -> bool:
