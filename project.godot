@@ -11,6 +11,7 @@ config_version=5
 [application]
 
 config/name="Mine Co."
+config/version="0.5.0"
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.6", "Forward Plus")
 config/icon="res://icon.svg"
@@ -28,6 +29,7 @@ PlayerStats="*res://scripts/player_stats.gd"
 PassiveTree="*res://scripts/passive_tree.gd"
 Unlocks="*res://scripts/unlocks.gd"
 CompanyProgress="*res://scripts/company_progress.gd"
+Updater="*res://autoload/updater.gd"
 
 [editor_plugins]
 

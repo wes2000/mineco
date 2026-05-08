@@ -1,3 +1,28 @@
 # Godot 4+ specific ignores
 .godot/
 /android/
+
+# Mono / .NET
+.mono/
+data_*/
+mono_crash.*.json
+
+# Build artifacts
+exports/
+build/
+mineco.exe
+mineco.console.exe
+mineco.pck
+Mine Co..exe
+Mine Co..console.exe
+Mine Co..pck
+Mine Co..zip
+*.zip
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.directory
+.vscode/
+.idea/
+.claude/
