@@ -36,7 +36,7 @@ var _carves: Array = []
 # fired. Keyed by instance id; resets each launch (the carve itself is
 # saved via _carves, so loaded saves don't need to re-clear).
 var _revealed_deposits: Dictionary = {}
-const _REVEAL_RADIUS: float = 1.8
+const _REVEAL_RADIUS: float = 0.5
 
 var stone: int = 0
 var iron: int = 0
