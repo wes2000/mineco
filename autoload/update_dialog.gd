@@ -36,6 +36,10 @@ func _init() -> void:
 
 
 func _ready() -> void:
+	# Player.gd captures the mouse at launch, so without this the cursor
+	# stays hidden and locked to game center while this dialog is on
+	# screen — the user can't actually click Update Now / Skip.
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	# Solid blue panel that fills the Window so the OS-default background
 	# never shows through.
 	var bg := Panel.new()
@@ -103,6 +107,13 @@ func _ready() -> void:
 	_btn_update = _make_button("Update Now")
 	_btn_update.pressed.connect(func(): update_requested.emit())
 	hb.add_child(_btn_update)
+
+
+# Hand the mouse back to the game when the dialog goes away. The progress
+# branch (Update Now -> download -> game quits) doesn't matter since the
+# process is dying anyway.
+func _exit_tree() -> void:
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
 func _flat(color: Color, corner: int) -> StyleBoxFlat:
