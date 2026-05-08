@@ -22,19 +22,21 @@ const CAT_PICKAXE: StringName = &"pickaxe"
 const CAT_SCANNER: StringName = &"scanner"
 const CAT_UTILITY: StringName = &"utility"
 const CAT_WEAPON: StringName = &"weapon"
-const CAT_CROSSHAIR: StringName = &"crosshair"
+const CAT_CROSSHAIR: StringName = &"crosshair"          # shape only
+const CAT_CROSSHAIR_COLOR: StringName = &"crosshair_color"  # tint only
 
 # Weapon items are equip-slot too — only one weapon equipped at a time. Their
 # `modifiers` arrays stay empty: the Weapon node reads its def from
 # WeaponDefs by id instead of going through the PlayerStats mod system.
-# Crosshair items are also equip-slot but pure cosmetic — the CrosshairHUD
-# reads `crosshair_style` + `crosshair_color` off the equipped def.
-const EQUIP_CATEGORIES: Array[StringName] = [CAT_PICKAXE, CAT_SCANNER, CAT_WEAPON, CAT_CROSSHAIR]
+# Crosshair shape + color are independent equip slots so the player can mix
+# any color with any shape; CrosshairHUD reads both.
+const EQUIP_CATEGORIES: Array[StringName] = [CAT_PICKAXE, CAT_SCANNER, CAT_WEAPON, CAT_CROSSHAIR, CAT_CROSSHAIR_COLOR]
 
-# Default crosshair id — must exist in ITEMS below. Granted free at first
-# spawn (Miner.apply_owned_modifiers ensures this) so the player always has
-# a working crosshair even before visiting the shop.
+# Defaults — must exist in ITEMS below. Both are free + auto-granted on
+# first spawn (Miner.apply_owned_modifiers) so the player always has a
+# functioning crosshair.
 const DEFAULT_CROSSHAIR: String = "crosshair_dot_white"
+const DEFAULT_CROSSHAIR_COLOR: String = "crosshair_color_white"
 
 const ITEMS: Array = [
 	# --- Pickaxes (equip slot) ---
@@ -154,81 +156,123 @@ const ITEMS: Array = [
 		"modifiers": [],
 		"description": "Ranged hitscan. Long cooldown.",
 	},
-	# --- Crosshairs (equip slot, cosmetic) ---
-	# Each entry carries `crosshair_style` ("dot" / "x" / "t" / "o" / "o_dot")
-	# and `crosshair_color` for the HUD to read on equip. Modifiers stay empty.
+	# --- Crosshair shapes (CAT_CROSSHAIR) ---
+	# Pure shape entries; tint comes from the separately-equipped color slot.
+	# Each entry carries `crosshair_style`. The `_white` suffix in the id is
+	# legacy (saves predate the color split) and just means "no built-in tint".
 	{
-		"id": "crosshair_dot_white", "name": "Dot — White",
+		"id": "crosshair_dot_white", "name": "Dot",
 		"category": CAT_CROSSHAIR, "price": 0, "requires": [],
-		"icon": "",
-		"modifiers": [],
-		"description": "Default white dot.",
+		"icon": "", "modifiers": [],
+		"description": "Default. A simple center dot.",
 		"crosshair_style": "dot",
-		"crosshair_color": Color(1, 1, 1, 1),
 	},
 	{
-		"id": "crosshair_x_white", "name": "Cross — White",
+		"id": "crosshair_x_white", "name": "Cross",
 		"category": CAT_CROSSHAIR, "price": 200, "requires": [],
-		"icon": "",
-		"modifiers": [],
+		"icon": "", "modifiers": [],
 		"description": "Two diagonal lines in an X.",
 		"crosshair_style": "x",
-		"crosshair_color": Color(1, 1, 1, 1),
 	},
 	{
-		"id": "crosshair_t_white", "name": "Tee — White",
+		"id": "crosshair_t_white", "name": "Tee",
 		"category": CAT_CROSSHAIR, "price": 200, "requires": [],
-		"icon": "",
-		"modifiers": [],
+		"icon": "", "modifiers": [],
 		"description": "Inverted T crosshair.",
 		"crosshair_style": "t",
-		"crosshair_color": Color(1, 1, 1, 1),
 	},
 	{
-		"id": "crosshair_o_white", "name": "Ring — White",
+		"id": "crosshair_o_white", "name": "Ring",
 		"category": CAT_CROSSHAIR, "price": 200, "requires": [],
-		"icon": "",
-		"modifiers": [],
+		"icon": "", "modifiers": [],
 		"description": "Open circle.",
 		"crosshair_style": "o",
-		"crosshair_color": Color(1, 1, 1, 1),
 	},
 	{
-		"id": "crosshair_o_dot_white", "name": "Ring + Dot — White",
+		"id": "crosshair_o_dot_white", "name": "Ring + Dot",
 		"category": CAT_CROSSHAIR, "price": 250, "requires": [],
-		"icon": "",
-		"modifiers": [],
-		"description": "Open circle with center dot.",
+		"icon": "", "modifiers": [],
+		"description": "Open circle with a center dot.",
 		"crosshair_style": "o_dot",
+	},
+	{
+		"id": "crosshair_smiley", "name": "Smiley",
+		"category": CAT_CROSSHAIR, "price": 350, "requires": [],
+		"icon": "", "modifiers": [],
+		"description": "Why so serious. :)",
+		"crosshair_style": "smiley",
+	},
+	{
+		"id": "crosshair_plus", "name": "Plus",
+		"category": CAT_CROSSHAIR, "price": 250, "requires": [],
+		"icon": "", "modifiers": [],
+		"description": "Thicker axis-aligned cross.",
+		"crosshair_style": "plus",
+	},
+	{
+		"id": "crosshair_heart", "name": "Heart",
+		"category": CAT_CROSSHAIR, "price": 300, "requires": [],
+		"icon": "", "modifiers": [],
+		"description": "Aim with love.",
+		"crosshair_style": "heart",
+	},
+	{
+		"id": "crosshair_snowman", "name": "Snowman",
+		"category": CAT_CROSSHAIR, "price": 300, "requires": [],
+		"icon": "", "modifiers": [],
+		"description": "Three stacked circles. Cold-blooded aim.",
+		"crosshair_style": "snowman",
+	},
+	{
+		"id": "crosshair_diamond", "name": "Diamond",
+		"category": CAT_CROSSHAIR, "price": 250, "requires": [],
+		"icon": "", "modifiers": [],
+		"description": "Open diamond outline.",
+		"crosshair_style": "diamond",
+	},
+	# --- Crosshair colors (CAT_CROSSHAIR_COLOR) ---
+	# Independent tint slot — any color combines with any shape above.
+	{
+		"id": "crosshair_color_white", "name": "White",
+		"category": CAT_CROSSHAIR_COLOR, "price": 0, "requires": [],
+		"icon": "", "modifiers": [],
+		"description": "Default. Reads on most surfaces.",
 		"crosshair_color": Color(1, 1, 1, 1),
 	},
-	# Color variants (re-skin the basic dot)
 	{
-		"id": "crosshair_dot_red", "name": "Dot — Red",
-		"category": CAT_CROSSHAIR, "price": 100, "requires": [],
-		"icon": "",
-		"modifiers": [],
-		"description": "Red dot for high contrast.",
-		"crosshair_style": "dot",
+		"id": "crosshair_color_red", "name": "Red",
+		"category": CAT_CROSSHAIR_COLOR, "price": 100, "requires": [],
+		"icon": "", "modifiers": [],
+		"description": "High-contrast red.",
 		"crosshair_color": Color(0.95, 0.25, 0.25, 1),
 	},
 	{
-		"id": "crosshair_dot_green", "name": "Dot — Green",
-		"category": CAT_CROSSHAIR, "price": 100, "requires": [],
-		"icon": "",
-		"modifiers": [],
-		"description": "Green dot.",
-		"crosshair_style": "dot",
+		"id": "crosshair_color_green", "name": "Green",
+		"category": CAT_CROSSHAIR_COLOR, "price": 100, "requires": [],
+		"icon": "", "modifiers": [],
+		"description": "Phosphor green.",
 		"crosshair_color": Color(0.35, 0.95, 0.4, 1),
 	},
 	{
-		"id": "crosshair_dot_yellow", "name": "Dot — Yellow",
-		"category": CAT_CROSSHAIR, "price": 100, "requires": [],
-		"icon": "",
-		"modifiers": [],
-		"description": "Yellow dot.",
-		"crosshair_style": "dot",
+		"id": "crosshair_color_yellow", "name": "Yellow",
+		"category": CAT_CROSSHAIR_COLOR, "price": 100, "requires": [],
+		"icon": "", "modifiers": [],
+		"description": "Highlighter yellow.",
 		"crosshair_color": Color(1.0, 0.9, 0.3, 1),
+	},
+	{
+		"id": "crosshair_color_cyan", "name": "Cyan",
+		"category": CAT_CROSSHAIR_COLOR, "price": 100, "requires": [],
+		"icon": "", "modifiers": [],
+		"description": "Cool ocean cyan.",
+		"crosshair_color": Color(0.40, 0.85, 0.95, 1),
+	},
+	{
+		"id": "crosshair_color_pink", "name": "Pink",
+		"category": CAT_CROSSHAIR_COLOR, "price": 100, "requires": [],
+		"icon": "", "modifiers": [],
+		"description": "Hot pink.",
+		"crosshair_color": Color(1.0, 0.45, 0.75, 1),
 	},
 ]
 
@@ -266,6 +310,7 @@ static func category_name(cat: StringName) -> String:
 	if cat == CAT_UTILITY: return "Utility"
 	if cat == CAT_WEAPON: return "Weapons"
 	if cat == CAT_CROSSHAIR: return "Crosshairs"
+	if cat == CAT_CROSSHAIR_COLOR: return "Colors"
 	return String(cat)
 
 # True if the item's prerequisites are all satisfied by `owned_ids` AND the

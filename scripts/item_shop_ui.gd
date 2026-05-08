@@ -7,22 +7,25 @@ extends Control
 # Preload to avoid the parser needing ShopItemDefs in its class_name cache.
 const _ShopDefs: GDScript = preload("res://scripts/shop_item_defs.gd")
 const _BlueprintDefs: GDScript = preload("res://scripts/blueprint_defs.gd")
+const _CrosshairHUD: GDScript = preload("res://scripts/crosshair_hud.gd")
 
-const CATEGORY_ORDER: Array[StringName] = [
-	&"pickaxe", &"scanner", &"weapon", &"utility", &"crosshair",
+# 5 tabs across the top of the shop. Cosmetics is special: instead of a
+# single column it splits into Crosshair shapes (left) and Colors (right).
+const TAB_NAMES: Array = ["Pickaxes", "Weapons", "Scanners", "Utility", "Cosmetics"]
+const TAB_CATEGORIES: Array[StringName] = [
+	&"pickaxe", &"weapon", &"scanner", &"utility", &""   # cosmetics handled separately
 ]
-const CATEGORY_ACCENT: Dictionary = {
-	&"pickaxe": Color(0.95, 0.65, 0.40, 1),
-	&"scanner": Color(0.55, 0.85, 0.95, 1),
-	&"weapon": Color(0.95, 0.45, 0.45, 1),
-	&"utility": Color(0.85, 0.85, 0.55, 1),
-	&"crosshair": Color(0.75, 0.85, 1.0, 1),
-}
+const TAB_ACCENT: Array[Color] = [
+	Color(0.95, 0.65, 0.40, 1),
+	Color(0.95, 0.45, 0.45, 1),
+	Color(0.55, 0.85, 0.95, 1),
+	Color(0.85, 0.85, 0.55, 1),
+	Color(0.75, 0.85, 1.0, 1),
+]
 
 @onready var _close_btn: Button = $Panel/Vbox/HeaderRow/CloseBtn
 @onready var _gold_label: Label = $Panel/Vbox/GoldRow/Amount
-@onready var _scroll: ScrollContainer = $Panel/Vbox/Scroll
-@onready var _list: VBoxContainer = $Panel/Vbox/Scroll/V
+@onready var _tabs: TabContainer = $Panel/Vbox/Tabs
 
 var _miner: Node = null
 
@@ -108,19 +111,66 @@ func _input(event: InputEvent) -> void:
 		accept_event()
 
 func _refresh() -> void:
-	for c: Node in _list.get_children():
+	# Wipe + rebuild the entire tab list. Each tab is a fresh ScrollContainer
+	# so Godot can scroll long category lists independently. Tabs are renamed
+	# via TabContainer.set_tab_title since the title is on the container, not
+	# the child name.
+	for c: Node in _tabs.get_children():
 		c.queue_free()
 	_gold_label.text = "%d g" % (int(_miner.get("gold_currency")) if _miner != null else 0)
-	for cat: StringName in CATEGORY_ORDER:
-		_list.add_child(_make_section_header(cat))
-		for item: Dictionary in _ShopDefs.by_category(cat):
-			_list.add_child(_make_row(item))
+	var preserved_tab: int = clampi(_tabs.current_tab, 0, TAB_NAMES.size() - 1)
+	for i: int in TAB_NAMES.size():
+		var tab_root: ScrollContainer = ScrollContainer.new()
+		tab_root.name = TAB_NAMES[i]
+		_tabs.add_child(tab_root)
+		_tabs.set_tab_title(i, TAB_NAMES[i])
+		var cat: StringName = TAB_CATEGORIES[i]
+		if cat == &"":
+			tab_root.add_child(_build_cosmetics_tab())
+		else:
+			tab_root.add_child(_build_simple_tab(cat))
+	# Restore previous tab selection so a refresh from a buy/equip doesn't
+	# yank the player back to Pickaxes.
+	_tabs.current_tab = preserved_tab
 
-func _make_section_header(cat: StringName) -> Label:
+# Single-column tab body for the existing simple categories. Returns a VBox
+# of rows; the parent ScrollContainer handles overflow.
+func _build_simple_tab(cat: StringName) -> VBoxContainer:
+	var v: VBoxContainer = VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	for item: Dictionary in _ShopDefs.by_category(cat):
+		v.add_child(_make_row(item))
+	return v
+
+# Cosmetics tab: two columns side-by-side. Left = crosshair shapes, right =
+# colors. Both columns scroll inside the parent ScrollContainer if their
+# combined height exceeds the panel.
+func _build_cosmetics_tab() -> HBoxContainer:
+	var hbox: HBoxContainer = HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 12)
+	hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var left: VBoxContainer = VBoxContainer.new()
+	left.add_theme_constant_override("separation", 6)
+	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	left.add_child(_make_column_header("CROSSHAIRS", TAB_ACCENT[4]))
+	for item: Dictionary in _ShopDefs.by_category(_ShopDefs.CAT_CROSSHAIR):
+		left.add_child(_make_row(item))
+	hbox.add_child(left)
+	var right: VBoxContainer = VBoxContainer.new()
+	right.add_theme_constant_override("separation", 6)
+	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	right.add_child(_make_column_header("COLORS", TAB_ACCENT[4]))
+	for item: Dictionary in _ShopDefs.by_category(_ShopDefs.CAT_CROSSHAIR_COLOR):
+		right.add_child(_make_row(item))
+	hbox.add_child(right)
+	return hbox
+
+func _make_column_header(text: String, accent: Color) -> Label:
 	var lbl: Label = Label.new()
-	lbl.text = _ShopDefs.category_name(cat).to_upper()
+	lbl.text = text
 	lbl.add_theme_font_size_override("font_size", 13)
-	lbl.add_theme_color_override("font_color", CATEGORY_ACCENT.get(cat, Color.WHITE))
+	lbl.add_theme_color_override("font_color", accent)
 	return lbl
 
 func _make_row(item: Dictionary) -> PanelContainer:
@@ -132,7 +182,8 @@ func _make_row(item: Dictionary) -> PanelContainer:
 	var outer: HBoxContainer = HBoxContainer.new()
 	outer.add_theme_constant_override("separation", 10)
 	pc.add_child(outer)
-	# Icon
+	# Icon — texture for normal items, custom-drawn preview for crosshair
+	# shapes / colors (which ship without icon files).
 	var icon_tex: Texture2D = _ShopDefs.icon_for(item)
 	if icon_tex != null:
 		var ic: TextureRect = TextureRect.new()
@@ -142,6 +193,10 @@ func _make_row(item: Dictionary) -> PanelContainer:
 		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		ic.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		outer.add_child(ic)
+	elif String(item.category) == String(_ShopDefs.CAT_CROSSHAIR):
+		outer.add_child(_make_crosshair_shape_preview(String(item.get("crosshair_style", "dot"))))
+	elif String(item.category) == String(_ShopDefs.CAT_CROSSHAIR_COLOR):
+		outer.add_child(_make_crosshair_color_swatch(item.get("crosshair_color", Color(1, 1, 1, 1))))
 	var v: VBoxContainer = VBoxContainer.new()
 	v.add_theme_constant_override("separation", 2)
 	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -229,3 +284,26 @@ func _requires_text(item: Dictionary) -> String:
 		var d: Dictionary = _ShopDefs.by_id(String(req))
 		names.append(String(d.get("name", req)))
 	return ", ".join(names)
+
+# Small Control that custom-draws a crosshair shape (white) at the icon
+# position so the row visually communicates what shape it sells. Color
+# preview is a separate helper.
+func _make_crosshair_shape_preview(style: String) -> Control:
+	var preview: Control = Control.new()
+	preview.custom_minimum_size = Vector2(36, 36)
+	preview.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	preview.draw.connect(func() -> void:
+		_CrosshairHUD.draw_preview(preview, preview.size * 0.5, style, Color(1, 1, 1, 1), 1.0)
+	)
+	return preview
+
+# Color rows preview as a filled dot tinted with the item's color so the
+# rows differ visually beyond the name label.
+func _make_crosshair_color_swatch(color: Color) -> Control:
+	var preview: Control = Control.new()
+	preview.custom_minimum_size = Vector2(36, 36)
+	preview.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	preview.draw.connect(func() -> void:
+		_CrosshairHUD.draw_preview(preview, preview.size * 0.5, "dot", color, 2.0)
+	)
+	return preview

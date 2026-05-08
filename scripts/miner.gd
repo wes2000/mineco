@@ -371,13 +371,21 @@ func equip_item(item_id: String) -> bool:
 # after buy/equip/load and from _ready so a fresh player still re-applies
 # whatever was loaded by SaveGame.apply_state.
 func apply_owned_modifiers() -> void:
-	# Make sure the default crosshair is granted + equipped before anything
-	# else. Idempotent — both fresh _ready and post-load apply_save_data
-	# go through this path.
+	# Make sure both crosshair slots (shape + color) are granted + equipped
+	# before anything else. Idempotent — both fresh _ready and post-load
+	# apply_save_data go through this path.
 	if not owned_items.has(_ShopDefs.DEFAULT_CROSSHAIR):
 		owned_items.append(_ShopDefs.DEFAULT_CROSSHAIR)
-	if not equipped_items.has(String(_ShopDefs.CAT_CROSSHAIR)):
+	if not owned_items.has(_ShopDefs.DEFAULT_CROSSHAIR_COLOR):
+		owned_items.append(_ShopDefs.DEFAULT_CROSSHAIR_COLOR)
+	# Self-heal saves whose equipped slot points at an item we deleted in a
+	# refactor — the lookup returns empty, so we reset to the default.
+	var shape_id: String = String(equipped_items.get(String(_ShopDefs.CAT_CROSSHAIR), ""))
+	if shape_id == "" or _ShopDefs.by_id(shape_id).is_empty():
 		equipped_items[String(_ShopDefs.CAT_CROSSHAIR)] = _ShopDefs.DEFAULT_CROSSHAIR
+	var color_id: String = String(equipped_items.get(String(_ShopDefs.CAT_CROSSHAIR_COLOR), ""))
+	if color_id == "" or _ShopDefs.by_id(color_id).is_empty():
+		equipped_items[String(_ShopDefs.CAT_CROSSHAIR_COLOR)] = _ShopDefs.DEFAULT_CROSSHAIR_COLOR
 	var stats: Node = get_node_or_null("/root/PlayerStats")
 	if stats == null:
 		return

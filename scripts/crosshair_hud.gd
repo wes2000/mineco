@@ -1,8 +1,8 @@
 extends Control
-## Always-on screen-center crosshair. Reads the equipped crosshair shop item
-## from the player's Miner and renders one of a handful of preset shapes via
-## _draw. New shapes are added by extending the match in _draw_for_style and
-## adding the corresponding entry to ShopItemDefs.
+## Always-on screen-center crosshair. Reads two equipped shop items off the
+## player's Miner: a `crosshair` shape and a `crosshair_color` tint. The two
+## are independent so any color can be applied to any shape. _draw renders
+## the matched style stamped in the equipped color.
 
 const _ShopDefs: GDScript = preload("res://scripts/shop_item_defs.gd")
 
@@ -30,43 +30,100 @@ func _refresh_from_miner() -> void:
 	if _miner == null:
 		return
 	var equipped: Dictionary = _miner.equipped_items
-	var crosshair_id: String = String(equipped.get(String(_ShopDefs.CAT_CROSSHAIR), _ShopDefs.DEFAULT_CROSSHAIR))
-	var item: Dictionary = _ShopDefs.by_id(crosshair_id)
-	if item.is_empty():
-		_style = "dot"
-		_color = Color(1, 1, 1, 1)
-	else:
-		_style = String(item.get("crosshair_style", "dot"))
-		_color = item.get("crosshair_color", Color(1, 1, 1, 1))
+	# Shape comes from CAT_CROSSHAIR; color from CAT_CROSSHAIR_COLOR. Either
+	# slot might point at a stale id post-refactor, so fall back to defaults.
+	var shape_id: String = String(equipped.get(String(_ShopDefs.CAT_CROSSHAIR), _ShopDefs.DEFAULT_CROSSHAIR))
+	var shape_def: Dictionary = _ShopDefs.by_id(shape_id)
+	if shape_def.is_empty():
+		shape_def = _ShopDefs.by_id(_ShopDefs.DEFAULT_CROSSHAIR)
+	_style = String(shape_def.get("crosshair_style", "dot"))
+	var color_id: String = String(equipped.get(String(_ShopDefs.CAT_CROSSHAIR_COLOR), _ShopDefs.DEFAULT_CROSSHAIR_COLOR))
+	var color_def: Dictionary = _ShopDefs.by_id(color_id)
+	if color_def.is_empty():
+		color_def = _ShopDefs.by_id(_ShopDefs.DEFAULT_CROSSHAIR_COLOR)
+	_color = color_def.get("crosshair_color", Color(1, 1, 1, 1))
 	queue_redraw()
 
 func _draw() -> void:
-	var center: Vector2 = size * 0.5
-	# Outline color sits underneath so the crosshair stays legible against
-	# any background — chunky dark drop-shadow + thin colored stroke.
-	var outline: Color = Color(0, 0, 0, 0.85)
-	match _style:
-		"dot":
-			draw_circle(center, 3.0, outline)
-			draw_circle(center, 2.0, _color)
-		"x":
-			_draw_thick_line(center + Vector2(-7, -7), center + Vector2(7, 7), 4.0, outline)
-			_draw_thick_line(center + Vector2(-7, 7), center + Vector2(7, -7), 4.0, outline)
-			_draw_thick_line(center + Vector2(-7, -7), center + Vector2(7, 7), 2.0, _color)
-			_draw_thick_line(center + Vector2(-7, 7), center + Vector2(7, -7), 2.0, _color)
-		"t":
-			_draw_thick_line(center + Vector2(-8, -7), center + Vector2(8, -7), 4.0, outline)
-			_draw_thick_line(center + Vector2(0, -7), center + Vector2(0, 8), 4.0, outline)
-			_draw_thick_line(center + Vector2(-8, -7), center + Vector2(8, -7), 2.0, _color)
-			_draw_thick_line(center + Vector2(0, -7), center + Vector2(0, 8), 2.0, _color)
-		"o":
-			draw_arc(center, 7.0, 0, TAU, 32, outline, 3.0, true)
-			draw_arc(center, 7.0, 0, TAU, 32, _color, 1.5, true)
-		"o_dot":
-			draw_arc(center, 7.0, 0, TAU, 32, outline, 3.0, true)
-			draw_arc(center, 7.0, 0, TAU, 32, _color, 1.5, true)
-			draw_circle(center, 2.5, outline)
-			draw_circle(center, 1.5, _color)
+	_draw_crosshair_at(size * 0.5, _style, _color, 1.0)
 
-func _draw_thick_line(a: Vector2, b: Vector2, width: float, color: Color) -> void:
-	draw_line(a, b, color, width, true)
+# Public so the shop preview can render the same shape/color combo without
+# duplicating the case statement. `scale_mul` lets the preview shrink the
+# whole shape uniformly inside a smaller swatch box.
+static func draw_preview(target: CanvasItem, center: Vector2, style: String, color: Color, scale_mul: float = 1.0) -> void:
+	# Outline drop-shadow first.
+	_draw_into(target, center, style, Color(0, 0, 0, 0.85), scale_mul, true)
+	_draw_into(target, center, style, color, scale_mul, false)
+
+func _draw_crosshair_at(center: Vector2, style: String, color: Color, scale_mul: float) -> void:
+	_draw_into(self, center, style, Color(0, 0, 0, 0.85), scale_mul, true)
+	_draw_into(self, center, style, color, scale_mul, false)
+
+# `outline` true = thicker dark stroke; false = thinner color stroke. Both
+# passes are drawn in the same coordinates so the color sits on top of the
+# outline stamp.
+static func _draw_into(target: CanvasItem, center: Vector2, style: String, color: Color, scale_mul: float, outline: bool) -> void:
+	var outer_w: float = (4.0 if outline else 2.0) * scale_mul
+	var ring_w: float = (3.0 if outline else 1.5) * scale_mul
+	match style:
+		"dot":
+			var r: float = (3.0 if outline else 2.0) * scale_mul
+			target.draw_circle(center, r, color)
+		"x":
+			var d: float = 7.0 * scale_mul
+			target.draw_line(center + Vector2(-d, -d), center + Vector2(d, d), color, outer_w, true)
+			target.draw_line(center + Vector2(-d, d), center + Vector2(d, -d), color, outer_w, true)
+		"t":
+			var w: float = 8.0 * scale_mul
+			var h_top: float = 7.0 * scale_mul
+			var h_bot: float = 8.0 * scale_mul
+			target.draw_line(center + Vector2(-w, -h_top), center + Vector2(w, -h_top), color, outer_w, true)
+			target.draw_line(center + Vector2(0, -h_top), center + Vector2(0, h_bot), color, outer_w, true)
+		"o":
+			var r: float = 7.0 * scale_mul
+			target.draw_arc(center, r, 0.0, TAU, 32, color, ring_w, true)
+		"o_dot":
+			var r: float = 7.0 * scale_mul
+			target.draw_arc(center, r, 0.0, TAU, 32, color, ring_w, true)
+			var dr: float = (2.5 if outline else 1.5) * scale_mul
+			target.draw_circle(center, dr, color)
+		"plus":
+			var s: float = 8.0 * scale_mul
+			var w: float = (5.0 if outline else 2.5) * scale_mul
+			target.draw_line(center + Vector2(-s, 0), center + Vector2(s, 0), color, w, true)
+			target.draw_line(center + Vector2(0, -s), center + Vector2(0, s), color, w, true)
+		"diamond":
+			var d: float = 9.0 * scale_mul
+			var pts: PackedVector2Array = PackedVector2Array([
+				center + Vector2(0, -d),
+				center + Vector2(d, 0),
+				center + Vector2(0, d),
+				center + Vector2(-d, 0),
+				center + Vector2(0, -d),
+			])
+			for i: int in pts.size() - 1:
+				target.draw_line(pts[i], pts[i + 1], color, ring_w, true)
+		"smiley":
+			# Open ring face + two eye dots + lower arc smile.
+			var r: float = 9.0 * scale_mul
+			target.draw_arc(center, r, 0.0, TAU, 32, color, ring_w, true)
+			var eye_r: float = (1.6 if outline else 1.0) * scale_mul
+			target.draw_circle(center + Vector2(-3.0 * scale_mul, -2.0 * scale_mul), eye_r, color)
+			target.draw_circle(center + Vector2(3.0 * scale_mul, -2.0 * scale_mul), eye_r, color)
+			target.draw_arc(center + Vector2(0, 1.0 * scale_mul), 4.0 * scale_mul, deg_to_rad(20.0), deg_to_rad(160.0), 16, color, ring_w, true)
+		"snowman":
+			# Three stacked circles: small head / medium torso / large base.
+			var head_r: float = 3.5 * scale_mul
+			var torso_r: float = 4.5 * scale_mul
+			var base_r: float = 5.5 * scale_mul
+			target.draw_arc(center + Vector2(0, -8.5 * scale_mul), head_r, 0.0, TAU, 24, color, ring_w, true)
+			target.draw_arc(center, torso_r, 0.0, TAU, 24, color, ring_w, true)
+			target.draw_arc(center + Vector2(0, 9.5 * scale_mul), base_r, 0.0, TAU, 24, color, ring_w, true)
+		"heart":
+			# Stylized heart from two arcs + a V at the bottom. Small enough
+			# to read as a crosshair, not a graphic.
+			var s: float = scale_mul
+			target.draw_arc(center + Vector2(-3.0 * s, -2.0 * s), 4.0 * s, deg_to_rad(160.0), deg_to_rad(360.0), 18, color, ring_w, true)
+			target.draw_arc(center + Vector2(3.0 * s, -2.0 * s), 4.0 * s, deg_to_rad(180.0), deg_to_rad(380.0), 18, color, ring_w, true)
+			target.draw_line(center + Vector2(-7.0 * s, 0.5 * s), center + Vector2(0, 8.0 * s), color, ring_w, true)
+			target.draw_line(center + Vector2(7.0 * s, 0.5 * s), center + Vector2(0, 8.0 * s), color, ring_w, true)
