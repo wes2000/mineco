@@ -230,6 +230,13 @@ const ITEMS: Array = [
 		"description": "Open diamond outline.",
 		"crosshair_style": "diamond",
 	},
+	{
+		"id": "crosshair_pulse", "name": "Pulse",
+		"category": CAT_CROSSHAIR, "price": 1000, "requires": [],
+		"icon": "", "modifiers": [],
+		"description": "Animated dot — breathes in and out. Premium tier.",
+		"crosshair_style": "pulse",
+	},
 	# --- Crosshair colors (CAT_CROSSHAIR_COLOR) ---
 	# Independent tint slot — any color combines with any shape above.
 	{

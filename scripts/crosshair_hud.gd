@@ -9,6 +9,11 @@ const _ShopDefs: GDScript = preload("res://scripts/shop_item_defs.gd")
 var _miner: Node = null
 var _style: String = "dot"
 var _color: Color = Color(1, 1, 1, 1)
+# Animated styles need queue_redraw every frame to advance _anim_time. The
+# value is fed into _draw_into as `time_phase` so per-shape animations can
+# read it. Static shop previews pass 0.0 and render the median frame.
+const ANIMATED_STYLES: Dictionary = {"pulse": true}
+var _anim_time: float = 0.0
 
 func _ready() -> void:
 	# Cover the full screen so _draw can use size/2 for center.
@@ -18,13 +23,18 @@ func _ready() -> void:
 	z_index = 50   # sit above the tachometer / minimap layers but below modals
 	set_process(true)
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if _miner == null:
 		_miner = get_tree().get_first_node_in_group("player_miner")
 		if _miner != null:
 			if _miner.has_signal("shop_inventory_changed") and not _miner.shop_inventory_changed.is_connected(_refresh_from_miner):
 				_miner.shop_inventory_changed.connect(_refresh_from_miner)
 			_refresh_from_miner()
+	# Tick animated styles. Static styles skip this so we don't burn redraws
+	# every frame for free.
+	if ANIMATED_STYLES.has(_style):
+		_anim_time += delta
+		queue_redraw()
 
 func _refresh_from_miner() -> void:
 	if _miner == null:
@@ -49,20 +59,22 @@ func _draw() -> void:
 
 # Public so the shop preview can render the same shape/color combo without
 # duplicating the case statement. `scale_mul` lets the preview shrink the
-# whole shape uniformly inside a smaller swatch box.
+# whole shape uniformly inside a smaller swatch box. Static previews don't
+# animate — time_phase = 0 means animated styles render their median frame.
 static func draw_preview(target: CanvasItem, center: Vector2, style: String, color: Color, scale_mul: float = 1.0) -> void:
 	# Outline drop-shadow first.
-	_draw_into(target, center, style, Color(0, 0, 0, 0.85), scale_mul, true)
-	_draw_into(target, center, style, color, scale_mul, false)
+	_draw_into(target, center, style, Color(0, 0, 0, 0.85), scale_mul, true, 0.0)
+	_draw_into(target, center, style, color, scale_mul, false, 0.0)
 
 func _draw_crosshair_at(center: Vector2, style: String, color: Color, scale_mul: float) -> void:
-	_draw_into(self, center, style, Color(0, 0, 0, 0.85), scale_mul, true)
-	_draw_into(self, center, style, color, scale_mul, false)
+	_draw_into(self, center, style, Color(0, 0, 0, 0.85), scale_mul, true, _anim_time)
+	_draw_into(self, center, style, color, scale_mul, false, _anim_time)
 
 # `outline` true = thicker dark stroke; false = thinner color stroke. Both
 # passes are drawn in the same coordinates so the color sits on top of the
-# outline stamp.
-static func _draw_into(target: CanvasItem, center: Vector2, style: String, color: Color, scale_mul: float, outline: bool) -> void:
+# outline stamp. `time_phase` is seconds since the HUD started (0 for
+# static previews); animated styles read it for sin-based motion.
+static func _draw_into(target: CanvasItem, center: Vector2, style: String, color: Color, scale_mul: float, outline: bool, time_phase: float = 0.0) -> void:
 	var outer_w: float = (4.0 if outline else 2.0) * scale_mul
 	var ring_w: float = (3.0 if outline else 1.5) * scale_mul
 	match style:
@@ -127,3 +139,10 @@ static func _draw_into(target: CanvasItem, center: Vector2, style: String, color
 			target.draw_arc(center + Vector2(3.0 * s, -2.0 * s), 4.0 * s, deg_to_rad(180.0), deg_to_rad(380.0), 18, color, ring_w, true)
 			target.draw_line(center + Vector2(-7.0 * s, 0.5 * s), center + Vector2(0, 8.0 * s), color, ring_w, true)
 			target.draw_line(center + Vector2(7.0 * s, 0.5 * s), center + Vector2(0, 8.0 * s), color, ring_w, true)
+		"pulse":
+			# Animated dot — radius oscillates 2..5 px on a 1.5 Hz sine.
+			# Static preview (time_phase=0) shows the median size.
+			var t: float = time_phase * TAU * 1.5
+			var pulse_r: float = (3.5 + sin(t) * 1.5) * scale_mul
+			var r: float = (pulse_r + 1.0) if outline else pulse_r
+			target.draw_circle(center, r, color)
