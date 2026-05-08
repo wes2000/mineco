@@ -111,6 +111,11 @@ func _input(event: InputEvent) -> void:
 		accept_event()
 
 func _refresh() -> void:
+	# Capture the tab the player is currently on BEFORE we tear children
+	# down — remove_child resets current_tab to 0, so reading it after the
+	# loop always saw "Pickaxes" and a buy on the Cosmetics tab snapped the
+	# player back to the first tab.
+	var preserved_tab: int = _tabs.current_tab
 	# Wipe + rebuild the tabs. queue_free is DEFERRED, so naive teardown
 	# leaves stale "Pickaxes" siblings around and add_child renames the
 	# new child to "@ScrollContainer@nnnn" (which then surfaces as the
@@ -121,7 +126,6 @@ func _refresh() -> void:
 		_tabs.remove_child(c)
 		c.queue_free()
 	_gold_label.text = "%d g" % (int(_miner.get("gold_currency")) if _miner != null else 0)
-	var preserved_tab: int = clampi(_tabs.current_tab, 0, TAB_NAMES.size() - 1)
 	for i: int in TAB_NAMES.size():
 		var tab_root: ScrollContainer = ScrollContainer.new()
 		tab_root.name = TAB_NAMES[i]
@@ -131,9 +135,9 @@ func _refresh() -> void:
 			tab_root.add_child(_build_cosmetics_tab())
 		else:
 			tab_root.add_child(_build_simple_tab(cat))
-	# Restore previous tab selection so a refresh from a buy/equip doesn't
-	# yank the player back to Pickaxes.
-	_tabs.current_tab = preserved_tab
+	# Restore the player's tab so a refresh from a buy/equip doesn't yank
+	# them back to Pickaxes.
+	_tabs.current_tab = clampi(preserved_tab, 0, TAB_NAMES.size() - 1)
 
 # Single-column tab body for the existing simple categories. Returns a VBox
 # of rows; the parent ScrollContainer handles overflow.
