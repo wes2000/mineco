@@ -66,6 +66,8 @@ func _make_card_style(bg: Color, border: Color) -> StyleBoxFlat:
 	return s
 
 func open(board: Node) -> void:
+	if HostOnlyGuard.block_if_guest("Claim Vendor"):
+		return
 	_board = board
 	visible = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
