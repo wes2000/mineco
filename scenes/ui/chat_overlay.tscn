@@ -1,0 +1,39 @@
+[gd_scene load_steps=2 format=3 uid="uid://b8t1chatover001"]
+
+[ext_resource type="Script" path="res://scripts/ui/chat_overlay.gd" id="1_script"]
+
+[node name="ChatOverlay" type="Control"]
+layout_mode = 3
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_top = -160.0
+offset_right = 380.0
+offset_bottom = -16.0
+grow_vertical = 0
+mouse_filter = 2
+script = ExtResource("1_script")
+
+[node name="VBox" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_right = -12.0
+offset_top = 8.0
+offset_bottom = -8.0
+mouse_filter = 2
+theme_override_constants/separation = 2
+
+[node name="History" type="VBoxContainer" parent="VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+theme_override_constants/separation = 2
+
+[node name="Input" type="LineEdit" parent="VBox"]
+visible = false
+layout_mode = 2
+placeholder_text = "Press Enter to chat..."
+max_length = 240

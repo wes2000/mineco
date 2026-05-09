@@ -43,6 +43,7 @@
 [ext_resource type="Script" uid="uid://c4i7le1bh035o" path="res://scripts/island_encounters.gd" id="46_islenc"]
 [ext_resource type="PackedScene" path="res://scenes/company_panel_ui.tscn" id="47_companyui"]
 [ext_resource type="Script" uid="uid://s3ab08qwpsny" path="res://scripts/crosshair_hud.gd" id="48_xhair"]
+[ext_resource type="PackedScene" path="res://scenes/ui/chat_overlay.tscn" id="49_chat"]
 
 [sub_resource type="VoxelMesherTransvoxel" id="Mesher_1"]
 
@@ -186,6 +187,8 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("48_xhair")
+
+[node name="ChatOverlay" parent="HUD" instance=ExtResource("49_chat")]
 
 [node name="BirdSpawner" type="Node" parent="." unique_id=524115789]
 script = ExtResource("29_birds")

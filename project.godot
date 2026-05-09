@@ -18,7 +18,6 @@ config/icon="res://icon.svg"
 
 [autoload]
 
-_mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"
 Atmosphere="*res://scripts/atmosphere.gd"
 Admin="*res://scripts/admin.gd"
 FactoryWorld="*res://scripts/factory/factory_world.gd"
@@ -31,6 +30,8 @@ Unlocks="*res://scripts/unlocks.gd"
 CompanyProgress="*res://scripts/company_progress.gd"
 Updater="*res://autoload/updater.gd"
 Net="*res://scripts/net/net.gd"
+Chat="*res://scripts/net/chat.gd"
+_mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"
 
 [editor_plugins]
 
@@ -153,6 +154,11 @@ release_mouse={
 "events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":0,"physical_keycode":4194333,"key_label":0,"unicode":0,"location":0,"echo":false,"script":null)
 ]
 }
+chat_open={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":0,"physical_keycode":4194309,"key_label":0,"unicode":0,"location":0,"echo":false,"script":null)
+]
+}
 
 [layer_names]
 
@@ -173,3 +179,7 @@ initialization/app_id=0
 initialization/initialize_on_startup=false
 initialization/embed_callbacks=false
 multiplayer_peer/max_channels=4
+
+[steam_server]
+
+initialization/embed_callbacks=false
