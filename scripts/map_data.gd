@@ -25,11 +25,29 @@ var texture: ImageTexture = null
 var _explored: PackedByteArray = PackedByteArray()
 var _explored_cell_count: int = 0
 
+# Multiplayer: per-tick accumulator of cell indices revealed locally since the
+# last broadcast, plus a flush timer. We send these to peers periodically so
+# the team's shared map fills in as anyone walks new ground.
+var _pending_remote_diff: PackedInt32Array = PackedInt32Array()
+var _diff_send_accum: float = 0.0
+const _DIFF_SEND_INTERVAL: float = 2.0  # seconds
+
 func _ready() -> void:
 	image = Image.create(GRID_SIZE, GRID_SIZE, false, Image.FORMAT_RGB8)
 	image.fill(FOG_COLOR)
 	texture = ImageTexture.create_from_image(image)
 	_explored.resize(GRID_SIZE * GRID_SIZE)
+	set_process(true)
+
+func _process(delta: float) -> void:
+	# Cheap when offline: no-op early return (the only path that grows
+	# _pending_remote_diff is mark_explored, which only appends when online).
+	if Net == null or not Net.is_online():
+		return
+	_diff_send_accum += delta
+	if _diff_send_accum >= _DIFF_SEND_INTERVAL:
+		_diff_send_accum = 0.0
+		_flush_remote_diff()
 
 func world_to_grid(world_x: float, world_z: float) -> Vector2i:
 	var gx: int = int(floor((world_x + WORLD_RADIUS_M) / CELL_SIZE_M))
@@ -85,6 +103,11 @@ func mark_explored(world_pos: Vector3) -> void:
 			_explored_cell_count += 1
 			image.set_pixel(gx, gz, _color_for_height(y))
 			dirty = true
+			# Multiplayer: queue this cell for broadcast so peers see what we
+			# just revealed. Only accumulate when online to keep the offline
+			# path zero-cost.
+			if Net != null and Net.is_online():
+				_pending_remote_diff.append(idx)
 	if dirty:
 		texture.update(image)
 		map_updated.emit()
@@ -158,3 +181,39 @@ func _sample_ground_y(x: float, z: float, water_if_no_hit: bool) -> float:
 	# under open water sits well below 0, which _color_for_height maps to
 	# COLOR_WATER, so we don't need to special-case it here.
 	return float(result.position.y) + 0.5
+
+# --- Multiplayer broadcast (Phase 1 Task 11) -------------------------------
+
+func _flush_remote_diff() -> void:
+	if _pending_remote_diff.is_empty():
+		return
+	var diff: PackedInt32Array = _pending_remote_diff
+	_pending_remote_diff = PackedInt32Array()
+	_apply_remote_explored_diff_rpc.rpc(diff)
+
+@rpc("any_peer", "call_remote", "reliable")
+func _apply_remote_explored_diff_rpc(idxs: PackedInt32Array) -> void:
+	# Apply remote-revealed cells without re-queuing them — _pending_remote_diff
+	# is for OUR own newly-walked cells. Echoing remote cells back would loop.
+	var dirty: bool = false
+	for idx in idxs:
+		if idx < 0 or idx >= _explored.size():
+			continue
+		if _explored[idx] != 0:
+			continue
+		_explored[idx] = 1
+		_explored_cell_count += 1
+		var gx: int = idx % GRID_SIZE
+		var gz: int = idx / GRID_SIZE
+		# Try to color from local terrain. If we can't sample (chunks not
+		# streamed), use water as a generic fill — the cell will be marked
+		# revealed on the minimap with a placeholder tint until the player
+		# gets close enough for a fresh local sample to overwrite it.
+		var w: Vector2 = grid_to_world(gx, gz)
+		var y: float = _sample_ground_y(w.x, w.y, false)
+		var color: Color = COLOR_WATER if is_nan(y) else _color_for_height(y)
+		image.set_pixel(gx, gz, color)
+		dirty = true
+	if dirty:
+		texture.update(image)
+		map_updated.emit()
