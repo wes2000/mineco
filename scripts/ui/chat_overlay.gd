@@ -3,43 +3,43 @@ extends Control
 ## an Enter-to-toggle input field that sends through the Chat autoload.
 
 @onready var _history: VBoxContainer = $VBox/History
-@onready var _input: LineEdit = $VBox/Input
+@onready var _input_field: LineEdit = $VBox/Input
 
 func _ready() -> void:
 	add_to_group("chat_overlay")
-	_input.text_submitted.connect(_on_input_submitted)
+	_input_field.text_submitted.connect(_on_input_field_submitted)
 	if Chat != null:
 		Chat.new_message.connect(_on_new_message)
 	_redraw_history()
 
 func _input(event: InputEvent) -> void:
-	if event.is_action_pressed("chat_open") and not _input.visible:
-		_open_input()
+	if event.is_action_pressed("chat_open") and not _input_field.visible:
+		_open_input_field()
 		accept_event()
 		return
-	if event.is_action_pressed("ui_cancel") and _input.visible:
-		_close_input(false)
+	if event.is_action_pressed("ui_cancel") and _input_field.visible:
+		_close_input_field(false)
 		accept_event()
 
-func _open_input() -> void:
-	_input.text = ""
-	_input.visible = true
-	_input.grab_focus()
+func _open_input_field() -> void:
+	_input_field.text = ""
+	_input_field.visible = true
+	_input_field.grab_focus()
 	# Release the mouse so the player can type without rotating the camera.
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
-func _close_input(submitted: bool) -> void:
-	_input.visible = false
-	_input.release_focus()
+func _close_input_field(submitted: bool) -> void:
+	_input_field.visible = false
+	_input_field.release_focus()
 	# Restore mouse capture only if not in a menu state.
 	var pause: Node = get_tree().get_first_node_in_group("pause_menu")
 	if pause == null or not pause.visible:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
-func _on_input_submitted(text: String) -> void:
+func _on_input_field_submitted(text: String) -> void:
 	if Chat != null:
 		Chat.send(text)
-	_close_input(true)
+	_close_input_field(true)
 
 func _on_new_message(_line: Dictionary) -> void:
 	_redraw_history()
