@@ -33,7 +33,7 @@ Updater="*res://autoload/updater.gd"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/godot_ai/plugin.cfg", "res://addons/gut/plugin.cfg")
+enabled=PackedStringArray("res://addons/godot_ai/plugin.cfg", "res://addons/godotsteam/plugin.cfg", "res://addons/gut/plugin.cfg")
 
 [input]
 
@@ -165,3 +165,10 @@ release_mouse={
 [rendering]
 
 rendering_device/driver.windows="d3d12"
+
+[steam]
+
+initialization/app_id=0
+initialization/initialize_on_startup=false
+initialization/embed_callbacks=false
+multiplayer_peer/max_channels=4
