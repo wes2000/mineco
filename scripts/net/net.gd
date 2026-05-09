@@ -1,4 +1,9 @@
 extends Node
+
+# Preload the snapshot module — class_name globals don't always refresh
+# on first save in Godot 4.6, and net.gd is an autoload that loads early.
+const _NetSnapshot: GDScript = preload("res://scripts/net/snapshot.gd")
+
 ## Autoload. Owns the SteamMultiplayerPeer and session lifecycle, exposes
 ## signals for peer connect/disconnect/session-end, and provides authority
 ## helpers (`is_host`, `local_player_id`) that the rest of the multiplayer
@@ -168,6 +173,10 @@ func _on_multiplayer_peer_connected(peer_id: int) -> void:
 				continue
 			var existing_steam: String = _peer_to_steam[existing_peer_id]
 			tell_peer_id_to_spawn.rpc_id(peer_id, existing_peer_id, existing_steam)
+		# Late-join: catch the new peer up on the world state we've built up
+		# (map fog, ore deposit damage, voxel carves). Phase 1 covers the
+		# things that drift visibly during a session.
+		_send_world_snapshot(peer_id)
 
 func _on_multiplayer_peer_disconnected(peer_id: int) -> void:
 	_peer_to_steam.erase(peer_id)
@@ -373,3 +382,20 @@ func recv_remote_transform(pos: Vector3, rot_y: float, current_tool: int, animat
 		node.current_tool = current_tool
 	if "animation_state" in node:
 		node.animation_state = animation_state
+
+# --- Late-join snapshot (Phase 1 Task 13) ----------------------------------
+
+func _send_world_snapshot(target_peer_id: int) -> void:
+	# Host-only path. _NetSnapshot.build reads from MapData / OreDeposits /
+	# host miner. The resulting Dictionary is small enough (a few hundred
+	# kB worst case for a fully-explored map + many deposits) to send in
+	# one reliable RPC.
+	var snap: Dictionary = _NetSnapshot.build()
+	_recv_world_snapshot.rpc_id(target_peer_id, snap)
+
+@rpc("authority", "call_remote", "reliable")
+func _recv_world_snapshot(snap: Dictionary) -> void:
+	# Joining peer applies the snapshot to its local world. apply() routes
+	# each section to the right subsystem (MapData.apply_save_data,
+	# OreDeposit.apply_save_data, Miner.replay_carves).
+	_NetSnapshot.apply(snap)
