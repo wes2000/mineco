@@ -7,6 +7,7 @@ extends Node
 ## number keys. Default = the original six factory tools.
 
 const _BuildPieceDefs: GDScript = preload("res://scripts/factory/build_piece_defs.gd")
+const _HostOnlyGuard: GDScript = preload("res://scripts/net/host_only_guard.gd")
 
 # Kept for backward-compat with bottom_hud's selection_changed listeners — a
 # few Tool ids that still map to specific kinds. Not the source of truth.
@@ -36,6 +37,8 @@ const DEFAULT_QUICKBAR: Array = [
 var active: bool = false :
 	set(v):
 		if active != v:
+			if v and _HostOnlyGuard.block_if_guest("Build Mode"):
+				return
 			active = v
 			active_changed.emit(v)
 

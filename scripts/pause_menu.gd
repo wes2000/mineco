@@ -41,6 +41,13 @@ const BUILD_KEYBINDS: Array = [
 @onready var _tabs: TabContainer = $Panel/Vbox/Tabs
 @onready var _close_btn: Button = $Panel/Vbox/HeaderRow/CloseBtn
 
+# Multiplayer section refs (built dynamically in _build_game_tab).
+var _mp_status_label: Label = null
+var _mp_host_btn: Button = null
+var _mp_leave_btn: Button = null
+var _mp_invite_hint: Label = null
+var _mp_roster_vbox: VBoxContainer = null
+
 func _ready() -> void:
 	visible = false
 	add_to_group("pause_menu")
@@ -214,11 +221,112 @@ func _build_game_tab() -> void:
 		close()
 	)
 	v.add_child(unstuck_btn)
-	$Panel/Vbox/Tabs/Game.add_child(v)
+	# Multiplayer (Phase 1). Host button creates a Steam friends-only lobby;
+	# the in-Steam friends list "Invite to Game" / "Join Game" is the actual
+	# invite path. Roster updates live when peers connect/disconnect.
+	var sep_mp: HSeparator = HSeparator.new()
+	v.add_child(sep_mp)
+	var mp_hdr: Label = Label.new()
+	mp_hdr.text = "Multiplayer"
+	mp_hdr.add_theme_font_size_override("font_size", 14)
+	mp_hdr.add_theme_color_override("font_color", Color(0.55, 0.85, 0.7, 1))
+	v.add_child(mp_hdr)
+	_mp_status_label = Label.new()
+	_mp_status_label.add_theme_font_size_override("font_size", 12)
+	_mp_status_label.add_theme_color_override("font_color", Color(0.75, 0.78, 0.82, 1))
+	v.add_child(_mp_status_label)
+	_mp_host_btn = Button.new()
+	_mp_host_btn.text = "Host Multiplayer Session"
+	_mp_host_btn.custom_minimum_size = Vector2(220, 36)
+	_mp_host_btn.pressed.connect(func() -> void:
+		if Net == null:
+			return
+		var err: int = Net.host_session()
+		if err != OK:
+			_mp_status_label.text = "Host failed (err %d) — is Steam running?" % err
+		_refresh_mp_section()
+	)
+	v.add_child(_mp_host_btn)
+	_mp_leave_btn = Button.new()
+	_mp_leave_btn.text = "Leave Multiplayer Session"
+	_mp_leave_btn.custom_minimum_size = Vector2(220, 36)
+	_mp_leave_btn.pressed.connect(func() -> void:
+		if Net != null:
+			Net.leave_session()
+		_refresh_mp_section()
+	)
+	v.add_child(_mp_leave_btn)
+	_mp_invite_hint = Label.new()
+	_mp_invite_hint.text = "Invite friends: open Steam (Shift+Tab) → Friends → right-click → Invite to Game"
+	_mp_invite_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_mp_invite_hint.add_theme_font_size_override("font_size", 11)
+	_mp_invite_hint.add_theme_color_override("font_color", Color(0.65, 0.72, 0.80, 1))
+	v.add_child(_mp_invite_hint)
+	_mp_roster_vbox = VBoxContainer.new()
+	_mp_roster_vbox.add_theme_constant_override("separation", 2)
+	v.add_child(_mp_roster_vbox)
+	if Net != null:
+		Net.peer_connected.connect(func(_pid: int, _sid: String) -> void: _refresh_mp_section())
+		Net.peer_disconnected.connect(func(_pid: int) -> void: _refresh_mp_section())
+		Net.session_ended.connect(func(_reason: String) -> void: _refresh_mp_section())
+	_refresh_mp_section()
+	# The Game tab has grown enough sections (Save&Load + Progression +
+	# Recover + Multiplayer) that it overflows the fixed-height pause-menu
+	# panel. Wrap in a ScrollContainer so future additions just scroll
+	# instead of getting clipped.
+	var scroll: ScrollContainer = ScrollContainer.new()
+	scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(v)
+	$Panel/Vbox/Tabs/Game.add_child(scroll)
 
 # Teleport the player to main-town spawn and re-suspend physics until the
 # spawn chunk is meshed (otherwise unstuck-from-a-far-island would just drop
 # them into the void waiting for the chunk).
+func _refresh_mp_section() -> void:
+	if _mp_status_label == null:
+		return
+	if Net == null:
+		_mp_status_label.text = "Multiplayer unavailable (Net autoload missing)"
+		_mp_host_btn.visible = false
+		_mp_leave_btn.visible = false
+		_mp_invite_hint.visible = false
+		return
+	var online: bool = Net.is_online()
+	if not online:
+		_mp_status_label.text = "Single-player"
+		_mp_host_btn.visible = true
+		_mp_leave_btn.visible = false
+		_mp_invite_hint.visible = false
+	else:
+		var peer_count: int = 1 + (multiplayer.get_peers().size() if multiplayer.multiplayer_peer != null else 0)
+		var role: String = "Hosting" if Net.is_host() else "Connected"
+		_mp_status_label.text = "%s (%d in session)" % [role, peer_count]
+		_mp_host_btn.visible = false
+		_mp_leave_btn.visible = true
+		_mp_invite_hint.visible = true
+	# Roster: rebuild from scratch each refresh — small enough that incremental
+	# add/remove isn't worth the bookkeeping.
+	for child in _mp_roster_vbox.get_children():
+		child.queue_free()
+	if not online:
+		return
+	# Local row.
+	var me_row: Label = Label.new()
+	me_row.text = "  • You (%s)" % Net.local_player_id()
+	me_row.add_theme_font_size_override("font_size", 11)
+	me_row.add_theme_color_override("font_color", Color(0.85, 0.90, 0.85, 1))
+	_mp_roster_vbox.add_child(me_row)
+	# Remote peers.
+	for peer_id in multiplayer.get_peers():
+		var row: Label = Label.new()
+		var sid: String = Net.steam_id_for_peer(peer_id)
+		row.text = "  • Peer %d  (Steam %s)" % [peer_id, sid if sid != "" else "?"]
+		row.add_theme_font_size_override("font_size", 11)
+		row.add_theme_color_override("font_color", Color(0.78, 0.82, 0.86, 1))
+		_mp_roster_vbox.add_child(row)
+
 func _teleport_to_spawn() -> void:
 	var player: Node3D = get_tree().root.get_node_or_null("Main/Player") as Node3D
 	if player == null:

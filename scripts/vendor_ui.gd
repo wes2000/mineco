@@ -60,6 +60,8 @@ func _ready() -> void:
 	_row_style.content_margin_bottom = 4
 
 func open() -> void:
+	if HostOnlyGuard.block_if_guest("Vendor"):
+		return
 	visible = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	_miner = get_tree().get_first_node_in_group("player_miner")

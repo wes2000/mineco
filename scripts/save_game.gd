@@ -6,7 +6,7 @@ extends Node
 ## ignored and the game starts fresh.
 
 const SAVE_PATH: String = "user://savegame.json"
-const SAVE_VERSION: int = 1
+const SAVE_VERSION: int = 2
 const AUTOSAVE_INTERVAL_SEC: float = 60.0
 
 signal save_completed
@@ -15,6 +15,40 @@ signal save_failed(reason: String)
 
 var _autosave_timer: float = 0.0
 var _quitting: bool = false
+
+# --- Migration --------------------------------------------------------------
+
+## v1 -> v2: partition the flat single-player save into world (shared) and
+## players (per-steam-id profile) blocks. Phase 1 keeps contracts/claims under
+## world because they remain host-only systems for guests; Phase 2 will split
+## them into per-player active state vs. shared availability/ownership.
+##
+## Pure function — no scene access, safe to call from tests.
+static func migrate_v1_to_v2(blob: Dictionary, local_steam_id: String) -> Dictionary:
+	if int(blob.get("version", 1)) >= 2:
+		return blob
+	var world: Dictionary = {
+		"map":               blob.get("map", {}),
+		"factory":           blob.get("factory", {}),
+		"ore_deposits":      blob.get("ore_deposits", {}),
+		"island_encounters": blob.get("island_encounters", {}),
+		"contracts":         blob.get("contracts", {}),
+		"claims":            blob.get("claims", {}),
+	}
+	var profile: Dictionary = {
+		"player":           blob.get("player", {}),
+		"miner":            blob.get("miner", {}),
+		"build_controller": blob.get("build_controller", {}),
+		"stats":            blob.get("stats", {}),
+		"passive_tree":     blob.get("passive_tree", {}),
+		"unlocks":          blob.get("unlocks", {}),
+		"company":          blob.get("company", {}),
+	}
+	return {
+		"version": 2,
+		"world": world,
+		"players": {local_steam_id: profile},
+	}
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS   # autosave keeps ticking when paused
@@ -78,6 +112,16 @@ func load_now() -> bool:
 		push_warning("SaveGame.load_now: malformed save, ignoring")
 		return false
 	var data: Dictionary = parsed
+	# Forward-migrate older saves so MP/SP saves of any vintage load cleanly.
+	# `local_id` here is "local" — the offline sentinel used until Net
+	# autoload lands in Task 4. Once Net exists, this picks up the real
+	# steam id via /root/Net.local_player_id().
+	var local_id: String = "local"
+	var net: Node = get_node_or_null("/root/Net")
+	if net != null and net.has_method("local_player_id"):
+		local_id = net.local_player_id()
+	if int(data.get("version", 0)) < 2:
+		data = migrate_v1_to_v2(data, local_id)
 	if int(data.get("version", 0)) != SAVE_VERSION:
 		push_warning("SaveGame.load_now: version mismatch (file=%s expected=%d), ignoring" % [data.get("version"), SAVE_VERSION])
 		return false
@@ -155,6 +199,23 @@ func collect_state() -> Dictionary:
 	return data
 
 func apply_state(data: Dictionary) -> void:
+	# If we got a v2 (world + players[steam_id]) blob, flatten it for the
+	# existing apply path. Phase 2 will rewrite this function to read
+	# directly from data["world"]/data["players"][local_steam_id] so guests
+	# can apply just their own profile while host owns world state.
+	if data.has("world") and data.has("players"):
+		var flat: Dictionary = {}
+		for k: Variant in data["world"]:
+			flat[k] = data["world"][k]
+		var pids: Array = data["players"].keys()
+		if not pids.is_empty():
+			var profile: Dictionary = data["players"][pids[0]]
+			for k: Variant in profile:
+				flat[k] = profile[k]
+		else:
+			push_warning("SaveGame.apply_state: v2 blob has no player profiles; applying world-only state. This usually means a corrupted save.")
+		flat["version"] = 2
+		data = flat
 	# Order: simple-state owners first, then factory (which adds nodes to the
 	# scene), then position the player so spawn-gate logic doesn't fight us.
 	# Tell CompanyProgress to flush its gold-delta baseline BEFORE the miner's

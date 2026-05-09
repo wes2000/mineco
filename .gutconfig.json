@@ -1,0 +1,5 @@
+{
+  "dirs": ["res://tests/gut/"],
+  "include_subdirs": true,
+  "log_level": 1
+}
