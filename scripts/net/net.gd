@@ -45,8 +45,12 @@ func _process(_delta: float) -> void:
 	# Cheap when offline (just an early return inside Steam) — fine to call
 	# every frame.
 	if _steam_initialized and Engine.has_singleton("Steam"):
-		# GodotSteam API: runCallbacks vs run_callbacks
-		Steam.runCallbacks()
+		# GodotSteam exposes this as snake_case (verified against the
+		# x86_64 binary's symbol table — `run_callbacks` exists,
+		# `runCallbacks` does not). Most Matchmaking methods are
+		# camelCase (steamInit, joinLobby, setLobbyData) but the
+		# callback ticker is the exception.
+		Steam.run_callbacks()
 
 # --- Public API -------------------------------------------------------------
 
@@ -229,7 +233,12 @@ func _ensure_steam_initialized() -> bool:
 	else:
 		ok = bool(result)
 	if not ok:
-		push_error("Net._ensure_steam_initialized: steamInit failed: %s" % result)
+		# Don't push_error here — callers already convert this to
+		# ERR_UNAVAILABLE which they surface in the UI. push_error fires
+		# on every offline test run / cold boot before host_session is
+		# called, which pollutes logs. Steam-singleton-missing is still
+		# logged above because that's a config error, not an expected
+		# offline path.
 		return false
 	_steam_initialized = true
 	return true
