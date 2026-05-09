@@ -26,3 +26,7 @@ Thumbs.db
 .vscode/
 .idea/
 .claude/
+
+# GUT (Godot Unit Test) runtime artifacts
+.gut_editor_config.json
+gut_panel_state.json
