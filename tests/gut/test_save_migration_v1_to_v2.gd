@@ -174,3 +174,11 @@ func test_local_steam_id_parameter_keys_the_player_profile() -> void:
 	var profile: Dictionary = migrated["players"]["99999"]
 	assert_eq(profile["player"], v1["player"], "profile under custom key still has player block")
 	assert_eq(profile["miner"], v1["miner"], "profile under custom key still has miner block")
+
+
+func test_blob_with_missing_version_field_is_treated_as_v1() -> void:
+	var no_version: Dictionary = {"player": {"position": [1.0, 2.0, 3.0]}, "miner": {"gold_currency": 42}}
+	var migrated: Dictionary = SaveGame.migrate_v1_to_v2(no_version, "local")
+	assert_eq(int(migrated["version"]), 2)
+	assert_eq(migrated["players"]["local"]["player"], no_version["player"])
+	assert_eq(migrated["players"]["local"]["miner"], no_version["miner"])

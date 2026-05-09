@@ -117,8 +117,9 @@ func load_now() -> bool:
 	# autoload lands in Task 4. Once Net exists, this picks up the real
 	# steam id via /root/Net.local_player_id().
 	var local_id: String = "local"
-	if has_node("/root/Net"):
-		local_id = $"/root/Net".local_player_id()
+	var net: Node = get_node_or_null("/root/Net")
+	if net != null and net.has_method("local_player_id"):
+		local_id = net.local_player_id()
 	if int(data.get("version", 0)) < 2:
 		data = migrate_v1_to_v2(data, local_id)
 	if int(data.get("version", 0)) != SAVE_VERSION:
@@ -211,6 +212,8 @@ func apply_state(data: Dictionary) -> void:
 			var profile: Dictionary = data["players"][pids[0]]
 			for k: Variant in profile:
 				flat[k] = profile[k]
+		else:
+			push_warning("SaveGame.apply_state: v2 blob has no player profiles; applying world-only state. This usually means a corrupted save.")
 		flat["version"] = 2
 		data = flat
 	# Order: simple-state owners first, then factory (which adds nodes to the
