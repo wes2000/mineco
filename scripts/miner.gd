@@ -433,13 +433,20 @@ func add_factory_material(material_id: int, amount: int) -> void:
 
 @rpc("any_peer", "call_remote", "reliable")
 func _apply_voxel_carve_rpc(world_pos: Vector3, radius: float) -> void:
-	# Receiving peer carves their voxel_tool to match the sender. We don't
-	# append to _carves — the local _carves log is for the local player's
-	# own carve history (replayed on save load). Remote carves are visual
-	# only on this peer; the player who made the carve owns persistence.
+	# Receiving peer carves their voxel_tool to match the sender.
 	if _voxel_tool == null:
 		return
 	_voxel_tool.do_sphere(world_pos, radius)
+	# When the host receives a guest's carve, log it to host's _carves so
+	# it survives the host's autosave. Without this, guests' tunnels
+	# silently disappear on host save/reload — confirmed in code review.
+	# Late-join snapshot pulls _carves directly, so guests rejoining will
+	# also see each other's carves once the host's record exists.
+	if Net != null and Net.is_host():
+		_carves.append({
+			"pos": [world_pos.x, world_pos.y, world_pos.z],
+			"radius": radius,
+		})
 
 @rpc("any_peer", "call_remote", "reliable")
 func _apply_deposit_state_rpc(deposit_id: String, stage: int, hp: int) -> void:

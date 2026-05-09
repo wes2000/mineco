@@ -144,6 +144,15 @@ func leave_session() -> void:
 		multiplayer.peer_connected.disconnect(_on_multiplayer_peer_connected)
 	if multiplayer.peer_disconnected.is_connected(_on_multiplayer_peer_disconnected):
 		multiplayer.peer_disconnected.disconnect(_on_multiplayer_peer_disconnected)
+	# CONNECT_ONE_SHOT handlers normally clean themselves up after firing,
+	# but if leave_session is called before the lobby fully establishes
+	# (e.g. user clicks Leave during join handshake), they're still wired.
+	# Belt-and-suspenders cleanup so a subsequent join_session doesn't
+	# stack duplicate callbacks.
+	if multiplayer.connected_to_server.is_connected(_on_multiplayer_connected_to_server):
+		multiplayer.connected_to_server.disconnect(_on_multiplayer_connected_to_server)
+	if multiplayer.server_disconnected.is_connected(_on_multiplayer_server_disconnected):
+		multiplayer.server_disconnected.disconnect(_on_multiplayer_server_disconnected)
 	session_ended.emit("user_left")
 
 # --- Internal helpers ------------------------------------------------------

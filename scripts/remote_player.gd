@@ -1,24 +1,33 @@
 extends CharacterBody3D
 ## Visible representation of a remote (non-local) player.
 ##
-## MultiplayerSpawner instantiates one of these per non-local peer in the
-## session. The MultiplayerSynchronizer in the scene mirrors `position`,
-## `rotation.y`, `current_tool`, and `animation_state` from the authoritative
-## remote peer. There is no input handling, no camera, no first-person tools —
-## the local player has those; remote players are purely visual.
+## Net._local_spawn_remote instantiates one of these per non-local peer
+## (RemotePlayer_<peer_id>) and adds it under /root/Main alongside the local
+## static Player. There is no input handling, no camera, no first-person
+## tools — the local player has those; RemotePlayer is purely a visual
+## stand-in.
+##
+## State sync is via explicit RPC, not MultiplayerSynchronizer. Each peer's
+## local Player calls Net.recv_remote_transform.rpc(...) at ~20 Hz from
+## player.gd's _physics_process; the receiving peer's Net autoload looks up
+## the matching RemotePlayer_<sender> and writes position / rotation.y /
+## current_tool / animation_state directly. This explicit-RPC choice avoids
+## the asymmetric-tree problem of mixing a static local Player with a
+## spawned remote sibling — see docs/superpowers/specs/2026-05-08-multiplayer-design.md
+## and the Phase 1 plan for the design rationale.
 ##
 ## Animation: the placeholder NPC GLB is unrigged. We mirror npc.gd's
 ## procedural walk-bob to suggest a gait when `animation_state == "walking"`.
 ## Walk/idle classification is done on the authoritative peer (it knows its
-## own velocity) and replicated as a string. Tool-specific visuals and a
+## own velocity) and broadcast as a string. Tool-specific visuals and a
 ## proper rigged player model are deferred — Phase 1 just needs "I can see
 ## the other player and tell where they are."
 
 @export var steam_id: String = ""
 @export var display_name: String = ""
 
-# Replicated state. The MultiplayerSynchronizer mirrors these from the
-# authoritative remote peer.
+# Replicated state. Net.recv_remote_transform writes these from the
+# authoritative remote peer's broadcast.
 var current_tool: int = 0
 var animation_state: String = "idle"  # "idle" or "walking"
 

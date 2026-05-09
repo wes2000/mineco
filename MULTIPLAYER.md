@@ -52,3 +52,17 @@ Save format is at version 2 — bundled multiplayer shape with `world` (shared) 
 - **Mining duping race**: shared mining uses state-broadcast (not host arbitration). If two peers hit the same chunk within network latency, both can score it. Acceptable for friend co-op; host arbitration is a Phase 2/3 follow-up if it surfaces in playtest.
 - **GodotSteam API names**: `Steam.run_callbacks` is snake_case while most Matchmaking calls (`steamInit`, `joinLobby`, etc.) are camelCase. Verified against the installed binary's symbol table; `_NetSnapshot` and `_HostOnlyGuard` are accessed via `preload` constants in the autoloads to dodge Godot 4.6's class_name cache lag.
 - **`addons/godotsteam_server/`** is gitignored — listen-server multiplayer uses only the client SDK. If you ever need the dedicated-server SDK (different game mode), re-install from the GodotSteam-Server releases.
+
+## Design deviations from the original Phase 1 plan
+
+These are intentional simplifications discovered during implementation; documenting them here so Phase 2 planning starts from accurate ground truth.
+
+- **No `MultiplayerSynchronizer` on RemotePlayer / Player.** The plan called for spawner + synchronizer; the implementation uses spawner + explicit `Net.recv_remote_transform` RPC at 20 Hz instead. Reason: the static `/root/Main/Player` (kept to preserve SpawnGate, save_game, npc, town_spawner integrations) and the spawner-instantiated `RemotePlayer_<id>` aren't a mirror tree, which Synchronizer-based replication needs.
+- **Transform RPC is unreliable for all four fields.** Spec said "unreliable for transform, reliable for tool changes." Implementation uses one unreliable RPC for `position` / `rotation.y` / `current_tool` / `animation_state`. Tool changes can be silently dropped, but the next 20 Hz tick corrects within ~50 ms — small visual glitch, not a correctness bug. Splitting into reliable + unreliable channels is a Phase 2 polish item if the glitch is visible.
+- **Map diff RPC is direct broadcast (no host merge).** Plan had a host-merge step; implementation has each peer broadcast its newly-revealed cells directly to all others. Functionally equivalent for the no-anti-cheat world we're in; saves a hop.
+- **NetUtils is preserved but currently unused.** All Phase-1 RPCs are simple broadcasts and route directly via `.rpc()` / `.rpc_id()`. NetUtils is for Phase 2's request → host validate → broadcast pattern (vendors, contracts, claims). See `scripts/net/net_utils.gd`'s docstring.
+- **Multiplayer UI lives inside the existing pause menu Game tab**, not a standalone scene. Less infrastructure for a feature that's already 4 buttons + a roster.
+
+## Repository size note
+
+`addons/godotsteam/` vendors ~97 MB of platform binaries (Windows / Linux / macOS / Android, debug + release). This is in keeping with the project's pattern (`addons/zylann.voxel/` is similar, ~108 MB), but it does mean every clone pulls all platforms even though the project ships Windows-only currently. If repo size becomes a concern, options are: (a) trim non-Windows binaries on `main` and re-add at release time, (b) move the addon to Git LFS. Neither is urgent.

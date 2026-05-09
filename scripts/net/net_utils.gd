@@ -4,6 +4,16 @@ extends RefCounted
 ## Gameplay code calls these instead of touching `multiplayer.*` directly,
 ## which keeps the network layer swappable later if we ever leave Steam.
 ##
+## Phase 1 status: Phase-1 RPCs (transform broadcast, voxel/deposit state,
+## map diff, chat) all use direct `.rpc()` / `.rpc_id()` calls because their
+## host-or-not routing is trivial (everyone broadcasts → everyone receives,
+## or host-tells-specific-peer). NetUtils is preserved for Phase 2's vendor
+## / contract / claim RPCs which DO need the request → host validate →
+## broadcast pattern (anyone can request a vendor purchase; only host
+## decides; result fans back to all peers). Use these helpers for any new
+## RPC that needs that routing — direct `.rpc()` is fine for Phase-1-style
+## broadcasts and shouldn't be retrofitted.
+##
 ## === RPC argument convention ===
 ## All RPC methods in Mine Co. multiplayer take a single `args: Array`
 ## parameter and unpack inside. This keeps the helper API uniform — every
