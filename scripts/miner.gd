@@ -170,6 +170,14 @@ func _on_hit_frame() -> void:
 			collider.chunk_broken.connect(_on_chunk_broken)
 		_last_ore_hit_pos = hit_pos
 		collider.take_damage(_shovel.get_effective_damage())
+		# Multiplayer: broadcast the deposit's new state to peers.
+		# Idempotent — applying the same state twice is a no-op visually.
+		if Net != null and Net.is_online() and collider.deposit_id != "":
+			_apply_deposit_state_rpc.rpc(
+				String(collider.deposit_id),
+				int(collider._current_stage),
+				int(collider._stage_hp_left),
+			)
 		_ore_audio.play()
 	else:
 		# Plain voxel terrain — carve dirt for traversal, no inventory credit.
@@ -183,6 +191,12 @@ func _on_hit_frame() -> void:
 				"pos": [hit.position.x, hit.position.y, hit.position.z],
 				"radius": r,
 			})
+			# Multiplayer: replicate the carve so peers see the same hole.
+			# Receiving peers carve their own voxel_tool but don't log it
+			# (each peer's _carves is local persistence — host's save is the
+			# source of truth for save/load).
+			if Net != null and Net.is_online():
+				_apply_voxel_carve_rpc.rpc(hit.position, r)
 		_dirt_audio.play()
 
 func _on_chunk_broken(material: int, amount: int, _stage: int) -> void:
@@ -414,3 +428,29 @@ func add_factory_material(material_id: int, amount: int) -> void:
 	inventory_changed.emit(stone, iron, gold)
 	extended_inventory_changed.emit()
 	material_pickup.emit(material_id, amount)
+
+# --- Multiplayer state broadcast (Phase 1 mining replication) -------------
+
+@rpc("any_peer", "call_remote", "reliable")
+func _apply_voxel_carve_rpc(world_pos: Vector3, radius: float) -> void:
+	# Receiving peer carves their voxel_tool to match the sender. We don't
+	# append to _carves — the local _carves log is for the local player's
+	# own carve history (replayed on save load). Remote carves are visual
+	# only on this peer; the player who made the carve owns persistence.
+	if _voxel_tool == null:
+		return
+	_voxel_tool.do_sphere(world_pos, radius)
+
+@rpc("any_peer", "call_remote", "reliable")
+func _apply_deposit_state_rpc(deposit_id: String, stage: int, hp: int) -> void:
+	# Find the matching local OreDeposit by id and apply the state silently
+	# (no chunk_broken / damaged signals on this peer — the sender already
+	# fired their own and got credit).
+	for n: Node in get_tree().get_nodes_in_group("ore_deposits"):
+		if not (n is OreDeposit):
+			continue
+		var dep: OreDeposit = n
+		if dep.deposit_id != deposit_id:
+			continue
+		dep.apply_save_data({"stage": stage, "hp": hp})
+		return
