@@ -242,9 +242,13 @@ func _build_game_tab() -> void:
 		if Net == null:
 			return
 		var err: int = Net.host_session()
-		if err != OK:
-			_mp_status_label.text = "Host failed (err %d) — is Steam running?" % err
+		# Refresh first so the online/offline UI state updates, THEN overwrite
+		# the status text on failure — otherwise _refresh_mp_section's
+		# "Single-player" string clobbers our error message and the user just
+		# sees the label flicker.
 		_refresh_mp_section()
+		if err != OK:
+			_mp_status_label.text = "Host failed (err %d) — is Steam running, with steam_appid.txt next to the .exe?" % err
 	)
 	v.add_child(_mp_host_btn)
 	_mp_leave_btn = Button.new()
