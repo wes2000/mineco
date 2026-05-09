@@ -30,3 +30,14 @@ Thumbs.db
 # GUT (Godot Unit Test) runtime artifacts
 .gut_editor_config.json
 .gut_editor_shortcuts.cfg
+
+# GodotSteam — server-side SDK is locally installed but not vendored.
+# Listen-server multiplayer (host = client + server in one process) only
+# needs addons/godotsteam/. If a future feature ever needs the dedicated-
+# server SDK, re-install GodotSteam Server from
+# https://github.com/CoaguCo-Industries/GodotSteam-Server/releases
+/addons/godotsteam_server/
+
+# Steam SDK build artifacts
+/steam_sdk/
+*.steam_internal
