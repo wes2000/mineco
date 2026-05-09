@@ -270,7 +270,16 @@ func _build_game_tab() -> void:
 		Net.peer_disconnected.connect(func(_pid: int) -> void: _refresh_mp_section())
 		Net.session_ended.connect(func(_reason: String) -> void: _refresh_mp_section())
 	_refresh_mp_section()
-	$Panel/Vbox/Tabs/Game.add_child(v)
+	# The Game tab has grown enough sections (Save&Load + Progression +
+	# Recover + Multiplayer) that it overflows the fixed-height pause-menu
+	# panel. Wrap in a ScrollContainer so future additions just scroll
+	# instead of getting clipped.
+	var scroll: ScrollContainer = ScrollContainer.new()
+	scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(v)
+	$Panel/Vbox/Tabs/Game.add_child(scroll)
 
 # Teleport the player to main-town spawn and re-suspend physics until the
 # spawn chunk is meshed (otherwise unstuck-from-a-far-island would just drop
