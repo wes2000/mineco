@@ -30,6 +30,7 @@ PassiveTree="*res://scripts/passive_tree.gd"
 Unlocks="*res://scripts/unlocks.gd"
 CompanyProgress="*res://scripts/company_progress.gd"
 Updater="*res://autoload/updater.gd"
+Net="*res://scripts/net/net.gd"
 
 [editor_plugins]
 
