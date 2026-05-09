@@ -92,23 +92,19 @@ func host_session() -> Error:
 		return ERR_ALREADY_IN_USE
 	if not _ensure_steam_initialized():
 		return ERR_UNAVAILABLE
-	# GodotSteam API: SteamMultiplayerPeer might be `SteamMultiplayerPeer` or
-	# need a different ctor. Verify on first editor open.
-	_peer = SteamMultiplayerPeer.new()
-	# GodotSteam API: create_lobby vs createLobby
-	var err: int = _peer.create_lobby(LOBBY_TYPE_FRIENDS_ONLY, LOBBY_MAX_MEMBERS)
-	if err != OK:
-		push_error("Net.host_session: create_lobby failed (err=%d)" % err)
-		_peer = null
-		return err
-	multiplayer.multiplayer_peer = _peer
-	_is_online = true
-	multiplayer.peer_connected.connect(_on_multiplayer_peer_connected)
-	multiplayer.peer_disconnected.connect(_on_multiplayer_peer_disconnected)
-	# Tag the lobby with a human-readable name on confirmation.
-	# GodotSteam API: lobby_created signal name
-	if Steam.has_signal("lobby_created"):
-		Steam.lobby_created.connect(_on_steam_lobby_created, CONNECT_ONE_SHOT)
+	# Two-step host setup (verified against GodotSteam binary symbols):
+	#   1. Steam.createLobby() asks Steamworks to allocate a lobby.
+	#   2. On the lobby_created signal, bind a SteamMultiplayerPeer to the
+	#      lobby via peer.host_with_lobby(lobby_id) and register it as the
+	#      multiplayer_peer.
+	# This is unlike the create_lobby-on-peer pattern in older GodotSteam
+	# multiplayer-peer forks; the v4.18+ API splits Steam-side lobby
+	# creation from peer binding.
+	if not Steam.has_signal("lobby_created"):
+		push_error("Net.host_session: Steam.lobby_created signal missing — incompatible GodotSteam version")
+		return ERR_UNAVAILABLE
+	Steam.lobby_created.connect(_on_steam_lobby_created, CONNECT_ONE_SHOT)
+	Steam.createLobby(LOBBY_TYPE_FRIENDS_ONLY, LOBBY_MAX_MEMBERS)
 	return OK
 
 func join_session(lobby_id: int) -> Error:
@@ -156,11 +152,11 @@ func _online_local_player_id() -> String:
 # --- Steam / multiplayer signal handlers -----------------------------------
 
 func _on_multiplayer_peer_connected(peer_id: int) -> void:
-	# Look up the steam id for this peer if the SteamMultiplayerPeer exposes it.
-	# GodotSteam API: get_steam_id_from_peer_id may vary
+	# get_steam_id_for_peer_id is the actual method (NOT _from_) — verified
+	# against SteamMultiplayerPeer's exposed method list.
 	var steam_id: String = ""
-	if _peer != null and _peer.has_method("get_steam_id_from_peer_id"):
-		steam_id = str(_peer.get_steam_id_from_peer_id(peer_id))
+	if _peer != null and _peer.has_method("get_steam_id_for_peer_id"):
+		steam_id = str(_peer.get_steam_id_for_peer_id(peer_id))
 	_peer_to_steam[peer_id] = steam_id
 	peer_connected.emit(peer_id, steam_id)
 	if multiplayer.is_server():
@@ -257,16 +253,28 @@ func _display_name_for(steam_id: String) -> String:
 	return "Player"
 
 func _on_steam_lobby_created(connect_status: int, lobby_id: int) -> void:
-	# connect_status == 1 typically means success in GodotSteam.
-	if connect_status == 1:
-		_lobby_id = lobby_id
-		# GodotSteam API: setLobbyData
-		if Steam.has_method("setLobbyData"):
-			Steam.setLobbyData(lobby_id, "name", "Mine Co. session")
-	else:
+	# connect_status == 1 means success in GodotSteam (k_EResultOK).
+	if connect_status != 1:
 		push_error("Net._on_steam_lobby_created: connect_status=%d" % connect_status)
 		session_ended.emit("lobby_create_failed")
-		leave_session()
+		return
+	_lobby_id = lobby_id
+	if Steam.has_method("setLobbyData"):
+		Steam.setLobbyData(lobby_id, "name", "Mine Co. session")
+	# Now bind the SteamMultiplayerPeer to the lobby. host_with_lobby is the
+	# server-side counterpart of connect_to_lobby — verified against
+	# SteamMultiplayerPeer's exposed method list.
+	_peer = SteamMultiplayerPeer.new()
+	var err: int = _peer.host_with_lobby(lobby_id)
+	if err != OK:
+		push_error("Net._on_steam_lobby_created: host_with_lobby failed (err=%d)" % err)
+		_peer = null
+		session_ended.emit("lobby_create_failed")
+		return
+	multiplayer.multiplayer_peer = _peer
+	_is_online = true
+	multiplayer.peer_connected.connect(_on_multiplayer_peer_connected)
+	multiplayer.peer_disconnected.connect(_on_multiplayer_peer_disconnected)
 
 func _on_steam_lobby_joined(lobby_id_from_signal: int, _permissions: int, _locked: bool, response: int, lobby_id_bound: int) -> void:
 	# Note: depending on GodotSteam signal signature, the bound arg ordering
@@ -278,15 +286,12 @@ func _on_steam_lobby_joined(lobby_id_from_signal: int, _permissions: int, _locke
 		return
 	var lobby_id: int = lobby_id_from_signal if lobby_id_from_signal != 0 else lobby_id_bound
 	_peer = SteamMultiplayerPeer.new()
-	# GodotSteam API: connect_lobby vs connectLobby
-	if not _peer.has_method("connect_lobby"):
-		push_error("Net.join_session: SteamMultiplayerPeer missing connect_lobby method")
-		_peer = null
-		session_ended.emit("join_failed")
-		return
-	var err: int = _peer.connect_lobby(lobby_id)
+	# connect_to_lobby is the actual SteamMultiplayerPeer method (verified
+	# against the binary's exposed method list — older docs/forks use
+	# `connect_lobby`, that name does not exist in v4.18+).
+	var err: int = _peer.connect_to_lobby(lobby_id)
 	if err != OK:
-		push_error("Net.join_session: connect_lobby failed (err=%d)" % err)
+		push_error("Net.join_session: connect_to_lobby failed (err=%d)" % err)
 		_peer = null
 		session_ended.emit("join_failed")
 		return
