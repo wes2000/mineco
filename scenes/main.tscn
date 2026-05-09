@@ -42,7 +42,7 @@
 [ext_resource type="PackedScene" path="res://scenes/workbench_ui.tscn" id="45_workbenchui"]
 [ext_resource type="Script" uid="uid://c4i7le1bh035o" path="res://scripts/island_encounters.gd" id="46_islenc"]
 [ext_resource type="PackedScene" path="res://scenes/company_panel_ui.tscn" id="47_companyui"]
-[ext_resource type="Script" path="res://scripts/crosshair_hud.gd" id="48_xhair"]
+[ext_resource type="Script" uid="uid://s3ab08qwpsny" path="res://scripts/crosshair_hud.gd" id="48_xhair"]
 
 [sub_resource type="VoxelMesherTransvoxel" id="Mesher_1"]
 
@@ -77,6 +77,11 @@ script = ExtResource("6_tipki")
 
 [node name="Player" parent="." unique_id=1913351690 instance=ExtResource("5_player")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 30, 0)
+
+[node name="RemotePlayerSpawner" type="MultiplayerSpawner" parent="."]
+spawn_path = NodePath(".")
+_spawnable_scenes = PackedStringArray("res://scenes/remote_player.tscn")
+spawn_limit = 4
 
 [node name="SpawnGate" type="Node" parent="." unique_id=1217507651]
 script = ExtResource("6_gate")
@@ -131,6 +136,10 @@ layout_mode = 3
 [node name="ContractsOverlay" parent="HUD" unique_id=1229296488 instance=ExtResource("36_cover")]
 layout_mode = 3
 anchors_preset = 0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 0.0
+offset_bottom = 0.0
 
 [node name="ClaimVendorUI" parent="HUD" unique_id=1373983134 instance=ExtResource("40_claimui")]
 layout_mode = 3
@@ -147,14 +156,20 @@ layout_mode = 3
 [node name="BuildCatalogUI" parent="HUD" unique_id=584686742 instance=ExtResource("43_catalogui")]
 layout_mode = 3
 anchors_preset = 15
+grow_horizontal = 2
+grow_vertical = 2
 
 [node name="StorageCrateUI" parent="HUD" unique_id=260821820 instance=ExtResource("44_crateui")]
 layout_mode = 3
 anchors_preset = 15
+grow_horizontal = 2
+grow_vertical = 2
 
 [node name="WorkbenchUI" parent="HUD" unique_id=301049135 instance=ExtResource("45_workbenchui")]
 layout_mode = 3
 anchors_preset = 15
+grow_horizontal = 2
+grow_vertical = 2
 
 [node name="PauseMenu" parent="HUD" unique_id=1191369157 instance=ExtResource("26_menu")]
 layout_mode = 3
@@ -165,6 +180,10 @@ layout_mode = 3
 [node name="CrosshairHUD" type="Control" parent="HUD" unique_id=781249231]
 layout_mode = 3
 anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("48_xhair")
 

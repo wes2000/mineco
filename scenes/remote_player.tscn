@@ -1,4 +1,4 @@
-[gd_scene load_steps=5 format=3 uid="uid://b8t1remoteplayer1"]
+[gd_scene load_steps=4 format=3 uid="uid://b8t1remoteplayer1"]
 
 [ext_resource type="Script" path="res://scripts/remote_player.gd" id="1_script"]
 [ext_resource type="PackedScene" path="res://assets/models/npc_vendor.glb" id="2_visual"]
@@ -6,20 +6,6 @@
 [sub_resource type="CapsuleShape3D" id="Capsule_remote"]
 radius = 0.4
 height = 1.8
-
-[sub_resource type="SceneReplicationConfig" id="ReplCfg_remote"]
-properties/0/path = NodePath(".:position")
-properties/0/spawn = true
-properties/0/replication_mode = 1
-properties/1/path = NodePath(".:rotation")
-properties/1/spawn = true
-properties/1/replication_mode = 1
-properties/2/path = NodePath(".:current_tool")
-properties/2/spawn = true
-properties/2/replication_mode = 2
-properties/3/path = NodePath(".:animation_state")
-properties/3/spawn = true
-properties/3/replication_mode = 2
 
 [node name="RemotePlayer" type="CharacterBody3D"]
 collision_mask = 5
@@ -40,6 +26,3 @@ no_depth_test = true
 text = "Player"
 font_size = 48
 outline_size = 12
-
-[node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="."]
-replication_config = SubResource("ReplCfg_remote")

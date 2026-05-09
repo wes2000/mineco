@@ -49,6 +49,12 @@ const TOOL_WEAPON: int = 3
 var current_tool: int = TOOL_PICKAXE
 signal tool_changed(new_tool: int)
 
+# Multiplayer transform broadcast throttle. _physics_process ticks at 60 Hz;
+# we broadcast at ~20 Hz (every 3 frames) when online to keep bandwidth
+# reasonable while still giving smooth remote movement.
+var _mp_broadcast_accum: float = 0.0
+const _MP_BROADCAST_INTERVAL: float = 1.0 / 20.0  # seconds
+
 # Town respawn position. Player.tscn places us at (0, 30, 0); on death we
 # warp back here and the SpawnGate-style ground catch then drops us safely.
 const RESPAWN_POSITION: Vector3 = Vector3(0.0, 30.0, 0.0)
@@ -505,6 +511,14 @@ func _physics_process(delta: float) -> void:
 	# for already-explored cells, so it's cheap to call every physics tick.
 	if MapData != null:
 		MapData.mark_explored(global_position)
+	# Multiplayer: broadcast our transform so RemotePlayers on other peers
+	# can mirror us. No-op when offline (Net.is_online returns false).
+	if Net != null and Net.is_online():
+		_mp_broadcast_accum += delta
+		if _mp_broadcast_accum >= _MP_BROADCAST_INTERVAL:
+			_mp_broadcast_accum = 0.0
+			var anim_state: String = "walking" if velocity.length_squared() > 0.04 else "idle"
+			Net.recv_remote_transform.rpc(global_position, rotation.y, current_tool, anim_state)
 
 func _fly(delta: float) -> void:
 	var input_dir: Vector2 = Input.get_vector("move_left", "move_right", "move_forward", "move_back")

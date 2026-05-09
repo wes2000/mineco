@@ -25,6 +25,17 @@ var _peer: SteamMultiplayerPeer = null
 var _lobby_id: int = 0
 var _steam_initialized: bool = false
 
+# peer_id (int) -> RemotePlayer node, the visual stand-in for that peer.
+# Owned only on peers that have already received the spawn RPC for this peer.
+var _remote_players: Dictionary = {}
+
+# Cached lookup for the spawner. Resolved on first spawn/despawn call.
+var _remote_player_spawner: MultiplayerSpawner = null
+
+# Throttle for our local Player's transform broadcast (~20 Hz).
+const _TRANSFORM_BROADCAST_HZ: float = 20.0
+const _TRANSFORM_BROADCAST_INTERVAL: float = 1.0 / _TRANSFORM_BROADCAST_HZ
+
 # --- Lifecycle -------------------------------------------------------------
 
 func _ready() -> void:
@@ -121,6 +132,11 @@ func leave_session() -> void:
 		_peer = null
 	multiplayer.multiplayer_peer = null
 	_peer_to_steam.clear()
+	# Despawn all RemotePlayer instances locally — peer disconnect signals
+	# may not fire for everyone in time.
+	for peer_id in _remote_players.keys():
+		_local_despawn_remote(peer_id)
+	_remote_players.clear()
 	_is_online = false
 	_lobby_id = 0
 	if multiplayer.peer_connected.is_connected(_on_multiplayer_peer_connected):
@@ -147,10 +163,98 @@ func _on_multiplayer_peer_connected(peer_id: int) -> void:
 		steam_id = str(_peer.get_steam_id_from_peer_id(peer_id))
 	_peer_to_steam[peer_id] = steam_id
 	peer_connected.emit(peer_id, steam_id)
+	if multiplayer.is_server():
+		_host_spawn_remote_for(peer_id)
+		# Tell the new peer about everyone who was already here so they can
+		# render us all.
+		for existing_peer_id in _peer_to_steam.keys():
+			if existing_peer_id == peer_id:
+				continue
+			var existing_steam: String = _peer_to_steam[existing_peer_id]
+			tell_peer_id_to_spawn.rpc_id(peer_id, existing_peer_id, existing_steam)
 
 func _on_multiplayer_peer_disconnected(peer_id: int) -> void:
 	_peer_to_steam.erase(peer_id)
 	peer_disconnected.emit(peer_id)
+	if multiplayer.is_server():
+		# Tell everyone (including host) to despawn this peer's visual.
+		for other_peer in multiplayer.get_peers():
+			tell_peer_id_to_despawn.rpc_id(other_peer, peer_id)
+		_local_despawn_remote(peer_id)
+
+func _host_spawn_remote_for(peer_id: int) -> void:
+	# Host spawns a RemotePlayer-for-peer-N on every peer's tree (other than
+	# peer N itself, which has its static Player at /root/Main/Player).
+	var spawner: MultiplayerSpawner = _ensure_spawner()
+	if spawner == null:
+		push_warning("Net._host_spawn_remote_for: no spawner found; skipping")
+		return
+	var steam_id: String = _peer_to_steam.get(peer_id, "")
+	# Tell ALL peers (including host) to spawn this peer's visual, except
+	# the peer itself (they have a local Player).
+	for other_peer in multiplayer.get_peers():
+		if other_peer == peer_id:
+			continue
+		tell_peer_id_to_spawn.rpc_id(other_peer, peer_id, steam_id)
+	# Host always sees every other peer.
+	if peer_id != 1:
+		_local_spawn_remote(peer_id, steam_id)
+
+@rpc("authority", "call_local", "reliable")
+func tell_peer_id_to_spawn(target_peer_id: int, target_steam_id: String) -> void:
+	# Receiving peer creates a local RemotePlayer for target_peer_id, unless
+	# we ARE target_peer_id (we have our own static Player).
+	if target_peer_id == multiplayer.get_unique_id():
+		return
+	_local_spawn_remote(target_peer_id, target_steam_id)
+
+@rpc("authority", "call_local", "reliable")
+func tell_peer_id_to_despawn(target_peer_id: int) -> void:
+	_local_despawn_remote(target_peer_id)
+
+func _ensure_spawner() -> MultiplayerSpawner:
+	if _remote_player_spawner != null and is_instance_valid(_remote_player_spawner):
+		return _remote_player_spawner
+	var main: Node = get_tree().current_scene
+	if main == null:
+		return null
+	var s: Node = main.get_node_or_null("RemotePlayerSpawner")
+	if s is MultiplayerSpawner:
+		_remote_player_spawner = s
+	return _remote_player_spawner
+
+func _local_spawn_remote(peer_id: int, steam_id: String) -> void:
+	if _remote_players.has(peer_id):
+		return  # already spawned (e.g. via spawn-then-late-join)
+	var packed: PackedScene = load("res://scenes/remote_player.tscn") as PackedScene
+	if packed == null:
+		push_error("Net._local_spawn_remote: failed to load remote_player.tscn")
+		return
+	var inst: Node = packed.instantiate()
+	inst.name = "RemotePlayer_%d" % peer_id
+	if "steam_id" in inst:
+		inst.steam_id = steam_id
+	if inst.has_method("set_display_name"):
+		inst.set_display_name(_display_name_for(steam_id))
+	# Spawn at world origin; first transform RPC will reposition.
+	var main: Node = get_tree().current_scene
+	if main == null:
+		push_error("Net._local_spawn_remote: current_scene is null")
+		return
+	main.add_child(inst)
+	_remote_players[peer_id] = inst
+
+func _local_despawn_remote(peer_id: int) -> void:
+	var node: Node = _remote_players.get(peer_id, null)
+	if node != null and is_instance_valid(node):
+		node.queue_free()
+	_remote_players.erase(peer_id)
+
+func _display_name_for(steam_id: String) -> String:
+	if Engine.has_singleton("Steam") and steam_id.is_valid_int():
+		# GodotSteam API: getFriendPersonaName takes a Steam ID
+		return Steam.getFriendPersonaName(int(steam_id))
+	return "Player"
 
 func _on_steam_lobby_created(connect_status: int, lobby_id: int) -> void:
 	# connect_status == 1 typically means success in GodotSteam.
@@ -242,3 +346,25 @@ func _ensure_steam_initialized() -> bool:
 		return false
 	_steam_initialized = true
 	return true
+
+# --- Transform broadcast / receive (called from player.gd) -----------------
+
+@rpc("any_peer", "call_remote", "unreliable")
+func recv_remote_transform(pos: Vector3, rot_y: float, current_tool: int, animation_state: String) -> void:
+	# Sender is the authority for their own transform. Find their visual on
+	# our tree and apply.
+	var sender_peer_id: int = multiplayer.get_remote_sender_id()
+	var node: Node = _remote_players.get(sender_peer_id, null)
+	if node == null or not is_instance_valid(node):
+		return
+	# Only assign if these properties exist on the spawned scene.
+	if "position" in node:
+		node.position = pos
+	if "rotation" in node:
+		var r: Vector3 = node.rotation
+		r.y = rot_y
+		node.rotation = r
+	if "current_tool" in node:
+		node.current_tool = current_tool
+	if "animation_state" in node:
+		node.animation_state = animation_state
