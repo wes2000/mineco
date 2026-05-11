@@ -245,9 +245,12 @@ func _build_game_tab() -> void:
 		# Refresh first so the online/offline UI state updates, THEN overwrite
 		# the status text on failure — otherwise _refresh_mp_section's
 		# "Single-player" string clobbers our error message and the user just
-		# sees the label flicker.
+		# sees the label flicker. Skip the err message for ERR_ALREADY_IN_USE
+		# — that just means the user clicked Host while already hosting, and
+		# the "Hosting (N in session)" status from refresh is what they want
+		# to see.
 		_refresh_mp_section()
-		if err != OK:
+		if err != OK and err != ERR_ALREADY_IN_USE:
 			_mp_status_label.text = "Host failed (err %d) — is Steam running, with steam_appid.txt next to the .exe?" % err
 	)
 	v.add_child(_mp_host_btn)
@@ -273,6 +276,11 @@ func _build_game_tab() -> void:
 		Net.peer_connected.connect(func(_pid: int, _sid: String) -> void: _refresh_mp_section())
 		Net.peer_disconnected.connect(func(_pid: int) -> void: _refresh_mp_section())
 		Net.session_ended.connect(func(_reason: String) -> void: _refresh_mp_section())
+		# session_started fires when the host's lobby_created callback or the
+		# guest's connected_to_server callback flips us online. Without this
+		# the UI stays stale showing offline state until a peer connects.
+		if Net.has_signal("session_started"):
+			Net.session_started.connect(func() -> void: _refresh_mp_section())
 	_refresh_mp_section()
 	# The Game tab has grown enough sections (Save&Load + Progression +
 	# Recover + Multiplayer) that it overflows the fixed-height pause-menu

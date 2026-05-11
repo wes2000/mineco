@@ -18,6 +18,13 @@ signal peer_connected(peer_id: int, steam_id: String)
 signal peer_disconnected(peer_id: int)
 signal session_ended(reason: String)
 signal invite_received(lobby_id: int)
+# Emitted when _is_online flips from false to true (host's lobby_created
+# callback or guest's connected_to_server). The pause menu listens so the
+# Multiplayer section refreshes the moment we actually go online — without
+# this, host_session() returns OK synchronously but the UI stays "offline"
+# until lobby_created fires asynchronously, which fools the user into
+# clicking Host a second time.
+signal session_started()
 
 const LOCAL_SENTINEL: String = "local"
 const LOBBY_TYPE_FRIENDS_ONLY: int = 1
@@ -293,6 +300,12 @@ func _on_steam_lobby_created(connect_status: int, lobby_id: int) -> void:
 	_is_online = true
 	multiplayer.peer_connected.connect(_on_multiplayer_peer_connected)
 	multiplayer.peer_disconnected.connect(_on_multiplayer_peer_disconnected)
+	# Tell the rest of the app we're online now — the pause menu's
+	# Multiplayer section listens and refreshes its status / Host / Leave
+	# buttons. Without this, host_session() returns OK synchronously but
+	# the UI stays "Single-player" until this callback fires async, which
+	# fools users into clicking Host a second time.
+	session_started.emit()
 
 func _on_steam_lobby_joined(lobby_id_from_signal: int, _permissions: int, _locked: bool, response: int, lobby_id_bound: int) -> void:
 	# Note: depending on GodotSteam signal signature, the bound arg ordering
@@ -320,6 +333,7 @@ func _on_steam_lobby_joined(lobby_id_from_signal: int, _permissions: int, _locke
 	multiplayer.peer_disconnected.connect(_on_multiplayer_peer_disconnected)
 	multiplayer.connected_to_server.connect(_on_multiplayer_connected_to_server, CONNECT_ONE_SHOT)
 	multiplayer.server_disconnected.connect(_on_multiplayer_server_disconnected, CONNECT_ONE_SHOT)
+	session_started.emit()
 
 func _on_multiplayer_connected_to_server() -> void:
 	# Snapshot apply lands in Task 13. Nothing to do here yet.
