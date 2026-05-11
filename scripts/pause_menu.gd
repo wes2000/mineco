@@ -47,6 +47,10 @@ var _mp_host_btn: Button = null
 var _mp_leave_btn: Button = null
 var _mp_invite_hint: Label = null
 var _mp_roster_vbox: VBoxContainer = null
+var _mp_lobby_id_row: HBoxContainer = null
+var _mp_lobby_id_label: Label = null
+var _mp_join_id_input: LineEdit = null
+var _mp_join_btn: Button = null
 
 func _ready() -> void:
 	visible = false
@@ -278,14 +282,59 @@ func _build_game_tab() -> void:
 	)
 	v.add_child(_mp_leave_btn)
 	_mp_invite_hint = Label.new()
-	_mp_invite_hint.text = "Invite friends: open Steam (Shift+Tab) → Friends → right-click → Invite to Game"
+	# The Steam-overlay invite path sends friends to Spacewar under dev app
+	# id 480. The reliable workflow is the lobby-id copy/paste shown below.
+	_mp_invite_hint.text = "Invite via Steam Shift+Tab works ONLY if your friend already has Mine Co. open. Otherwise share the Lobby ID below — they paste it under 'Join Lobby by ID'."
 	_mp_invite_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_mp_invite_hint.add_theme_font_size_override("font_size", 11)
 	_mp_invite_hint.add_theme_color_override("font_color", Color(0.65, 0.72, 0.80, 1))
 	v.add_child(_mp_invite_hint)
+	# Host-side lobby-id display (visible only when we're hosting). A Copy
+	# button puts the id on the clipboard so the host can paste it into
+	# Discord / SMS / etc. to share with friends.
+	_mp_lobby_id_row = HBoxContainer.new()
+	_mp_lobby_id_row.add_theme_constant_override("separation", 6)
+	_mp_lobby_id_label = Label.new()
+	_mp_lobby_id_label.add_theme_font_size_override("font_size", 11)
+	_mp_lobby_id_label.add_theme_color_override("font_color", Color(0.78, 0.88, 0.95, 1))
+	_mp_lobby_id_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_mp_lobby_id_row.add_child(_mp_lobby_id_label)
+	var copy_btn: Button = Button.new()
+	copy_btn.text = "Copy"
+	copy_btn.custom_minimum_size = Vector2(60, 22)
+	copy_btn.pressed.connect(func() -> void:
+		if Net != null:
+			DisplayServer.clipboard_set(str(Net.get_lobby_id()))
+			_mp_status_label.text = "Copied lobby ID to clipboard"
+	)
+	_mp_lobby_id_row.add_child(copy_btn)
+	v.add_child(_mp_lobby_id_row)
 	_mp_roster_vbox = VBoxContainer.new()
 	_mp_roster_vbox.add_theme_constant_override("separation", 2)
 	v.add_child(_mp_roster_vbox)
+	# Guest-side: paste a lobby id and join. Visible only when offline. This
+	# bypasses Steam's invite-routing which sends friends to Spacewar under
+	# dev app id 480.
+	_mp_join_id_input = LineEdit.new()
+	_mp_join_id_input.placeholder_text = "Paste lobby ID to join..."
+	_mp_join_id_input.custom_minimum_size = Vector2(220, 26)
+	v.add_child(_mp_join_id_input)
+	_mp_join_btn = Button.new()
+	_mp_join_btn.text = "Join Lobby by ID"
+	_mp_join_btn.custom_minimum_size = Vector2(220, 32)
+	_mp_join_btn.pressed.connect(func() -> void:
+		if Net == null:
+			return
+		var text: String = _mp_join_id_input.text.strip_edges()
+		if not text.is_valid_int():
+			_mp_status_label.text = "Invalid lobby ID — must be numeric"
+			return
+		var err: int = Net.join_session(int(text))
+		_refresh_mp_section()
+		if err != OK and err != ERR_ALREADY_IN_USE:
+			_mp_status_label.text = "Join failed (err %d) — is Steam running?" % err
+	)
+	v.add_child(_mp_join_btn)
 	if Net != null:
 		Net.peer_connected.connect(func(_pid: int, _sid: String) -> void: _refresh_mp_section())
 		Net.peer_disconnected.connect(func(_pid: int) -> void: _refresh_mp_section())
@@ -318,6 +367,11 @@ func _refresh_mp_section() -> void:
 		_mp_host_btn.visible = false
 		_mp_leave_btn.visible = false
 		_mp_invite_hint.visible = false
+		if _mp_lobby_id_row != null:
+			_mp_lobby_id_row.visible = false
+		if _mp_join_id_input != null:
+			_mp_join_id_input.visible = false
+			_mp_join_btn.visible = false
 		return
 	var online: bool = Net.is_online()
 	if not online:
@@ -325,6 +379,11 @@ func _refresh_mp_section() -> void:
 		_mp_host_btn.visible = true
 		_mp_leave_btn.visible = false
 		_mp_invite_hint.visible = false
+		if _mp_lobby_id_row != null:
+			_mp_lobby_id_row.visible = false
+		if _mp_join_id_input != null:
+			_mp_join_id_input.visible = true
+			_mp_join_btn.visible = true
 	else:
 		var peer_count: int = 1 + (multiplayer.get_peers().size() if multiplayer.multiplayer_peer != null else 0)
 		var role: String = "Hosting" if Net.is_host() else "Connected"
@@ -332,6 +391,16 @@ func _refresh_mp_section() -> void:
 		_mp_host_btn.visible = false
 		_mp_leave_btn.visible = true
 		_mp_invite_hint.visible = true
+		# Lobby ID display visible while in session for both host and guest —
+		# either side can share it forward. Update the label even when
+		# get_lobby_id() returns 0 briefly during the connect handshake.
+		if _mp_lobby_id_row != null:
+			var lid: int = Net.get_lobby_id()
+			_mp_lobby_id_label.text = "Lobby ID: %d" % lid if lid != 0 else "Lobby ID: (allocating...)"
+			_mp_lobby_id_row.visible = true
+		if _mp_join_id_input != null:
+			_mp_join_id_input.visible = false
+			_mp_join_btn.visible = false
 	# Roster: rebuild from scratch each refresh — small enough that incremental
 	# add/remove isn't worth the bookkeeping.
 	for child in _mp_roster_vbox.get_children():

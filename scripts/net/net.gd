@@ -97,6 +97,14 @@ func local_player_id() -> String:
 func steam_id_for_peer(peer_id: int) -> String:
 	return _peer_to_steam.get(peer_id, "")
 
+func get_lobby_id() -> int:
+	# Public accessor for the active Steam lobby id (host or guest). 0 means
+	# no active lobby. Used by the pause menu to display + copy-to-clipboard
+	# the id so hosts can share it with friends as a fallback to Steam's
+	# invite flow (which sends friends to Spacewar when running under app
+	# id 480 instead of a real Mine Co. app id).
+	return _lobby_id
+
 # --- Session lifecycle (Tasks 5/6) -----------------------------------------
 
 func host_session() -> Error:
