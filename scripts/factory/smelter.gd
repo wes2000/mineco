@@ -78,9 +78,18 @@ func tick(_tick_index: int) -> void:
 	if not output_queue_can_accept():
 		status = Status.OUTPUT_BLOCKED
 		return
-	# Step 4: start a cycle if we don't have one running
+	# Step 4: start a cycle if we don't have one running. Validate the head
+	# of the buffer is a uniform batch first — if recipe was changed mid-
+	# process (or an old mismatched item is still sitting in the buffer)
+	# the batch can be heterogeneous. Refuse to process in that case so the
+	# player has to use Take Processing to unstick the mismatched items.
 	if _cycle_remaining_ticks <= 0 and _active_input_material == -1:
-		_active_input_material = processing_buffer[0]
+		var first_mat: int = processing_buffer[0]
+		for i in MaterialDefs.RECIPE_INPUT_PER_OUTPUT:
+			if processing_buffer[i] != first_mat:
+				status = Status.INPUT_JAMMED
+				return
+		_active_input_material = first_mat
 		_cycle_total_ticks = apply_upgrade_to_cycle(MaterialDefs.SMELTER_TICKS[_active_input_material])
 		_cycle_remaining_ticks = _cycle_total_ticks
 	# Step 5: advance the cycle
@@ -99,6 +108,15 @@ func tick(_tick_index: int) -> void:
 	_active_input_material = -1
 	_cycle_total_ticks = 0
 	status = Status.IDLE   # next tick will start the next cycle if buffer non-empty
+
+func _on_processing_taken() -> void:
+	# Player pulled the buffer via Take Processing — cancel any in-flight
+	# cycle so the next tick doesn't pop a phantom output from an empty
+	# buffer (or from the next batch with stale timing).
+	_cycle_remaining_ticks = 0
+	_cycle_total_ticks = 0
+	_active_input_material = -1
+	status = Status.IDLE
 
 func _drain_output_to_link() -> void:
 	if output_queue.is_empty():

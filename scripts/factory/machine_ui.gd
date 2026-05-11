@@ -63,6 +63,7 @@ const FLAME_ICON_PATH: String = "res://assets/icons/factory/flame.svg"
 @onready var _processing_slots: HBoxContainer = $Panel/Vbox/QueuesRow/ProcessingCol/V/Slots
 @onready var _input_take_btn: Button = $Panel/Vbox/QueuesRow/InputCol/V/TakeBtn
 @onready var _output_take_btn: Button = $Panel/Vbox/QueuesRow/OutputCol/V/TakeBtn
+@onready var _processing_take_btn: Button = $Panel/Vbox/QueuesRow/ProcessingCol/V/TakeBtn
 @onready var _processing_flame: TextureRect = $Panel/Vbox/QueuesRow/ProcessingCol/V/FlameRow/Flame
 @onready var _processing_countdown: Label = $Panel/Vbox/QueuesRow/ProcessingCol/V/FlameRow/Countdown
 @onready var _deposit_panel: VBoxContainer = $Panel/Vbox/DepositPanel
@@ -89,6 +90,7 @@ func _ready() -> void:
 	_recipe_select.item_selected.connect(_on_recipe_selected)
 	_input_take_btn.pressed.connect(_on_take_input)
 	_output_take_btn.pressed.connect(_on_take_output)
+	_processing_take_btn.pressed.connect(_on_take_processing)
 	_close_btn.pressed.connect(unbind)
 	_upgrade_btn.pressed.connect(_on_upgrade_pressed)
 	var flame_tex: Texture2D = load(FLAME_ICON_PATH) as Texture2D
@@ -400,6 +402,17 @@ func _on_take_output() -> void:
 		return
 	var taken: Array[int] = _bound_building.take_all_from_queue(Building.QUEUE_KIND_OUTPUT)
 	_credit_player(taken)
+
+func _on_take_processing() -> void:
+	# Empties the smelter/forge's processing buffer back into the player's
+	# inventory. Used to unstick mixed batches (e.g. recipe was changed
+	# mid-process and the buffer ended up with heterogeneous items, which
+	# the cycle now refuses to run on).
+	if _bound_building == null:
+		return
+	var taken: Array[int] = _bound_building.take_all_from_queue(Building.QUEUE_KIND_PROCESSING)
+	_credit_player(taken)
+	_refresh()
 
 func _credit_player(materials: Array[int]) -> void:
 	var miner: Node = get_tree().get_first_node_in_group("player_miner")

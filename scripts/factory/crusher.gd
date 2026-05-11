@@ -109,6 +109,15 @@ func tick(_tick_index: int) -> void:
 	_cycle_total_ticks = 0
 	status = Status.IDLE
 
+func _on_processing_taken() -> void:
+	# Cancel any in-flight cycle so an emptied buffer doesn't pop a phantom
+	# output next tick. Crusher cycles operate on a single item, so the
+	# risk is smaller than smelter/forge but the bookkeeping is the same.
+	_cycle_remaining_ticks = 0
+	_cycle_total_ticks = 0
+	_active_input_material = -1
+	status = Status.IDLE
+
 func _drain_output_to_link() -> void:
 	if output_queue.is_empty():
 		return

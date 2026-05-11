@@ -79,7 +79,14 @@ func tick(_tick_index: int) -> void:
 		status = Status.OUTPUT_BLOCKED
 		return
 	if _cycle_remaining_ticks <= 0 and _active_input_material == -1:
-		_active_input_material = processing_buffer[0]
+		# Refuse to start a cycle on a mixed batch — see smelter.gd for the
+		# rationale. The player uses Take Processing to clear the mismatch.
+		var first_mat: int = processing_buffer[0]
+		for i in MaterialDefs.RECIPE_INPUT_PER_OUTPUT:
+			if processing_buffer[i] != first_mat:
+				status = Status.INPUT_JAMMED
+				return
+		_active_input_material = first_mat
 		_cycle_total_ticks = apply_upgrade_to_cycle(MaterialDefs.FORGE_TICKS[_active_input_material])
 		_cycle_remaining_ticks = _cycle_total_ticks
 	if _cycle_remaining_ticks > 0:
@@ -95,6 +102,14 @@ func tick(_tick_index: int) -> void:
 	item_emitted.emit(out_material)
 	_active_input_material = -1
 	_cycle_total_ticks = 0
+	status = Status.IDLE
+
+func _on_processing_taken() -> void:
+	# Mirrors smelter.gd — cancel in-flight cycle when the player force-
+	# empties the buffer so no phantom output pops next tick.
+	_cycle_remaining_ticks = 0
+	_cycle_total_ticks = 0
+	_active_input_material = -1
 	status = Status.IDLE
 
 func _drain_output_to_link() -> void:

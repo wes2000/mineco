@@ -207,6 +207,9 @@ text = ""
 theme_override_font_sizes/font_size = 16
 theme_override_colors/font_color = Color(1, 0.85, 0.6, 1)
 
+[node name="TakeBtn" type="Button" parent="Panel/Vbox/QueuesRow/ProcessingCol/V"]
+text = "Take processing"
+
 [node name="OutputCol" type="PanelContainer" parent="Panel/Vbox/QueuesRow"]
 size_flags_horizontal = 3
 size_flags_vertical = 3

@@ -35,6 +35,7 @@ signal queue_changed(kind: int, new_count: int)   # kind: 0=input, 1=output
 signal processing_changed(new_count: int)
 const QUEUE_KIND_INPUT: int = 0
 const QUEUE_KIND_OUTPUT: int = 1
+const QUEUE_KIND_PROCESSING: int = 2
 
 var input_queue: Array[int] = []
 var output_queue: Array[int] = []
@@ -196,7 +197,22 @@ func take_all_from_queue(kind: int) -> Array[int]:
 		taken = output_queue.duplicate()
 		output_queue.clear()
 		queue_changed.emit(QUEUE_KIND_OUTPUT, 0)
+	elif kind == QUEUE_KIND_PROCESSING:
+		# Take everything out of the in-progress buffer (e.g. to unstick a
+		# mixed batch). Subclasses with a running cycle override
+		# _on_processing_taken to reset their cycle counters so the freshly-
+		# emptied buffer doesn't pop a phantom output on the next tick.
+		taken = processing_buffer.duplicate()
+		processing_buffer.clear()
+		processing_changed.emit(0)
+		_on_processing_taken()
 	return taken
+
+# Virtual hook — Smelter/Forge override to reset _cycle_remaining_ticks,
+# _cycle_total_ticks, _active_input_material when their processing buffer
+# is forcibly emptied via take_all_from_queue(QUEUE_KIND_PROCESSING).
+func _on_processing_taken() -> void:
+	pass
 
 # --- Processing buffer / cycle introspection (subclasses override) ---
 
