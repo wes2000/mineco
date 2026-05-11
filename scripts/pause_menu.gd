@@ -57,6 +57,20 @@ func _ready() -> void:
 	_build_video_tab()
 	_build_hotkeys_tab()
 	_build_admin_tab()
+	_build_version_footer()
+
+func _build_version_footer() -> void:
+	# Small dim version label pinned to the bottom of the panel — visible
+	# under every tab. Pulled from ProjectSettings so we never have to hand-
+	# update it; cutting a release that bumps config/version also bumps the
+	# label.
+	var v: String = String(ProjectSettings.get_setting("application/config/version", "?"))
+	var footer: Label = Label.new()
+	footer.text = "v%s" % v
+	footer.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	footer.add_theme_font_size_override("font_size", 10)
+	footer.add_theme_color_override("font_color", Color(0.45, 0.48, 0.54, 1))
+	$Panel/Vbox.add_child(footer)
 
 func toggle() -> void:
 	if visible:
