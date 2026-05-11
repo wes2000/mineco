@@ -284,7 +284,7 @@ func _build_game_tab() -> void:
 	_mp_invite_hint = Label.new()
 	# The Steam-overlay invite path sends friends to Spacewar under dev app
 	# id 480. The reliable workflow is the lobby-id copy/paste shown below.
-	_mp_invite_hint.text = "Invite via Steam Shift+Tab works ONLY if your friend already has Mine Co. open. Otherwise share the Lobby ID below — they paste it under 'Join Lobby by ID'."
+	_mp_invite_hint.text = "Invite via Steam Shift+Tab works ONLY if your friend already has Mine Co. open. Otherwise share the Lobby ID below — they paste it under 'Join Lobby by ID'. Phase 1 note: joining guests should Delete Save first (above) so their world doesn't mix with the host's. Building placements aren't yet synced between peers."
 	_mp_invite_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_mp_invite_hint.add_theme_font_size_override("font_size", 11)
 	_mp_invite_hint.add_theme_color_override("font_color", Color(0.65, 0.72, 0.80, 1))

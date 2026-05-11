@@ -191,7 +191,11 @@ func _on_multiplayer_peer_connected(peer_id: int) -> void:
 	if multiplayer.is_server():
 		_host_spawn_remote_for(peer_id)
 		# Tell the new peer about everyone who was already here so they can
-		# render us all.
+		# render us all. _peer_to_steam ONLY contains remote peers — the host
+		# itself isn't keyed there. Without an explicit spawn for peer 1
+		# (the host), the joining peer never sees a RemotePlayer for us.
+		var host_steam: String = local_player_id()
+		tell_peer_id_to_spawn.rpc_id(peer_id, 1, host_steam)
 		for existing_peer_id in _peer_to_steam.keys():
 			if existing_peer_id == peer_id:
 				continue
